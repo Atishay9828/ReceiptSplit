@@ -12,7 +12,10 @@ Migrations use a synchronous engine configured in alembic/env.py.
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -23,7 +26,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
-
 
 # ── SQLAlchemy base class for all ORM models ──────────────────────────────────
 

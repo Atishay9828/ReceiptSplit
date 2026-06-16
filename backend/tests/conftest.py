@@ -7,8 +7,9 @@ Import order: stdlib → third-party → app (no circular imports).
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC
 
+import pytest
 
 # ── Test marks ────────────────────────────────────────────────────────────────
 # All marks are registered in pyproject.toml [tool.pytest.ini_options].
@@ -19,6 +20,7 @@ import pytest
 @pytest.fixture()
 def fixed_clock():
     """Returns a FixedClock set to 2026-06-01T12:00:00Z."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from app.shared.clock import FixedClock
-    return FixedClock(datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc))
+    return FixedClock(datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC))

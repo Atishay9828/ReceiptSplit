@@ -7,11 +7,11 @@ Marked with @pytest.mark.unit.
 
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
 
-from app.shared.types import COLOR_PALETTE, Color, Nickname, Paise, VPA
+import pytest
 
+from app.shared.types import COLOR_PALETTE, VPA, Color, Nickname, Paise
 
 # ── Paise ──────────────────────────────────────────────────────────────────────
 
@@ -133,11 +133,11 @@ class TestNickname:
         assert len(n.value) == 30
 
     def test_empty_raises(self):
-        with pytest.raises(ValueError, match="1–30"):
+        with pytest.raises(ValueError, match="1-30"):
             Nickname("")
 
     def test_31_chars_raises(self):
-        with pytest.raises(ValueError, match="1–30"):
+        with pytest.raises(ValueError, match="1-30"):
             Nickname("A" * 31)
 
     def test_null_byte_raises(self):

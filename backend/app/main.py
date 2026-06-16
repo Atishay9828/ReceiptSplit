@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
     # ── In-process room creation rate limiter (Amendment API-3) ───────────────
     # NOT a replacement for Phase 5 rate limiting.  Lightweight IP guard only.
     _creation_counts: dict[str, tuple[int, datetime]] = defaultdict(
-        lambda: (0, datetime.now(tz=timezone.utc))
+        lambda: (0, datetime.now(tz=UTC))
     )
 
     @application.middleware("http")
@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
         if request.method == "POST" and request.url.path == "/api/rooms":
             ip = request.client.host if request.client else "unknown"
             count, window_start = _creation_counts[ip]
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             if now - window_start > timedelta(hours=1):
                 _creation_counts[ip] = (1, now)
             elif count >= settings.room_creation_rate_limit_per_hour:

@@ -20,11 +20,14 @@ Security invariant (Amendment API-1):
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import AuthContext
 from app.auth.tokens import extract_bearer_token, hash_token
@@ -57,7 +60,7 @@ async def get_current_participant(
     try:
         raw_token = extract_bearer_token(authorization)
     except ValueError:
-        raise HTTPException(status_code=403, detail=InvalidToken().to_dict())
+        raise HTTPException(status_code=403, detail=InvalidToken().to_dict()) from None
 
     token_hash = hash_token(raw_token)
 

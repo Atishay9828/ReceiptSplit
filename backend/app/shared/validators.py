@@ -20,7 +20,7 @@ from app.shared.errors import (
     InvalidNickname,
     InvalidVPAFormat,
 )
-from app.shared.types import COLOR_PALETTE, Nickname, Paise, VPA
+from app.shared.types import COLOR_PALETTE, VPA, Nickname, Paise
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ def validate_nickname(raw: str) -> Nickname:
       1. Strip HTML tags
       2. Remove null bytes
       3. Trim whitespace
-      4. Enforce 1–30 char length
+      4. Enforce 1-30 char length
 
     Raises:
         InvalidNickname: if the sanitized string is empty or > 30 chars.
@@ -82,7 +82,7 @@ def validate_item_name(raw: str) -> str:
       1. Strip HTML tags
       2. Remove null bytes
       3. Trim whitespace
-      4. Enforce 1–200 char length
+      4. Enforce 1-200 char length
 
     Raises:
         InvalidItemName: if the sanitized string is empty or > 200 chars.

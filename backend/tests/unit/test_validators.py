@@ -25,7 +25,6 @@ from app.shared.validators import (
     validate_vpa,
 )
 
-
 # ── strip_html ─────────────────────────────────────────────────────────────────
 
 @pytest.mark.unit

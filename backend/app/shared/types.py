@@ -15,11 +15,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
-
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -179,7 +174,7 @@ class Nickname:
     Participant display name.
 
     Rules (per PDD §2.3):
-      - 1–30 characters
+      - 1-30 characters
       - Leading/trailing whitespace trimmed before validation
       - HTML tags stripped
       - Null bytes rejected
@@ -195,7 +190,7 @@ class Nickname:
             raise TypeError(f"Nickname value must be str, got {type(self.value).__name__}")
         if len(self.value) < 1 or len(self.value) > 30:
             raise ValueError(
-                f"Nickname must be 1–30 chars, got {len(self.value)}: {self.value!r}"
+                f"Nickname must be 1-30 chars, got {len(self.value)}: {self.value!r}"
             )
         if "\x00" in self.value:
             raise ValueError("Nickname must not contain null bytes")

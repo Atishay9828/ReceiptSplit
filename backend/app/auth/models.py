@@ -9,7 +9,10 @@ by all route handlers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from uuid import UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)

@@ -16,7 +16,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ── Base ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -68,7 +67,7 @@ class InvalidItemName(DomainError):
     def __init__(self) -> None:
         super().__init__(
             code="INVALID_ITEM_NAME",
-            message="Item name must be 1–200 characters.",
+            message="Item name must be 1-200 characters.",
         )
 
 
@@ -76,7 +75,7 @@ class InvalidNickname(DomainError):
     def __init__(self) -> None:
         super().__init__(
             code="INVALID_NICKNAME",
-            message="Nickname must be 1–30 characters.",
+            message="Nickname must be 1-30 characters.",
         )
 
 
