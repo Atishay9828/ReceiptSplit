@@ -1,0 +1,35 @@
+{
+  "description": "Hostel mess: 8 participants, equal split, large order with mixed claims. Tests large group with rounding.",
+  "input": {
+    "mode": "equal",
+    "participants": [
+      {"id": "p1-creator", "is_payer": true,  "join_order": 0},
+      {"id": "p2",         "is_payer": false, "join_order": 1},
+      {"id": "p3",         "is_payer": false, "join_order": 2},
+      {"id": "p4",         "is_payer": false, "join_order": 3},
+      {"id": "p5",         "is_payer": false, "join_order": 4},
+      {"id": "p6",         "is_payer": false, "join_order": 5},
+      {"id": "p7",         "is_payer": false, "join_order": 6},
+      {"id": "p8",         "is_payer": false, "join_order": 7}
+    ],
+    "items": [
+      {"id": "item-thali-1",    "quantity": 8, "total_paise": 96000},
+      {"id": "item-water",      "quantity": 4, "total_paise": 8000},
+      {"id": "item-extra-roti", "quantity": 12, "total_paise": 3600},
+      {"id": "item-buttermilk", "quantity": 8, "total_paise": 16000},
+      {"id": "item-ice-cream",  "quantity": 5, "total_paise": 25000}
+    ],
+    "assignments": [],
+    "adjustments": [
+      {"type": "tax", "amount_paise": 7430, "allocation": "proportional"},
+      {"type": "tax", "amount_paise": 7430, "allocation": "proportional"},
+      {"type": "delivery_fee", "amount_paise": 0, "allocation": "equal"}
+    ]
+  },
+  "expected": {
+    "grand_total_paise": 163460,
+    "sum_conservation": true,
+    "all_non_negative": true,
+    "participant_count": 8
+  }
+}

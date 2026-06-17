@@ -1,0 +1,29 @@
+{
+  "description": "Restaurant bill: 4 participants, 3 food items, CGST+SGST tax, 10% discount",
+  "input": {
+    "mode": "equal",
+    "participants": [
+      {"id": "p1-creator", "is_payer": true, "join_order": 0},
+      {"id": "p2-rahul",   "is_payer": false, "join_order": 1},
+      {"id": "p3-priya",   "is_payer": false, "join_order": 2},
+      {"id": "p4-arjun",   "is_payer": false, "join_order": 3}
+    ],
+    "items": [
+      {"id": "item-butter-chicken", "quantity": 1, "total_paise": 35000},
+      {"id": "item-naan",           "quantity": 4, "total_paise": 16000},
+      {"id": "item-dal-tadka",      "quantity": 1, "total_paise": 22000}
+    ],
+    "assignments": [],
+    "adjustments": [
+      {"type": "tax", "amount_paise": 3650, "allocation": "proportional"},
+      {"type": "tax", "amount_paise": 3650, "allocation": "proportional"},
+      {"type": "discount", "amount_paise": 7300, "allocation": "proportional"}
+    ]
+  },
+  "expected": {
+    "grand_total_paise": 73000,
+    "sum_conservation": true,
+    "all_non_negative": true,
+    "participant_count": 4
+  }
+}

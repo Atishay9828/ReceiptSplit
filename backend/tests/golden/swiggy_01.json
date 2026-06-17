@@ -1,0 +1,29 @@
+{
+  "description": "Swiggy order: 2 participants, delivery fee (equal allocation), platform fee (proportional), tax",
+  "input": {
+    "mode": "equal",
+    "participants": [
+      {"id": "p1-creator", "is_payer": true, "join_order": 0},
+      {"id": "p2-roommate", "is_payer": false, "join_order": 1}
+    ],
+    "items": [
+      {"id": "item-pizza",    "quantity": 1, "total_paise": 29900},
+      {"id": "item-coke",     "quantity": 2, "total_paise": 7000},
+      {"id": "item-garlic-bread", "quantity": 1, "total_paise": 14900}
+    ],
+    "assignments": [],
+    "adjustments": [
+      {"type": "delivery_fee",   "amount_paise": 4900,  "allocation": "equal"},
+      {"type": "service_charge", "amount_paise": 5180,  "allocation": "proportional"},
+      {"type": "tax",            "amount_paise": 2590,  "allocation": "proportional"},
+      {"type": "tax",            "amount_paise": 2590,  "allocation": "proportional"},
+      {"type": "discount",       "amount_paise": 10000, "allocation": "proportional"}
+    ]
+  },
+  "expected": {
+    "grand_total_paise": 57060,
+    "sum_conservation": true,
+    "all_non_negative": true,
+    "participant_count": 2
+  }
+}
