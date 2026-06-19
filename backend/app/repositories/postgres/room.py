@@ -19,6 +19,7 @@ class PostgresRoomRepository(PostgresRepository[Room], RoomRepository):
 
     async def create(self, db: AsyncSession, room: Room) -> Room:
         db.add(room)
+        await db.flush()
         # Create corresponding room sequence (TXN-1)
         seq = RoomSequence(room_id=room.id, next_seq=0)
         db.add(seq)

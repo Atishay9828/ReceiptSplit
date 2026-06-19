@@ -1,7 +1,13 @@
+"""Tests for PostgresEventRepository — Atomic sequencing and rollback."""
+from __future__ import annotations
+
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.pool import NullPool
 
 from app.models.room import Room
 from app.models.room_event import RoomEvent
@@ -9,80 +15,121 @@ from app.repositories.postgres.event import PostgresEventRepository
 from app.repositories.postgres.room import PostgresRoomRepository
 
 
+async def _create_room_direct(engine: AsyncEngine) -> str:
+    """Create a room directly using the engine, committed to the real DB.
+    
+    Concurrent tests need rows visible across independent connections,
+    so we commit outside any test-scoped SAVEPOINT.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession as AS
+
+    async with engine.connect() as conn:
+        async with conn.begin():
+            session = AS(bind=conn, expire_on_commit=False)
+            repo = PostgresRoomRepository()
+            room = Room(
+                status="draft",
+                split_mode="equal",
+                expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+            )
+            await repo.create(session, room)
+            await session.flush()
+            room_id = str(room.id)
+            await session.close()
+    return room_id
+
+
 @pytest.mark.asyncio
-async def test_concurrent_event_sequencing(db_session, async_engine):
-    """Verifies TXN-2: Atomic Event Sequencing."""
-    # Setup Room
-    repo = PostgresRoomRepository()
-    room = Room(status="draft", split_mode="equal")
-    await repo.create(db_session, room)
-    await db_session.commit()
+async def test_concurrent_event_sequencing(async_engine: AsyncEngine):
+    """Verifies TXN-2 / DB-1: Atomic Event Sequencing under concurrency.
     
-    room_id = room.id
+    10 workers each append one event concurrently.
+    The resulting sequence numbers must be a gapless 1..10.
+    """
+    from uuid import UUID
+
+    room_id_str = await _create_room_direct(async_engine)
+    room_id = UUID(room_id_str)
     event_repo = PostgresEventRepository()
-    
-    async def append_event(worker_id):
-        from sqlalchemy.ext.asyncio import async_sessionmaker
-        async_session = async_sessionmaker(async_engine, expire_on_commit=False, autoflush=False)
-        async with async_session() as session:
-            async with session.begin():
+
+    async def append_event(worker_id: int) -> int:
+        async with async_engine.connect() as conn:
+            async with conn.begin():
+                session = AsyncSession(bind=conn, expire_on_commit=False)
                 seq = await event_repo.append_in_tx(
                     session,
                     room_id=room_id,
                     event_type="test_event",
                     actor_id=None,
-                    payload={"worker": worker_id}
+                    payload={"worker": worker_id},
                 )
+                await session.close()
                 return seq
 
-    # Run 10 concurrent appends
     tasks = [append_event(i) for i in range(10)]
-    results = await asyncio.gather(*tasks)
-    
-    # Sequences must be perfectly 1 to 10
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Fail fast on any exceptions
+    for res in results:
+        if isinstance(res, Exception):
+            raise res
+
     sequences = sorted(results)
-    assert sequences == list(range(1, 11))
+    assert sequences == list(range(1, 11)), f"Expected gapless 1..10, got {sequences}"
 
 
 @pytest.mark.asyncio
-async def test_event_rollback_scenario(db_session):
-    """Verifies that failed business logic rolls back both sequence increment and event insertion."""
-    repo = PostgresRoomRepository()
-    room = Room(status="draft", split_mode="equal")
-    await repo.create(db_session, room)
-    await db_session.commit()
+async def test_event_rollback_on_transaction_failure(async_engine: AsyncEngine):
+    """Verifies that a failed transaction rolls back BOTH the sequence increment AND the event insert.
     
+    1. Start a transaction, append an event, then raise → rollback.
+    2. Append a successful event in a new transaction.
+    3. Assert the successful event got sequence_no = 1 (not 2).
+    """
+    from uuid import UUID
+
+    room_id_str = await _create_room_direct(async_engine)
+    room_id = UUID(room_id_str)
     event_repo = PostgresEventRepository()
-    room_id = room.id
-    
-    # Simulate an event inside a transaction that rolls back
+
+    # Transaction 1: append + deliberate failure → full rollback
     try:
-        async with db_session.begin_nested():
-            await event_repo.append_in_tx(
-                db_session,
-                room_id=room_id,
-                event_type="failed_event",
-                actor_id=None,
-                payload={}
-            )
-            raise ValueError("Business logic failed!")
+        async with async_engine.connect() as conn:
+            async with conn.begin():
+                session = AsyncSession(bind=conn, expire_on_commit=False)
+                await event_repo.append_in_tx(
+                    session,
+                    room_id=room_id,
+                    event_type="failed_event",
+                    actor_id=None,
+                    payload={},
+                )
+                await session.close()
+                raise ValueError("Simulated business logic failure")
     except ValueError:
-        pass
-        
-    # Append a successful event afterwards
-    seq = await event_repo.append_in_tx(
-        db_session,
-        room_id=room_id,
-        event_type="successful_event",
-        actor_id=None,
-        payload={}
-    )
-    await db_session.commit()
-    
-    # The sequence should be 1 since the failed one was fully rolled back
-    assert seq == 1
-    
-    events = (await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room_id))).scalars().all()
-    assert len(events) == 1
-    assert events[0].event_type == "successful_event"
-    assert events[0].sequence_no == 1
+        pass  # Expected
+
+    # Transaction 2: successful append
+    async with async_engine.connect() as conn:
+        async with conn.begin():
+            session = AsyncSession(bind=conn, expire_on_commit=False)
+            seq = await event_repo.append_in_tx(
+                session,
+                room_id=room_id,
+                event_type="successful_event",
+                actor_id=None,
+                payload={},
+            )
+            await session.close()
+
+    assert seq == 1, f"Expected seq=1 after rollback, got {seq}"
+
+    # Verify only one event exists
+    async with async_engine.connect() as conn:
+        result = await conn.execute(
+            select(RoomEvent).where(RoomEvent.room_id == room_id)
+        )
+        events = result.all()
+        assert len(events) == 1
+        assert events[0].event_type == "successful_event"
+        assert events[0].sequence_no == 1
