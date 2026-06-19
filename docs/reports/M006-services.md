@@ -44,3 +44,13 @@ Services intentionally avoid referencing any presentation-layer models or except
 - [x] Optimistic Locking/CAS applied strictly (TXN-1)
 - [x] Dependency injection wired via `registry.py`
 - [x] M006 Service Layer milestone completed and verified
+
+# Validation Follow-up: DB-5
+
+**Validation finding:** M006 validation rejected the initial `SplitLockCoordinator.lock()` implementation because lock-time reads and split snapshot generation occurred before the explicit transaction. A concurrent item or adjustment mutation could commit between those reads and the room state transition, allowing the persisted `SplitSession` snapshot to diverge from the room state being locked.
+
+**Root cause:** The lock flow fetched room data, participants, receipt items, adjustments, and assignments, then built `SplitInput`, ran `SplitCalculator`, and generated the adjustment snapshot before entering `async with db.begin()`. Only the room transition, session persistence, totals persistence, and event append were in the transaction.
+
+**Fix:** `SplitLockCoordinator.lock()` now performs the room fetch, idempotency check, state validation, CAS transition to `settling`, item/adjustment/assignment reads, snapshot generation, `SplitInput` creation, `SplitCalculator` execution, `SplitSession` persistence, `ParticipantTotal` persistence, and `split.locked` event append inside the same `async with db.begin()` block.
+
+**Prevention test:** Added `test_lock_uses_transactional_snapshot()`, which records the explicit lock transaction boundary and asserts all DB-5 lock-time reads, calculations, snapshot generation, persistence, and event append occur inside it.

@@ -13,7 +13,6 @@ Design authority:
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -30,6 +29,8 @@ from app.shared.errors import (
 from app.split.calculator import SplitCalculator
 from app.split.models import (
     SplitAdjustment as SplitAdjInput,
+)
+from app.split.models import (
     SplitAssignment,
     SplitInput,
     SplitItem,
@@ -231,56 +232,49 @@ class SplitLockCoordinator:
         6. Build and persist split session.
         7. Publish event.
         """
-        room = await self._room_repo.get_by_id(db, room_id)
-        if room is None:
-            raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
-
-        # Idempotency check: Ensure the session does not already exist
-        existing_session = await self._session_repo.get_by_room(db, room_id)
-        if existing_session is not None:
-            raise RoomAlreadyLocked()
-
-        # State machine validates active → settling
-        room_state_machine.validate_transition(room.status, "settling")
-
-        # Pre-conditions
-        participants = await self._participant_repo.list_active(db, room_id)
-        if len(participants) < 2:
-            raise InsufficientParticipants()
-
-        receipt = await self._receipt_repo.get_by_room(db, room_id)
-        if receipt is None:
-            raise DomainError(code="NO_RECEIPT", message="No receipt found.")
-
-        items = await self._item_repo.list_by_receipt(db, receipt.id)
-        if not items:
-            raise NoItems()
-
-        adjustments = await self._adj_repo.list_by_room(db, room_id)
-        assignments = await self._assign_repo.list_by_room(db, room_id)
-
-        # Build split input
-        split_input = SplitSessionBuilder.build_split_input(
-            mode=room.split_mode,
-            items=items,
-            participants=participants,
-            adjustments=adjustments,
-            assignments=assignments,
-        )
-
-        # Run the split engine
-        result = SplitCalculator.calculate(split_input)
-
-        # Snapshot adjustments
-        snapshot = SplitSessionBuilder.snapshot_adjustments(adjustments)
-
         async with db.begin():
-            # Transition room state
+            room = await self._room_repo.get_by_id(db, room_id)
+            if room is None:
+                raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
+
+            # Idempotency check: ensure the session does not already exist.
+            existing_session = await self._session_repo.get_by_room(db, room_id)
+            if existing_session is not None:
+                raise RoomAlreadyLocked()
+
+            room_state_machine.validate_transition(room.status, "settling")
+
+            # Claim the room state transition before deriving the lock-time snapshot.
             updated = await self._room_repo.update(
                 db, room_id, expected_version, {"status": "settling"}
             )
             if not updated:
                 raise VersionConflict()
+
+            participants = await self._participant_repo.list_active(db, room_id)
+            if len(participants) < 2:
+                raise InsufficientParticipants()
+
+            receipt = await self._receipt_repo.get_by_room(db, room_id)
+            if receipt is None:
+                raise DomainError(code="NO_RECEIPT", message="No receipt found.")
+
+            items = await self._item_repo.list_by_receipt(db, receipt.id)
+            if not items:
+                raise NoItems()
+
+            adjustments = await self._adj_repo.list_by_room(db, room_id)
+            assignments = await self._assign_repo.list_by_room(db, room_id)
+
+            split_input = SplitSessionBuilder.build_split_input(
+                mode=room.split_mode,
+                items=items,
+                participants=participants,
+                adjustments=adjustments,
+                assignments=assignments,
+            )
+            result = SplitCalculator.calculate(split_input)
+            snapshot = SplitSessionBuilder.snapshot_adjustments(adjustments)
 
             # Persist session and totals
             session = await SplitSessionBuilder.persist_session(
