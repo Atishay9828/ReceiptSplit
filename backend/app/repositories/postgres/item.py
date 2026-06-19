@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import select
+
 from app.models.line_item import LineItem
 from app.repositories.interfaces.item import ItemRepository
 from app.repositories.postgres.base import PostgresRepository
@@ -37,8 +39,6 @@ class PostgresItemRepository(PostgresRepository[LineItem], ItemRepository):
         )
 
     async def soft_delete(self, db: AsyncSession, item_id: UUID, expected_version: int) -> bool:
-        # Note: cas_update sets version = version + 1.
-        # We also set deleted_at = now() manually since cas_update doesn't handle deleted_at
         from sqlalchemy import text
 
         stmt = text("""
@@ -50,3 +50,12 @@ class PostgresItemRepository(PostgresRepository[LineItem], ItemRepository):
         """)
         result = await db.execute(stmt, {"id": str(item_id), "expected_version": expected_version})
         return result.first() is not None
+
+    async def list_by_receipt(self, db: AsyncSession, receipt_id: UUID) -> list[LineItem]:
+        stmt = (
+            select(LineItem)
+            .where(LineItem.receipt_id == receipt_id, LineItem.deleted_at.is_(None))
+            .order_by(LineItem.sort_order)
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())

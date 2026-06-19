@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +15,15 @@ class AdjustmentRepository(Protocol):
         """Lists active adjustments for a room (where deleted_at IS NULL)."""
         ...
 
+    async def update(
+        self, db: AsyncSession, adjustment_id: UUID, expected_version: int, update_fields: dict[str, Any]
+    ) -> bool:
+        """Executes a CAS update on a split adjustment."""
+        ...
+
     async def soft_delete(
         self, db: AsyncSession, adjustment_id: UUID, expected_version: int
     ) -> bool:
         """Soft-deletes a split adjustment using CAS."""
         ...
+

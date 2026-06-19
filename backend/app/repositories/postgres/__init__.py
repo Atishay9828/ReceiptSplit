@@ -1,4 +1,5 @@
 from app.repositories.postgres.adjustment import PostgresAdjustmentRepository
+from app.repositories.postgres.assignment import PostgresAssignmentRepository
 from app.repositories.postgres.event import PostgresEventRepository
 from app.repositories.postgres.item import PostgresItemRepository
 from app.repositories.postgres.participant import PostgresParticipantRepository
@@ -9,6 +10,7 @@ from app.repositories.postgres.split_session import PostgresSplitSessionReposito
 
 __all__ = [
     "PostgresAdjustmentRepository",
+    "PostgresAssignmentRepository",
     "PostgresEventRepository",
     "PostgresItemRepository",
     "PostgresParticipantRepository",

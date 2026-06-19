@@ -24,3 +24,7 @@ class ItemRepository(Protocol):
     async def soft_delete(self, db: AsyncSession, item_id: UUID, expected_version: int) -> bool:
         """Soft-deletes a line item."""
         ...
+
+    async def list_by_receipt(self, db: AsyncSession, receipt_id: UUID) -> list[LineItem]:
+        """Lists all active (non-deleted) line items for a receipt."""
+        ...

@@ -293,6 +293,14 @@ class RoomLocked(DomainError):
         )
 
 
+class RoomAlreadyLocked(DomainError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="ROOM_ALREADY_LOCKED",
+            message="This bill is already locked.",
+        )
+
+
 class ReceiptLocked(DomainError):
     def __init__(self) -> None:
         super().__init__(

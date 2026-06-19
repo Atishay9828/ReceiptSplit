@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, text
 
@@ -30,6 +30,19 @@ class PostgresAdjustmentRepository(PostgresRepository[SplitAdjustment], Adjustme
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())
+
+    async def update(
+        self, db: AsyncSession, adjustment_id: UUID, expected_version: int, update_fields: dict[str, Any]
+    ) -> bool:
+        return await self.cas_update(
+            db,
+            table="split_adjustments",
+            pk_column="id",
+            pk_value=adjustment_id,
+            expected_version=expected_version,
+            update_fields=update_fields,
+            has_updated_at=False,
+        )
 
     async def soft_delete(
         self, db: AsyncSession, adjustment_id: UUID, expected_version: int
