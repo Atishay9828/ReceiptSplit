@@ -26,7 +26,7 @@ from uuid import UUID
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header
 from sqlalchemy import text
 
 from app.auth.models import AuthContext
@@ -54,13 +54,12 @@ async def get_current_participant(
       5. Return AuthContext with participant_id, room_id, role.
 
     Raises:
-        HTTPException 403: if the token is missing, malformed, not found,
-                           or belongs to a participant who has left.
+        InvalidToken: if the token is missing, malformed, not found, or inactive.
     """
     try:
         raw_token = extract_bearer_token(authorization)
     except ValueError:
-        raise HTTPException(status_code=403, detail=InvalidToken().to_dict()) from None
+        raise InvalidToken() from None
 
     token_hash = hash_token(raw_token)
 
@@ -74,9 +73,10 @@ async def get_current_participant(
         {"token_hash": token_hash},
     )
     row = result.first()
+    await db.rollback()
 
     if row is None:
-        raise HTTPException(status_code=403, detail=InvalidToken().to_dict())
+        raise InvalidToken()
 
     return AuthContext(
         participant_id=UUID(str(row.id)),
@@ -99,7 +99,7 @@ async def require_room_access(
     cannot be used to access Room B's endpoints.
 
     Raises:
-        HTTPException 403: if ctx.room_id != path room_id.
+        InvalidToken: if ctx.room_id != path room_id.
     """
     if ctx.room_id != room_id:
         # This should never happen in production — it indicates either
@@ -111,7 +111,7 @@ async def require_room_access(
             room_id,
             ctx.participant_id,
         )
-        raise HTTPException(status_code=403, detail=InvalidToken().to_dict())
+        raise InvalidToken()
 
     return ctx
 
@@ -125,8 +125,8 @@ async def require_creator_in_room(
     Use this on all creator-only endpoints.
 
     Raises:
-        HTTPException 403: if ctx.role != 'creator'.
+        NotAuthorized: if ctx.role != 'creator'.
     """
     if not ctx.is_creator:
-        raise HTTPException(status_code=403, detail=NotAuthorized().to_dict())
+        raise NotAuthorized()
     return ctx

@@ -1,11 +1,15 @@
 from __future__ import annotations
-from uuid import UUID
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class ParticipantTotal(Base):

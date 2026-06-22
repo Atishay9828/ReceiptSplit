@@ -34,7 +34,6 @@ from app.services.split_service import (
     SplitService,
 )
 
-
 # ── Singleton repositories ───────────────────────────────────────────────────
 
 
@@ -116,5 +115,13 @@ def get_split_service() -> SplitService:
         session_repo=r["split_session"],
         event_publisher=ep,
     )
-    preview = SplitPreviewService(session_repo=r["split_session"])
+    preview = SplitPreviewService(
+        room_repo=r["room"],
+        receipt_repo=r["receipt"],
+        item_repo=r["item"],
+        participant_repo=r["participant"],
+        adjustment_repo=r["adjustment"],
+        assignment_repo=r["assignment"],
+        session_repo=r["split_session"],
+    )
     return SplitService(lock_coordinator=coordinator, preview=preview)

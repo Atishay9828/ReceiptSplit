@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from fastapi import APIRouter, Depends, status
+
+from app.api.errors import ERROR_RESPONSES
+from app.api.schemas.room import (
+    RoomCreateRequest,
+    RoomCreateResponse,
+    RoomResponse,
+    RoomUpdateRequest,
+)
+from app.auth.dependencies import require_creator_in_room, require_room_access
+from app.database import get_db
+from app.services.registry import get_room_service
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.auth.models import AuthContext
+    from app.services.room_service import RoomService
+
+router = APIRouter(prefix="/api/rooms", tags=["rooms"], responses=ERROR_RESPONSES)
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create room",
+    description="Create a draft room with creator and invite capability tokens.",
+    response_model=RoomCreateResponse,
+)
+async def create_room(
+    payload: RoomCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    service: RoomService = Depends(get_room_service),
+) -> RoomCreateResponse:
+    room, creator_token, invite_token = await service.create_room(db, split_mode=payload.split_mode)
+    return RoomCreateResponse(room=RoomResponse.model_validate(room), creator_token=creator_token, invite_token=invite_token)
+
+
+@router.get(
+    "/{room_id}",
+    summary="Get room",
+    description="Fetch the authenticated participant's room metadata.",
+    response_model=RoomResponse,
+)
+async def get_room(
+    room_id: UUID,
+    _ctx: AuthContext = Depends(require_room_access),
+    db: AsyncSession = Depends(get_db),
+    service: RoomService = Depends(get_room_service),
+) -> RoomResponse:
+    room = await service.get_room(db, room_id)
+    response = RoomResponse.model_validate(room)
+    await db.rollback()
+    return response
+
+
+@router.patch(
+    "/{room_id}",
+    summary="Update room",
+    description="Update creator-controlled room metadata or perform a state transition.",
+    response_model=RoomResponse,
+)
+async def update_room(
+    room_id: UUID,
+    payload: RoomUpdateRequest,
+    ctx: AuthContext = Depends(require_creator_in_room),
+    db: AsyncSession = Depends(get_db),
+    service: RoomService = Depends(get_room_service),
+) -> RoomResponse:
+    changes: dict[str, Any] = payload.model_dump(exclude={"version"}, exclude_none=True)
+    if set(changes) == {"status"}:
+        room = await service.transition_room(
+            db,
+            room_id=room_id,
+            expected_version=payload.version,
+            to_state=changes["status"],
+            actor_id=ctx.participant_id,
+        )
+    else:
+        room = await service.update_room(
+            db,
+            room_id=room_id,
+            expected_version=payload.version,
+            actor_id=ctx.participant_id,
+            update_fields=changes,
+        )
+    response = RoomResponse.model_validate(room)
+    await db.rollback()
+    return response

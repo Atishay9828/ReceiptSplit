@@ -1,10 +1,10 @@
 """Tests for remaining repositories — Item, Adjustment, SplitSession, Receipt, ReceiptEdit."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.line_item import LineItem
 from app.models.receipt import Receipt
@@ -20,6 +20,9 @@ from app.repositories.postgres.receipt_edit import PostgresReceiptEditRepository
 from app.repositories.postgres.room import PostgresRoomRepository
 from app.repositories.postgres.split_session import PostgresSplitSessionRepository
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 
 async def _setup_room_with_receipt(db: AsyncSession) -> tuple[Room, Receipt, RoomParticipant]:
     """Helper: create a room, receipt, invite, and participant."""
@@ -27,7 +30,7 @@ async def _setup_room_with_receipt(db: AsyncSession) -> tuple[Room, Receipt, Roo
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await repo.create(db, room)
     await db.flush()
@@ -123,7 +126,7 @@ async def test_adjustment_create_and_list(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await room_repo.create(db_session, room)
     await db_session.flush()
@@ -152,7 +155,7 @@ async def test_adjustment_soft_delete(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await room_repo.create(db_session, room)
     await db_session.flush()
@@ -185,7 +188,7 @@ async def test_receipt_create_and_get_by_room(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await room_repo.create(db_session, room)
     await db_session.flush()
@@ -216,7 +219,7 @@ async def test_split_session_create_and_get(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await room_repo.create(db_session, room)
     await db_session.flush()

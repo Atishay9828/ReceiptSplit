@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 import app.config
@@ -18,29 +17,28 @@ from app.shared.errors import DomainError
 
 async def _create_room_with_invite(engine: AsyncEngine) -> tuple[str, str]:
     """Create a room + invite, committed to the real DB for cross-connection visibility."""
-    async with engine.connect() as conn:
-        async with conn.begin():
-            session = AsyncSession(bind=conn, expire_on_commit=False)
-            repo = PostgresRoomRepository()
-            room = Room(
-                status="draft",
-                split_mode="equal",
-                expires_at=datetime.now(timezone.utc) + timedelta(days=1),
-            )
-            await repo.create(session, room)
-            await session.flush()
+    async with engine.connect() as conn, conn.begin():
+        session = AsyncSession(bind=conn, expire_on_commit=False)
+        repo = PostgresRoomRepository()
+        room = Room(
+            status="draft",
+            split_mode="equal",
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+        await repo.create(session, room)
+        await session.flush()
 
-            invite = RoomInvite(
-                room_id=room.id,
-                token_hash="test_invite_concurrent",
-                type="participant",
-            )
-            session.add(invite)
-            await session.flush()
+        invite = RoomInvite(
+            room_id=room.id,
+            token_hash="test_invite_concurrent",
+            type="participant",
+        )
+        session.add(invite)
+        await session.flush()
 
-            room_id = str(room.id)
-            invite_hash = invite.token_hash
-            await session.close()
+        room_id = str(room.id)
+        invite_hash = invite.token_hash
+        await session.close()
 
     return room_id, invite_hash
 
@@ -63,26 +61,25 @@ async def test_concurrent_join_limit(async_engine: AsyncEngine, monkeypatch):
     participant_repo = PostgresParticipantRepository()
 
     async def join_worker(worker_id: int) -> bool:
-        async with async_engine.connect() as conn:
-            async with conn.begin():
-                session = AsyncSession(bind=conn, expire_on_commit=False)
-                try:
-                    await participant_repo.join_room_in_tx(
-                        session,
-                        room_id=room_id,
-                        invite_token_hash=invite_hash,
-                        nickname=f"Worker {worker_id}",
-                        color="#000000",
-                        new_token_hash=f"concurrent_token_{worker_id}",
-                    )
-                    await session.flush()
-                    await session.close()
-                    return True
-                except DomainError as e:
-                    await session.close()
-                    if e.code == "ROOM_FULL":
-                        return False
-                    raise
+        async with async_engine.connect() as conn, conn.begin():
+            session = AsyncSession(bind=conn, expire_on_commit=False)
+            try:
+                await participant_repo.join_room_in_tx(
+                    session,
+                    room_id=room_id,
+                    invite_token_hash=invite_hash,
+                    nickname=f"Worker {worker_id}",
+                    color="#000000",
+                    new_token_hash=f"concurrent_token_{worker_id}",
+                )
+                await session.flush()
+                await session.close()
+                return True
+            except DomainError as e:
+                await session.close()
+                if e.code == "ROOM_FULL":
+                    return False
+                raise
 
     tasks = [join_worker(i) for i in range(5)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -106,7 +103,7 @@ async def test_participant_get_by_token(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await repo.create(db_session, room)
     await db_session.flush()
@@ -121,7 +118,7 @@ async def test_participant_get_by_token(db_session: AsyncSession):
     await db_session.flush()
 
     participant_repo = PostgresParticipantRepository()
-    participant = await participant_repo.join_room_in_tx(
+    await participant_repo.join_room_in_tx(
         db_session,
         room_id=room.id,
         invite_token_hash="get_by_token_invite",
@@ -149,7 +146,7 @@ async def test_participant_list_active(db_session: AsyncSession):
     room = Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
     await repo.create(db_session, room)
     await db_session.flush()

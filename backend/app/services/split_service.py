@@ -174,10 +174,55 @@ class SplitSessionBuilder:
 
 
 class SplitPreviewService:
-    """Read-only access to the current split session."""
+    """Read-only split preview and current-session access."""
 
-    def __init__(self, session_repo: SplitSessionRepository) -> None:
+    def __init__(
+        self,
+        room_repo: RoomRepository,
+        receipt_repo: ReceiptRepository,
+        item_repo: ItemRepository,
+        participant_repo: ParticipantRepository,
+        adjustment_repo: AdjustmentRepository,
+        assignment_repo: AssignmentRepository,
+        session_repo: SplitSessionRepository,
+    ) -> None:
+        self._room_repo = room_repo
+        self._receipt_repo = receipt_repo
+        self._item_repo = item_repo
+        self._participant_repo = participant_repo
+        self._adj_repo = adjustment_repo
+        self._assign_repo = assignment_repo
         self._session_repo = session_repo
+
+    async def calculate_preview(
+        self, db: AsyncSession, room_id: UUID
+    ) -> SplitResult:
+        room = await self._room_repo.get_by_id(db, room_id)
+        if room is None:
+            raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
+
+        participants = await self._participant_repo.list_active(db, room_id)
+        if len(participants) < 2:
+            raise InsufficientParticipants()
+
+        receipt = await self._receipt_repo.get_by_room(db, room_id)
+        if receipt is None:
+            raise DomainError(code="NO_RECEIPT", message="No receipt found.")
+
+        items = await self._item_repo.list_by_receipt(db, receipt.id)
+        if not items:
+            raise NoItems()
+
+        adjustments = await self._adj_repo.list_by_room(db, room_id)
+        assignments = await self._assign_repo.list_by_room(db, room_id)
+        split_input = SplitSessionBuilder.build_split_input(
+            mode=room.split_mode,
+            items=items,
+            participants=participants,
+            adjustments=adjustments,
+            assignments=assignments,
+        )
+        return SplitCalculator.calculate(split_input)
 
     async def get_current_session(
         self, db: AsyncSession, room_id: UUID
@@ -312,13 +357,13 @@ class SplitLockCoordinator:
         3. Transition room → active.
         4. Publish event.
         """
-        room = await self._room_repo.get_by_id(db, room_id)
-        if room is None:
-            raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
-
-        room_state_machine.validate_transition(room.status, "active")
-
         async with db.begin():
+            room = await self._room_repo.get_by_id(db, room_id)
+            if room is None:
+                raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
+
+            room_state_machine.validate_transition(room.status, "active")
+
             # Delete session (cascade removes participant_totals)
             await self._session_repo.delete_by_room(db, room_id)
 

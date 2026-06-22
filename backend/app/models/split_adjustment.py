@@ -1,13 +1,26 @@
 from __future__ import annotations
-from datetime import datetime
-from uuid import UUID
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, Integer, String, TIMESTAMP, text
+from typing import TYPE_CHECKING
+
+from sqlalchemy import (
+    TIMESTAMP,
+    BigInteger,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from uuid import UUID
 
 
 class SplitAdjustment(Base):

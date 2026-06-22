@@ -1,5 +1,4 @@
 import pytest
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -174,7 +173,7 @@ async def test_unclaim_publishes_event(db_session: AsyncSession):
         participant_id=participant.id,
         claimed_qty=1,
     )
-    
+
     item = await item_svc._item_repo.get(db_session, item.id)
 
     events_before = len((await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id))).scalars().all())

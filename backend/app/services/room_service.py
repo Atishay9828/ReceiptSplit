@@ -12,10 +12,14 @@ Design authority:
 from __future__ import annotations
 
 import logging
-from datetime import timedelta, timezone
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-from app.auth.tokens import generate_creator_token, generate_invite_token, generate_participant_token, hash_token
+from app.auth.tokens import (
+    generate_creator_token,
+    generate_invite_token,
+    hash_token,
+)
 from app.domain import room_state_machine
 from app.models.receipt import Receipt
 from app.models.room import Room
@@ -125,6 +129,13 @@ class RoomService:
             raise RoomNotFound()
         return room
 
+    async def get_receipt(self, db: AsyncSession, room_id: UUID) -> Receipt:
+        """Fetch the room's receipt. Rooms are created with exactly one receipt."""
+        receipt = await self._receipt_repo.get_by_room(db, room_id)
+        if receipt is None:
+            raise RoomNotFound()
+        return receipt
+
     async def update_room(
         self,
         db: AsyncSession,
@@ -156,6 +167,7 @@ class RoomService:
             room_id, "room.updated", {"fields": list(update_fields.keys())}, seq
         )
 
+        db.expire_all()
         return await self.get_room(db, room_id)
 
     async def transition_room(
@@ -171,12 +183,10 @@ class RoomService:
         Raises InvalidStateTransition if the move is illegal.
         Raises VersionConflict if stale.
         """
-        room = await self.get_room(db, room_id)
-
-        # Validate the transition BEFORE attempting the CAS.
-        room_state_machine.validate_transition(room.status, to_state)
-
         async with db.begin():
+            room = await self.get_room(db, room_id)
+            room_state_machine.validate_transition(room.status, to_state)
+
             updated = await self._room_repo.update(
                 db, room_id, expected_version, {"status": to_state}
             )
@@ -198,4 +208,5 @@ class RoomService:
             seq,
         )
 
+        db.expire_all()
         return await self.get_room(db, room_id)

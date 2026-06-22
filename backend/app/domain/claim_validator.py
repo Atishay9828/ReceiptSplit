@@ -12,7 +12,6 @@ Design authority:
 from __future__ import annotations
 
 from app.shared.errors import (
-    DomainError,
     InvalidClaimQuantity,
     InvalidStateTransition,
     WrongSplitMode,

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
@@ -25,6 +25,8 @@ from testcontainers.postgres import PostgresContainer
 import app.models  # noqa: F401
 from app.database import Base
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 

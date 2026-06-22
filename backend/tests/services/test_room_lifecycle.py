@@ -1,10 +1,8 @@
 import pytest
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.receipt import Receipt
-from app.models.room import Room
 from app.models.room_invite import RoomInvite
 from app.models.room_participant import RoomParticipant
 from app.services.registry import get_room_service
@@ -15,7 +13,7 @@ pytestmark = pytest.mark.asyncio
 
 async def test_room_creation_creates_all_records(db_session: AsyncSession):
     svc = get_room_service()
-    room, c_token, i_token = await svc.create_room(db_session, split_mode="equal")
+    room, _c_token, _i_token = await svc.create_room(db_session, split_mode="equal")
 
     assert room.id is not None
     assert room.status == "draft"
@@ -39,7 +37,7 @@ async def test_room_creation_creates_all_records(db_session: AsyncSession):
 
 async def test_room_creation_creates_creator_participant(db_session: AsyncSession):
     svc = get_room_service()
-    room, c_token, i_token = await svc.create_room(db_session)
+    room, _c_token, _i_token = await svc.create_room(db_session)
 
     # Participant assertions
     participants = (await db_session.execute(select(RoomParticipant).where(RoomParticipant.room_id == room.id))).scalars().all()
@@ -52,7 +50,7 @@ async def test_room_creation_creates_creator_participant(db_session: AsyncSessio
 async def test_invalid_state_transition(db_session: AsyncSession):
     svc = get_room_service()
     room, _, _ = await svc.create_room(db_session)
-    
+
     participants = (await db_session.execute(select(RoomParticipant).where(RoomParticipant.room_id == room.id))).scalars().all()
     await db_session.commit()
 

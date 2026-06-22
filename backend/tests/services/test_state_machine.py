@@ -6,6 +6,7 @@ from app.domain.room_state_machine import (
 )
 from app.shared.errors import InvalidStateTransition
 
+
 def test_valid_transitions():
     assert can_transition("draft", "active") is True
     assert can_transition("draft", "archived") is True

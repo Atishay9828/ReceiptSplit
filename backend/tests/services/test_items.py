@@ -1,12 +1,11 @@
 import pytest
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.tokens import hash_token
 from app.models.receipt import Receipt
 from app.models.receipt_edit import ReceiptEdit
-from app.services.registry import get_item_service, get_room_service, get_participant_service
+from app.services.registry import get_item_service, get_participant_service, get_room_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -32,7 +31,7 @@ async def test_item_edit_creates_audit_row(db_session: AsyncSession):
         quantity=1,
         total_paise=1000,
     )
-    
+
     # Edit item
     await item_svc.update_item(
         db_session,
@@ -49,7 +48,7 @@ async def test_item_edit_creates_audit_row(db_session: AsyncSession):
     await db_session.commit()
     # 1 for create, 2 for the 2 updated fields
     assert len(edits) == 3
-    
+
     edit_fields = [e.field for e in edits]
     assert "item.name" in edit_fields
     assert "item.total_paise" in edit_fields

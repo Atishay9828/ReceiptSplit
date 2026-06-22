@@ -1,14 +1,18 @@
 from __future__ import annotations
-from datetime import datetime
-from typing import Any
-from uuid import UUID
 
-from sqlalchemy import BigInteger, ForeignKey, Index, String, TIMESTAMP, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from uuid import UUID
 
 
 class RoomEvent(Base):

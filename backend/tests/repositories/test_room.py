@@ -1,22 +1,25 @@
 """Tests for PostgresRoomRepository — CRUD and CAS operations."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.room import Room
 from app.repositories.postgres.room import PostgresRoomRepository
 from app.shared.errors import DomainError
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _make_room() -> Room:
     return Room(
         status="draft",
         split_mode="equal",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
 
 
