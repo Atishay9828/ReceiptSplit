@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 from fastapi import Depends, Header
 from sqlalchemy import text
 
-from app.auth.models import AuthContext
+from app.auth.models import AuthContext, AuthenticatedUser, RequestAuthContext
 from app.auth.tokens import extract_bearer_token, hash_token
 from app.database import get_db
 from app.shared.errors import InvalidToken, NotAuthorized
@@ -134,3 +134,25 @@ async def require_creator_in_room(
     if not ctx.is_creator:
         raise NotAuthorized()
     return ctx
+
+
+async def get_request_auth_context() -> RequestAuthContext:
+    """Contract name for resolving optional user JWT and capability auth."""
+    raise NotImplementedError
+
+
+async def require_authenticated_user(
+    ctx: RequestAuthContext = Depends(get_request_auth_context),
+) -> AuthenticatedUser:
+    """Contract name for user-only endpoints such as /api/auth/me."""
+    if ctx.user is None:
+        raise NotAuthorized()
+    return ctx.user
+
+
+async def require_room_owner_or_creator(
+    room_id: UUID,
+    ctx: RequestAuthContext = Depends(get_request_auth_context),
+) -> RequestAuthContext:
+    """Contract name for owner JWT or legacy creator capability authorization."""
+    raise NotImplementedError

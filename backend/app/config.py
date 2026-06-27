@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # ── Security ─────────────────────────────────────────────────────────────
     token_byte_length: int = 32          # 256-bit entropy — do not reduce
     room_creation_rate_limit_per_hour: int = 20   # per IP, in-process limiter
+    auth_oidc_provider: str = "dev"
+    auth_oidc_issuer: str | None = None
+    auth_oidc_audience: str | None = None
+    auth_jwks_url: str | None = None
 
     # ── Development helpers ───────────────────────────────────────────────────
     @property
