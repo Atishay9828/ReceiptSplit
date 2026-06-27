@@ -1,3 +1,4 @@
+
 """ReceiptSplit item service."""
 
 from __future__ import annotations
@@ -20,6 +21,10 @@ if TYPE_CHECKING:
     from app.repositories.interfaces.receipt_edit import ReceiptEditRepository
     from app.repositories.interfaces.room import RoomRepository
     from app.services.event_publisher import EventPublisher
+
+if True:
+
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +62,14 @@ class ItemService:
             total_paise=total_paise,
         )
 
-        async with db.begin():
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
             await self._item_repo.create(db, item)
             await db.flush()
 
@@ -98,8 +110,15 @@ class ItemService:
         changes: dict[str, Any],
     ) -> None:
         """CAS update item fields and record audit/event rows."""
-        async with db.begin():
-            old_item = await self._item_repo.get(db, item_id)
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
+            old_item = await self._item_repo.fetch_optional(db, item_id)
             if old_item is None or old_item.deleted_at is not None:
                 raise ItemNotFound()
 
@@ -145,8 +164,15 @@ class ItemService:
         actor_id: UUID,
     ) -> None:
         """Soft-delete a line item with CAS protection."""
-        async with db.begin():
-            old_item = await self._item_repo.get(db, item_id)
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
+            old_item = await self._item_repo.fetch_optional(db, item_id)
             if old_item is None or old_item.deleted_at is not None:
                 raise ItemNotFound()
 
@@ -188,7 +214,7 @@ class ItemService:
         claimed_qty: int,
     ) -> LineItemAssignment:
         """Claim units of an item for a participant."""
-        async with db.begin():
+        async with db.begin_nested():
             room = await self._room_repo.get_by_id(db, room_id)
             if room is None:
                 raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
@@ -196,7 +222,7 @@ class ItemService:
             ClaimValidator.validate_room_active(room.status)
             ClaimValidator.validate_item_wise_mode(room.split_mode)
 
-            item = await self._item_repo.get(db, item_id)
+            item = await self._item_repo.fetch_optional(db, item_id)
             if item is None or item.deleted_at is not None:
                 raise ItemNotFound()
 
@@ -248,7 +274,7 @@ class ItemService:
         participant_id: UUID,
     ) -> None:
         """Remove a participant's claim on an item."""
-        async with db.begin():
+        async with db.begin_nested():
             deleted = await self._assignment_repo.delete_by_participant_and_item(
                 db, item_id, participant_id
             )

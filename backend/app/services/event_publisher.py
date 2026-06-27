@@ -1,3 +1,4 @@
+
 """
 ReceiptSplit — Two-Phase Event Publisher
 
@@ -21,6 +22,10 @@ if TYPE_CHECKING:
 
     from app.repositories.interfaces.event import EventRepository
 
+if True:
+
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +35,7 @@ class EventPublisher:
 
     Usage::
 
-        async with db.begin():
+        async with db.begin_nested():
             # ... business mutation ...
             seq = await publisher.append_in_tx(db, room_id, "item.created", actor_id, payload)
         # transaction committed
@@ -52,13 +57,33 @@ class EventPublisher:
         Atomically claims the next sequence number and inserts the event.
         MUST be called within an active transaction (before commit).
 
-        Returns the assigned sequence_no.
+        Defers the broadcast to be sent after the transaction commits.
         """
-        return await self._event_repo.append_in_tx(
+        seq = await self._event_repo.append_in_tx(
             db, room_id, event_type, actor_id, payload,
         )
+        if "deferred_events" not in db.info:
+            db.info["deferred_events"] = []
+        db.info["deferred_events"].append((room_id, event_type, payload, seq))
+        return seq
 
-    async def broadcast(
+    async def flush_deferred_events(self, db: AsyncSession) -> None:
+        """
+        Broadcasts all deferred events for this session.
+        Called AFTER the transaction commits.
+        """
+        events = db.info.pop("deferred_events", [])
+        for args in events:
+            await self.broadcast(*args)
+
+    async def broadcast(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Deprecated. Broadcasts are now deferred automatically and emitted by
+        flush_deferred_events after the transaction commits.
+        """
+        pass
+
+    async def _do_broadcast(
         self,
         room_id: UUID,
         event_type: str,

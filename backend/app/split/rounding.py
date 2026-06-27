@@ -31,6 +31,9 @@ from app.split.exceptions import (
 if TYPE_CHECKING:
     from uuid import UUID
 
+if True:
+    pass
+
 
 class RoundingPolicy:
     """Rounds split totals to the nearest rupee (floor).

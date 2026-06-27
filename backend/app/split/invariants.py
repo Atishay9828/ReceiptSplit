@@ -29,6 +29,10 @@ if TYPE_CHECKING:
 
     from app.split.models import SplitResult
 
+if True:
+    pass
+
+
 
 def check_sum_conservation(result: SplitResult) -> None:
     """Verify: sum(participant_totals) == grand_total_paise.

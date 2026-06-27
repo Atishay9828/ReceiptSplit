@@ -53,7 +53,7 @@ def _repos() -> dict:
 
 
 @lru_cache(maxsize=1)
-def _event_publisher() -> EventPublisher:
+def get_event_publisher() -> EventPublisher:
     return EventPublisher(event_repo=_repos()["event"])
 
 
@@ -67,7 +67,7 @@ def get_room_service() -> RoomService:
         room_repo=r["room"],
         receipt_repo=r["receipt"],
         participant_repo=r["participant"],
-        event_publisher=_event_publisher(),
+        event_publisher=get_event_publisher(),
     )
 
 
@@ -75,7 +75,7 @@ def get_room_service() -> RoomService:
 def get_participant_service() -> ParticipantService:
     return ParticipantService(
         participant_repo=_repos()["participant"],
-        event_publisher=_event_publisher(),
+        event_publisher=get_event_publisher(),
     )
 
 
@@ -87,7 +87,7 @@ def get_item_service() -> ItemService:
         assignment_repo=r["assignment"],
         receipt_edit_repo=r["receipt_edit"],
         room_repo=r["room"],
-        event_publisher=_event_publisher(),
+        event_publisher=get_event_publisher(),
     )
 
 
@@ -97,14 +97,15 @@ def get_adjustment_service() -> AdjustmentService:
     return AdjustmentService(
         adjustment_repo=r["adjustment"],
         receipt_edit_repo=r["receipt_edit"],
-        event_publisher=_event_publisher(),
+        room_repo=r["room"],
+        event_publisher=get_event_publisher(),
     )
 
 
 @lru_cache(maxsize=1)
 def get_split_service() -> SplitService:
     r = _repos()
-    ep = _event_publisher()
+    ep = get_event_publisher()
     coordinator = SplitLockCoordinator(
         room_repo=r["room"],
         receipt_repo=r["receipt"],

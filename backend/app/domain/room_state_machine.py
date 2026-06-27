@@ -27,7 +27,9 @@ from app.shared.errors import InvalidStateTransition
 _TRANSITIONS: dict[str, frozenset[str]] = {
     "draft": frozenset({"active", "archived"}),
     "active": frozenset({"settling", "archived"}),
-    "settling": frozenset({"active"}),
+    "settling": frozenset({"active", "settled"}),
+    "settled": frozenset({"archived"}),
+    "expired": frozenset(),
     "archived": frozenset(),  # terminal — no outgoing transitions
 }
 

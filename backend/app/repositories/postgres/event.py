@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+if True:
+    pass
+
 
 class PostgresEventRepository(EventRepository):
     async def append_in_tx(

@@ -7,18 +7,19 @@ Runs migrations synchronously (Alembic does not support async engines).
 
 from __future__ import annotations
 
+import os
+
+# Import the app's settings and all ORM models so Alembic can detect them.
+import sys
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Import the app's settings and all ORM models so Alembic can detect them.
-import sys
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.config import settings
-from app.database import Base  # noqa: F401 — ensures all models are registered
+from app.database import Base
 
 # Import all model modules so their tables are registered on Base.metadata.
 # Add new model imports here as new modules are created.

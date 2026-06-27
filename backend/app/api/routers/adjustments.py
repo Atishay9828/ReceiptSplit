@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import UUID  # noqa: TC003
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -16,13 +17,15 @@ from app.database import get_db
 from app.services.registry import get_adjustment_service, get_room_service
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.auth.models import AuthContext
     from app.services.adjustment_service import AdjustmentService
     from app.services.room_service import RoomService
+
+if True:
+
+    pass
 
 router = APIRouter(prefix="/api/rooms/{room_id}/adjustments", tags=["adjustments"], responses=ERROR_RESPONSES)
 
@@ -30,7 +33,6 @@ router = APIRouter(prefix="/api/rooms/{room_id}/adjustments", tags=["adjustments
 async def _receipt_id_for_room(db: AsyncSession, room_id: UUID, service: RoomService) -> UUID:
     receipt = await service.get_receipt(db, room_id)
     receipt_id = receipt.id
-    await db.rollback()
     return receipt_id
 
 

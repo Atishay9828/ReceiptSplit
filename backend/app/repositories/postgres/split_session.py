@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+if True:
+    pass
+
 
 class PostgresSplitSessionRepository(PostgresRepository[SplitSession], SplitSessionRepository):
     def __init__(self) -> None:

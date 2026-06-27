@@ -44,6 +44,8 @@ from app.split.rounding import RoundingPolicy
 if TYPE_CHECKING:
     from uuid import UUID
 
+if True:
+
     from app.split.models import SplitInput
 
 
@@ -244,19 +246,21 @@ def _validate_item_wise_assignments(inp: SplitInput) -> None:
 
     PDD §5.2: "Precondition to lock: All items must be fully claimed."
     """
+    from app.shared.errors import UnclaimedItemsExist
+
     # Build a map of item_id -> total assigned qty
     assigned: dict[UUID, int] = defaultdict(int)
     for a in inp.assignments:
         assigned[a.item_id] += a.claimed_qty
 
+    unclaimed_ids = []
     for item in inp.items:
         total_assigned = assigned.get(item.id, 0)
         if total_assigned != item.quantity:
-            msg = (
-                f"Item {item.id} (qty={item.quantity}) has "
-                f"{total_assigned} units assigned (must be exactly {item.quantity})"
-            )
-            raise ValueError(msg)
+            unclaimed_ids.append(str(item.id))
+
+    if unclaimed_ids:
+        raise UnclaimedItemsExist(unclaimed_ids)
 
 
 def _find_payer_id(inp: SplitInput) -> UUID:

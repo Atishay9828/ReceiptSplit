@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime  # noqa: TC003
+from typing import Any
+from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -19,9 +21,8 @@ from sqlalchemy.sql import func
 
 from app.database import Base
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
+if True:
+    pass
 
 
 class SplitSession(Base):

@@ -79,6 +79,14 @@ class InvalidNickname(DomainError):
         )
 
 
+class InvalidColor(DomainError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="INVALID_COLOR",
+            message="Participant color must be one of the allowed palette colors.",
+        )
+
+
 class AmountTooLarge(DomainError):
     def __init__(self) -> None:
         super().__init__(

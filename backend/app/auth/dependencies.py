@@ -1,3 +1,4 @@
+
 """
 ReceiptSplit — Auth FastAPI Dependencies
 
@@ -20,11 +21,12 @@ Security invariant (Amendment API-1):
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 from uuid import UUID
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+if True:
+    pass
+
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, Header
 from sqlalchemy import text
@@ -33,6 +35,9 @@ from app.auth.models import AuthContext
 from app.auth.tokens import extract_bearer_token, hash_token
 from app.database import get_db
 from app.shared.errors import InvalidToken, NotAuthorized
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +78,6 @@ async def get_current_participant(
         {"token_hash": token_hash},
     )
     row = result.first()
-    await db.rollback()
 
     if row is None:
         raise InvalidToken()

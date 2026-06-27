@@ -1,3 +1,4 @@
+
 """
 ReceiptSplit — Room Service
 
@@ -38,6 +39,10 @@ if TYPE_CHECKING:
     from app.repositories.interfaces.room import RoomRepository
     from app.services.event_publisher import EventPublisher
 
+if True:
+
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,7 +79,7 @@ class RoomService:
             split_mode=split_mode,
             expires_at=now + timedelta(days=room_ttl_days),
         )
-        async with db.begin():
+        async with db.begin_nested():
             await self._room_repo.create(db, room)
             await db.flush()
 
@@ -148,7 +153,7 @@ class RoomService:
         CAS update on room fields (split_mode, payer_vpa, payer_name, etc.).
         Raises VersionConflict if stale.
         """
-        async with db.begin():
+        async with db.begin_nested():
             updated = await self._room_repo.update(
                 db, room_id, expected_version, update_fields
             )
@@ -183,7 +188,7 @@ class RoomService:
         Raises InvalidStateTransition if the move is illegal.
         Raises VersionConflict if stale.
         """
-        async with db.begin():
+        async with db.begin_nested():
             room = await self.get_room(db, room_id)
             room_state_machine.validate_transition(room.status, to_state)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import UUID  # noqa: TC003
 
 from fastapi import APIRouter, Depends, status
 
@@ -16,12 +17,14 @@ from app.database import get_db
 from app.services.registry import get_room_service
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.auth.models import AuthContext
     from app.services.room_service import RoomService
+
+if True:
+
+    pass
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"], responses=ERROR_RESPONSES)
 
@@ -56,7 +59,6 @@ async def get_room(
 ) -> RoomResponse:
     room = await service.get_room(db, room_id)
     response = RoomResponse.model_validate(room)
-    await db.rollback()
     return response
 
 
@@ -74,22 +76,34 @@ async def update_room(
     service: RoomService = Depends(get_room_service),
 ) -> RoomResponse:
     changes: dict[str, Any] = payload.model_dump(exclude={"version"}, exclude_none=True)
-    if set(changes) == {"status"}:
+
+    if "status" in changes:
+        if len(changes) > 1:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Cannot mix status update with other fields")
+
+        target_status = changes["status"]
+        if target_status in ("settled", "expired"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=f"Status {target_status} cannot be set manually via PATCH")
+
         room = await service.transition_room(
             db,
             room_id=room_id,
             expected_version=payload.version,
-            to_state=changes["status"],
+            to_state=target_status,
             actor_id=ctx.participant_id,
         )
     else:
-        room = await service.update_room(
-            db,
-            room_id=room_id,
-            expected_version=payload.version,
-            actor_id=ctx.participant_id,
-            update_fields=changes,
-        )
+        if not changes:
+            room = await service.get_room(db, room_id)
+        else:
+            room = await service.update_room(
+                db,
+                room_id=room_id,
+                expected_version=payload.version,
+                actor_id=ctx.participant_id,
+                update_fields=changes,
+            )
     response = RoomResponse.model_validate(room)
-    await db.rollback()
     return response

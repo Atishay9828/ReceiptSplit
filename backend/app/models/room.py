@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime  # noqa: TC003
+from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import TIMESTAMP, CheckConstraint, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -9,9 +10,8 @@ from sqlalchemy.sql import func
 
 from app.database import Base
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
+if True:
+    pass
 
 
 class Room(Base):

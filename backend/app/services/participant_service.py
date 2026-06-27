@@ -15,6 +15,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.auth.tokens import generate_participant_token, hash_token
+from app.shared.errors import InvalidColor
+from app.shared.types import COLOR_PALETTE
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
     from app.models.room_participant import RoomParticipant
     from app.repositories.interfaces.participant import ParticipantRepository
     from app.services.event_publisher import EventPublisher
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ class ParticipantService:
         room_id: UUID,
         invite_token_hash: str,
         nickname: str,
-        color: str,
+        color: str | None,
     ) -> tuple[RoomParticipant, str]:
         """
         Join a participant to a room.
@@ -52,10 +55,19 @@ class ParticipantService:
         Returns:
             (participant, raw_participant_token)
         """
+        if color is not None and color not in COLOR_PALETTE:
+            raise InvalidColor()
+
         raw_token = generate_participant_token()
         token_hash = hash_token(raw_token)
 
-        async with db.begin():
+        async with db.begin_nested():
+            if color is None:
+                from app.shared.validators import pick_available_color
+                active_participants = await self._participant_repo.list_active(db, room_id)
+                used_colors = {p.color for p in active_participants}
+                color = pick_available_color(used_colors)
+
             participant = await self._participant_repo.join_room_in_tx(
                 db,
                 room_id=room_id,

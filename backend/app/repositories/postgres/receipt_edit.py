@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+if True:
+    pass
+
 
 class PostgresReceiptEditRepository(ReceiptEditRepository):
     async def append_in_tx(

@@ -1,3 +1,4 @@
+
 """
 ReceiptSplit — Split Service
 
@@ -54,6 +55,9 @@ if TYPE_CHECKING:
     from app.repositories.interfaces.room import RoomRepository
     from app.repositories.interfaces.split_session import SplitSessionRepository
     from app.services.event_publisher import EventPublisher
+
+if True:
+
     from app.split.models import SplitResult
 
 logger = logging.getLogger(__name__)
@@ -196,7 +200,7 @@ class SplitPreviewService:
 
     async def calculate_preview(
         self, db: AsyncSession, room_id: UUID
-    ) -> SplitResult:
+    ) -> tuple[SplitResult, int]:
         room = await self._room_repo.get_by_id(db, room_id)
         if room is None:
             raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
@@ -222,7 +226,7 @@ class SplitPreviewService:
             adjustments=adjustments,
             assignments=assignments,
         )
-        return SplitCalculator.calculate(split_input)
+        return SplitCalculator.calculate(split_input), room.version
 
     async def get_current_session(
         self, db: AsyncSession, room_id: UUID
@@ -277,7 +281,7 @@ class SplitLockCoordinator:
         6. Build and persist split session.
         7. Publish event.
         """
-        async with db.begin():
+        async with db.begin_nested():
             room = await self._room_repo.get_by_id(db, room_id)
             if room is None:
                 raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
@@ -357,7 +361,7 @@ class SplitLockCoordinator:
         3. Transition room → active.
         4. Publish event.
         """
-        async with db.begin():
+        async with db.begin_nested():
             room = await self._room_repo.get_by_id(db, room_id)
             if room is None:
                 raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")

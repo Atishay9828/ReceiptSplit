@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID  # noqa: TC003
 
 from fastapi import APIRouter, Depends, status
 
@@ -12,12 +13,14 @@ from app.database import get_db
 from app.services.registry import get_participant_service
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.auth.models import AuthContext
     from app.services.participant_service import ParticipantService
+
+if True:
+
+    pass
 
 router = APIRouter(prefix="/api/rooms/{room_id}", tags=["participants"], responses=ERROR_RESPONSES)
 
@@ -65,5 +68,4 @@ async def list_participants(
         ParticipantResponse.model_validate(participant)
         for participant in participants
     ]
-    await db.rollback()
     return response

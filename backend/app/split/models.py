@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from datetime import datetime
     from uuid import UUID
 
+if True:
+    pass
+
 
 # ── Input Models ─────────────────────────────────────────────────────────────
 

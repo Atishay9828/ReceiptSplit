@@ -12,10 +12,10 @@ Migrations use a synchronous engine configured in alembic/env.py.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+if True:
+    pass
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -26,6 +26,9 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # ── SQLAlchemy base class for all ORM models ──────────────────────────────────
 
@@ -81,18 +84,15 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency — yields a per-request async database session.
-
-    Usage:
-        @router.get("/example")
-        async def handler(db: AsyncSession = Depends(get_db)):
-            ...
-
-    The session is closed automatically after the request completes,
-    whether or not an exception was raised.  The caller is responsible
-    for managing transactions (begin/commit/rollback).
+    """Yields an AsyncSession inside an active transaction.
+    Commits on success, rolls back on error.
+    After successful commit, flushes any deferred realtime events.
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        async with session.begin():
+            yield session
+        # Transaction committed successfully.
+        from app.services.registry import get_event_publisher
+        await get_event_publisher().flush_deferred_events(session)

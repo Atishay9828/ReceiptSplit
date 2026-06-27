@@ -21,6 +21,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from uuid import UUID
 
+if True:
+    pass
+
 
 class EqualAllocator:
     """Distributes total_paise equally among participants.

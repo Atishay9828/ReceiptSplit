@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+if True:
+    pass
+
 
 class PostgresParticipantRepository(PostgresRepository[RoomParticipant], ParticipantRepository):
     def __init__(self) -> None:

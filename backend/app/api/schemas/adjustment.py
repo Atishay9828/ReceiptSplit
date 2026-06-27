@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime  # noqa: TC003
+from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.schemas.common import ORMModel
+from app.shared.validators import strip_html
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
+if True:
+    pass
 
 
 class AdjustmentCreateRequest(BaseModel):
@@ -19,6 +20,13 @@ class AdjustmentCreateRequest(BaseModel):
     rate_basis_points: int | None = Field(default=None, ge=0)
     sort_order: int = 0
 
+    @field_validator("label", mode="before")
+    @classmethod
+    def sanitize_label(cls, v: str) -> str:
+        if isinstance(v, str):
+            return strip_html(v)
+        return v
+
 
 class AdjustmentUpdateRequest(BaseModel):
     version: int = Field(ge=1)
@@ -26,6 +34,13 @@ class AdjustmentUpdateRequest(BaseModel):
     amount_paise: int | None = Field(default=None, gt=-10_000_000, le=10_000_000)
     allocation_method: str | None = Field(default=None, pattern="^(proportional|equal)$")
     rate_basis_points: int | None = Field(default=None, ge=0)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def sanitize_label(cls, v: str | None) -> str | None:
+        if isinstance(v, str):
+            return strip_html(v)
+        return v
 
 
 class AdjustmentResponse(ORMModel):

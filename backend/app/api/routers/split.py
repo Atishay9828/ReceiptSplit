@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID  # noqa: TC003
 
 from fastapi import APIRouter, Depends, Header, Response, status
 
@@ -15,18 +16,19 @@ from app.api.schemas.split import (
 )
 from app.auth.dependencies import require_creator_in_room, require_room_access
 from app.database import get_db
-from app.services.registry import get_room_service, get_split_service
+from app.services.registry import get_split_service
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.auth.models import AuthContext
-    from app.services.room_service import RoomService
     from app.services.split_service import SplitService
 
-router = APIRouter(prefix="/api/rooms/{room_id}/split", tags=["split"], responses=ERROR_RESPONSES)
+if True:
+
+    pass
+
+router = APIRouter(prefix="/api/rooms/{room_id}/split", tags=["split"], responses={304: {"description": "Not modified"}, **ERROR_RESPONSES})
 
 
 @router.get(
@@ -43,15 +45,12 @@ async def preview_split(
     _ctx: AuthContext = Depends(require_room_access),
     db: AsyncSession = Depends(get_db),
     split_service: SplitService = Depends(get_split_service),
-    room_service: RoomService = Depends(get_room_service),
 ) -> SplitPreviewResponse | Response:
-    room = await room_service.get_room(db, room_id)
-    etag = f"{room_id}-{room.version}"
+    result, room_version = await split_service.preview.calculate_preview(db, room_id)
+    etag = f"{room_id}-{room_version}"
     if if_none_match == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag, "Cache-Control": "no-store"})
 
-    await db.rollback()
-    result = await split_service.preview.calculate_preview(db, room_id)
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "no-store"
     preview = SplitPreviewResponse(
@@ -61,7 +60,6 @@ async def preview_split(
             for total in result.participant_totals
         ],
     )
-    await db.rollback()
     return preview
 
 
@@ -116,5 +114,4 @@ async def get_current_session(
     response = CurrentSplitSessionResponse(
         session=SplitSessionResponse.model_validate(session) if session else None
     )
-    await db.rollback()
     return response

@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+if True:
+    pass
+
 
 class PostgresAssignmentRepository(AssignmentRepository):
     async def create(self, db: AsyncSession, assignment: LineItemAssignment) -> LineItemAssignment:

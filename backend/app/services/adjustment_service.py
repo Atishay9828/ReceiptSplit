@@ -1,3 +1,4 @@
+
 """
 ReceiptSplit — Adjustment Service
 
@@ -24,7 +25,12 @@ if TYPE_CHECKING:
 
     from app.repositories.interfaces.adjustment import AdjustmentRepository
     from app.repositories.interfaces.receipt_edit import ReceiptEditRepository
+    from app.repositories.interfaces.room import RoomRepository
     from app.services.event_publisher import EventPublisher
+
+if True:
+
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +40,12 @@ class AdjustmentService:
         self,
         adjustment_repo: AdjustmentRepository,
         receipt_edit_repo: ReceiptEditRepository,
+        room_repo: RoomRepository,
         event_publisher: EventPublisher,
     ) -> None:
         self._adj_repo = adjustment_repo
         self._edit_repo = receipt_edit_repo
+        self._room_repo = room_repo
         self._events = event_publisher
 
     async def add_adjustment(
@@ -64,7 +72,14 @@ class AdjustmentService:
             sort_order=sort_order,
         )
 
-        async with db.begin():
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
             await self._adj_repo.create(db, adj)
             await db.flush()
 
@@ -110,7 +125,14 @@ class AdjustmentService:
         if not update_fields:
             raise DomainError(code="NO_CHANGES", message="No valid fields to update.")
 
-        async with db.begin():
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
             updated = await self._adj_repo.update(
                 db, adjustment_id, expected_version, update_fields
             )
@@ -148,7 +170,14 @@ class AdjustmentService:
         actor_id: UUID,
     ) -> None:
         """Soft-delete an adjustment. CAS-guarded."""
-        async with db.begin():
+        async with db.begin_nested():
+            room = await self._room_repo.fetch_optional(db, room_id)
+            if room is None or room.status not in ("draft", "active"):
+                raise DomainError(
+                    code="INVALID_STATE_TRANSITION",
+                    message="Room is no longer open for edits.",
+                )
+
             deleted = await self._adj_repo.soft_delete(
                 db, adjustment_id, expected_version
             )
