@@ -1,5 +1,6 @@
-import pytest
 from typing import Any
+
+import pytest
 
 from tests.api.conftest import bearer
 
@@ -56,3 +57,29 @@ async def test_room_version_conflict(api_client: Any) -> Any:
     assert first.status_code == 200
     assert second.status_code == 409
     assert second.json()["error"]["code"] == "VERSION_CONFLICT"
+
+
+async def test_update_room_mixed_payload(api_client: Any) -> Any:
+    created = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
+
+    response = await api_client.patch(
+        f"/api/rooms/{created['room']['id']}",
+        json={"version": created["room"]["version"], "status": "active", "payer_vpa": "a@upi"},
+        headers=bearer(created["creator_token"]),
+    )
+
+    assert response.status_code == 400
+    assert "Cannot mix" in response.json()["detail"]
+
+
+async def test_update_room_invalid_status_set(api_client: Any) -> Any:
+    created = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
+
+    response = await api_client.patch(
+        f"/api/rooms/{created['room']['id']}",
+        json={"version": created["room"]["version"], "status": "settled"},
+        headers=bearer(created["creator_token"]),
+    )
+
+    assert response.status_code == 400
+    assert "cannot be set manually" in response.json()["detail"]

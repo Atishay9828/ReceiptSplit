@@ -463,7 +463,8 @@ class TestInputValidation:
     def test_item_wise_not_fully_assigned_raises(self):
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=3, total_paise=900)
-        with pytest.raises(ValueError, match="assigned"):
+        from app.shared.errors import UnclaimedItemsExist
+        with pytest.raises(UnclaimedItemsExist):
             SplitCalculator.calculate(SplitInput(
                 mode="item_wise",
                 items=[item],
@@ -478,7 +479,8 @@ class TestInputValidation:
     def test_item_wise_over_assigned_raises(self):
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=2, total_paise=800)
-        with pytest.raises(ValueError, match="assigned"):
+        from app.shared.errors import UnclaimedItemsExist
+        with pytest.raises(UnclaimedItemsExist):
             SplitCalculator.calculate(SplitInput(
                 mode="item_wise",
                 items=[item],

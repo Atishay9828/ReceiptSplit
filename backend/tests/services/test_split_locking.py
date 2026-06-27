@@ -21,6 +21,7 @@ from app.services.registry import (
 )
 from app.services.split_service import SplitLockCoordinator, SplitSessionBuilder
 from app.shared.errors import InvalidStateTransition, RoomAlreadyLocked
+from app.shared.types import COLOR_PALETTE
 from app.split.calculator import SplitCalculator
 
 pytestmark = pytest.mark.asyncio
@@ -50,6 +51,17 @@ class _RecordingDb:
 
     def begin(self):
         return _RecordingTx(self)
+
+    import contextlib
+    @contextlib.asynccontextmanager
+    async def begin_nested(self):
+        self.in_lock_tx = True
+        self.record("tx.begin")
+        try:
+            yield self
+        finally:
+            self.record("tx.end")
+            self.in_lock_tx = False
 
     def add(self, model) -> None:
         self.record(f"db.add:{type(model).__name__}")
@@ -274,15 +286,20 @@ async def test_lock_creates_session_and_totals(db_session: AsyncSession):
     part_svc = get_participant_service()
     split_svc = get_split_service()
 
-    room, _, i_token = await room_svc.create_room(db_session, split_mode="equal")
+    room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="equal")
+    from app.models.room_participant import RoomParticipant
+    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+    room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
     receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
     await db_session.commit()
 
-    participant1, _ = await part_svc.join_room(db_session, room.id, hash_token(i_token), "Alice", "#FFF")
+    participant1, _ = await part_svc.join_room(
+        db_session, room.id, hash_token(i_token), "Alice", COLOR_PALETTE[1]
+    )
 
     # Join a second participant
     _participant2, _ = await part_svc.join_room(
-        db_session, room.id, hash_token(i_token), "Bob", "#000"
+        db_session, room.id, hash_token(i_token), "Bob", COLOR_PALETTE[2]
     )
 
     # Add item
@@ -291,6 +308,7 @@ async def test_lock_creates_session_and_totals(db_session: AsyncSession):
     )
 
     # Reload room to get latest version
+    await db_session.refresh(room)
     room = await room_svc.get_room(db_session, room.id)
 
     # Lock
@@ -307,7 +325,7 @@ async def test_lock_creates_session_and_totals(db_session: AsyncSession):
     # Check totals
     totals = (await db_session.execute(select(ParticipantTotal).where(ParticipantTotal.split_session_id == session.id))).scalars().all()
     await db_session.commit()
-    assert len(totals) == 2
+    assert len(totals) == 3
 
     # Verify idempotency
     with pytest.raises(RoomAlreadyLocked):
@@ -325,14 +343,20 @@ async def test_unlock_removes_session_and_requires_settling_state(db_session: As
     part_svc = get_participant_service()
     split_svc = get_split_service()
 
-    room, _, i_token = await room_svc.create_room(db_session, split_mode="equal")
+    room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="equal")
+    from app.models.room_participant import RoomParticipant
+    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+    room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
     receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
     await db_session.commit()
 
-    participant1, _ = await part_svc.join_room(db_session, room.id, hash_token(i_token), "Alice", "#FFF")
-    await part_svc.join_room(db_session, room.id, hash_token(i_token), "Bob", "#000")
+    participant1, _ = await part_svc.join_room(
+        db_session, room.id, hash_token(i_token), "Alice", COLOR_PALETTE[1]
+    )
+    await part_svc.join_room(db_session, room.id, hash_token(i_token), "Bob", COLOR_PALETTE[2])
     await item_svc.add_item(db_session, receipt.id, room.id, participant1.id, "Burger", quantity=1, total_paise=1000)
 
+    await db_session.refresh(room)
     room = await room_svc.get_room(db_session, room.id)
 
     # Cannot unlock an active room
@@ -346,6 +370,7 @@ async def test_unlock_removes_session_and_requires_settling_state(db_session: As
 
     # Lock it
     await split_svc.lock(db_session, room.id, room.version, participant1.id)
+    await db_session.refresh(room)
     room = await room_svc.get_room(db_session, room.id)
 
     # Unlock it
@@ -357,5 +382,6 @@ async def test_unlock_removes_session_and_requires_settling_state(db_session: As
     assert len(sessions) == 0
 
     # Verify room is active again
+    await db_session.refresh(room)
     room = await room_svc.get_room(db_session, room.id)
     assert room.status == "active"

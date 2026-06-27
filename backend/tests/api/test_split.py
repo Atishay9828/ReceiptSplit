@@ -1,5 +1,6 @@
-import pytest
 from typing import Any
+
+import pytest
 
 from tests.api.conftest import bearer
 
@@ -21,8 +22,7 @@ async def _settlement_room(api_client: Any) -> Any:
         json={
             "invite_token": created["invite_token"],
             "nickname": "Bob",
-            "color": "#000000",
-        },
+            },
     )
     assert join_response.status_code == 201
     item_response = await api_client.post(

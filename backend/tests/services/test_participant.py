@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.room_event import RoomEvent
 from app.services.registry import get_participant_service, get_room_service
+from app.shared.types import COLOR_PALETTE
 
 pytestmark = pytest.mark.asyncio
 
@@ -26,7 +27,7 @@ async def test_join_publishes_event(db_session: AsyncSession):
         room_id=room.id,
         invite_token_hash=hash_token(invite_token),
         nickname="Alice",
-        color="#FFFFFF",
+        color=COLOR_PALETTE[1],
     )
 
     # We need to test if event is published.

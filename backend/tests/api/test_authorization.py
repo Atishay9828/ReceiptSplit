@@ -1,5 +1,6 @@
-import pytest
 from typing import Any
+
+import pytest
 
 from tests.api.conftest import bearer
 
@@ -27,8 +28,7 @@ async def test_creator_required(api_client: Any) -> Any:
             json={
                 "invite_token": created["invite_token"],
                 "nickname": "Bob",
-                "color": "#000000",
-            },
+                },
         )
     ).json()
 

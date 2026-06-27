@@ -6,6 +6,7 @@ from app.auth.tokens import hash_token
 from app.models.receipt import Receipt
 from app.models.receipt_edit import ReceiptEdit
 from app.services.registry import get_item_service, get_participant_service, get_room_service
+from app.shared.types import COLOR_PALETTE
 
 pytestmark = pytest.mark.asyncio
 
@@ -19,7 +20,9 @@ async def test_item_edit_creates_audit_row(db_session: AsyncSession):
     receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
     await db_session.commit()
 
-    participant, _ = await part_svc.join_room(db_session, room.id, hash_token(i_token), "Alice", "#FFF")
+    participant, _ = await part_svc.join_room(
+        db_session, room.id, hash_token(i_token), "Alice", COLOR_PALETTE[1]
+    )
 
     # Add item
     item = await item_svc.add_item(
@@ -63,7 +66,9 @@ async def test_item_delete_creates_audit_row(db_session: AsyncSession):
     receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
     await db_session.commit()
 
-    participant, _ = await part_svc.join_room(db_session, room.id, hash_token(i_token), "Alice", "#FFF")
+    participant, _ = await part_svc.join_room(
+        db_session, room.id, hash_token(i_token), "Alice", COLOR_PALETTE[1]
+    )
 
     item = await item_svc.add_item(
         db_session,

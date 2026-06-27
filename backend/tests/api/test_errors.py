@@ -1,5 +1,5 @@
+
 import pytest
-from typing import Any
 
 from app.api.errors import domain_error_status
 from app.shared.errors import (

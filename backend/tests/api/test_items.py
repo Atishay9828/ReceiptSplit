@@ -1,5 +1,7 @@
-import pytest
 from typing import Any
+
+import pytest
+from sqlalchemy import text
 
 from tests.api.conftest import bearer
 
@@ -33,6 +35,29 @@ async def test_add_item(api_client: Any) -> Any:
     assert response.status_code == 201
     assert response.json()["name"] == "Burger"
     assert response.json()["quantity"] == 2
+
+
+async def test_add_item_sanitizes_html_and_null_bytes(api_client: Any, db_session: Any) -> Any:
+    created = await _room(api_client)
+
+    response = await api_client.post(
+        f"/api/rooms/{created['room']['id']}/items",
+        json={"name": "<script>alert('xss')</script>Burger\x00", "quantity": 1, "total_paise": 25000},
+        headers=bearer(created["creator_token"]),
+    )
+
+    assert response.status_code == 201
+    item = response.json()
+    assert item["name"] == "alert('xss')Burger"
+
+    stored = await db_session.execute(
+        text("SELECT name FROM line_items WHERE id = :id"),
+        {"id": item["id"]},
+    )
+    persisted_name = stored.scalar_one()
+    assert persisted_name == "alert('xss')Burger"
+    assert "<script" not in persisted_name
+    assert "\x00" not in persisted_name
 
 
 async def test_update_item(api_client: Any) -> Any:
@@ -83,7 +108,6 @@ async def test_claim_item(api_client: Any) -> Any:
             json={
                 "invite_token": created["invite_token"],
                 "nickname": "Bob",
-                "color": "#000000",
             },
         )
     ).json()
