@@ -64,7 +64,23 @@ async def test_auth_me_rejects_invalid_jwt(api_client: Any) -> None:
     assert response.json()["error"]["code"] == "INVALID_TOKEN"
 
 
-async def test_owner_jwt_can_create_and_admin_owned_room(api_client: Any) -> None:
+async def test_create_room_with_user_jwt_sets_owner(api_client: Any) -> None:
+    owner_token = _dev_jwt("owner-subject")
+    created = (
+        await api_client.post(
+            "/api/rooms",
+            json={"split_mode": "equal"},
+            headers=bearer(owner_token),
+        )
+    ).json()
+
+    rooms_response = await api_client.get("/api/users/me/rooms", headers=bearer(owner_token))
+
+    assert rooms_response.status_code == 200
+    assert [room["id"] for room in rooms_response.json()["rooms"]] == [created["room"]["id"]]
+
+
+async def test_owner_jwt_can_access_creator_route(api_client: Any) -> None:
     owner_token = _dev_jwt("owner-subject")
     created = (
         await api_client.post(
