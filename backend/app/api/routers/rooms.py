@@ -12,14 +12,20 @@ from app.api.schemas.room import (
     RoomResponse,
     RoomUpdateRequest,
 )
-from app.auth.dependencies import require_creator_in_room, require_room_access
+from app.auth.dependencies import (
+    attach_room_owner,
+    get_request_auth_context,
+    require_room_access,
+    require_room_owner_or_creator,
+)
 from app.database import get_db
 from app.services.registry import get_room_service
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.auth.models import AuthContext
+    from app.auth.dependencies import AuthorizedRoomActor
+    from app.auth.models import AuthContext, RequestAuthContext
     from app.services.room_service import RoomService
 
 if True:
@@ -38,10 +44,13 @@ router = APIRouter(prefix="/api/rooms", tags=["rooms"], responses=ERROR_RESPONSE
 )
 async def create_room(
     payload: RoomCreateRequest,
+    auth_ctx: RequestAuthContext = Depends(get_request_auth_context),
     db: AsyncSession = Depends(get_db),
     service: RoomService = Depends(get_room_service),
 ) -> RoomCreateResponse:
     room, creator_token, invite_token = await service.create_room(db, split_mode=payload.split_mode)
+    if auth_ctx.user is not None:
+        await attach_room_owner(room.id, auth_ctx.user, db)
     return RoomCreateResponse(room=RoomResponse.model_validate(room), creator_token=creator_token, invite_token=invite_token)
 
 
@@ -71,7 +80,7 @@ async def get_room(
 async def update_room(
     room_id: UUID,
     payload: RoomUpdateRequest,
-    ctx: AuthContext = Depends(require_creator_in_room),
+    actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: RoomService = Depends(get_room_service),
 ) -> RoomResponse:
@@ -92,7 +101,7 @@ async def update_room(
             room_id=room_id,
             expected_version=payload.version,
             to_state=target_status,
-            actor_id=ctx.participant_id,
+            actor_id=actor.actor_id,
         )
     else:
         if not changes:
@@ -102,7 +111,7 @@ async def update_room(
                 db,
                 room_id=room_id,
                 expected_version=payload.version,
-                actor_id=ctx.participant_id,
+                actor_id=actor.actor_id,
                 update_fields=changes,
             )
     response = RoomResponse.model_validate(room)

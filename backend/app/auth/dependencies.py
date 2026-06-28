@@ -21,6 +21,7 @@ Security invariant (Amendment API-1):
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from uuid import UUID
 
 if True:
@@ -41,6 +42,8 @@ from app.auth.models import AuthContext, AuthenticatedUser, RequestAuthContext
 from app.auth.provider import get_jwt_verifier
 from app.auth.tokens import hash_token
 from app.database import get_db
+from app.repositories.postgres.room import PostgresRoomRepository
+from app.repositories.postgres.user import PostgresUserRepository
 from app.shared.errors import InvalidToken, NotAuthorized
 
 if TYPE_CHECKING:
@@ -49,6 +52,19 @@ if TYPE_CHECKING:
     from app.auth.jwt import JwtVerifier
 
 logger = logging.getLogger(__name__)
+
+_room_repo = PostgresRoomRepository()
+_user_repo = PostgresUserRepository()
+
+
+@dataclass(frozen=True, slots=True)
+class AuthorizedRoomActor:
+    """Resolved actor for owner-JWT or legacy creator-token mutations."""
+
+    room_id: UUID
+    actor_id: UUID
+    user: AuthenticatedUser | None = None
+    participant: AuthContext | None = None
 
 
 # ── Core token resolution ──────────────────────────────────────────────────────
@@ -179,7 +195,23 @@ async def get_request_auth_context(
     jwt_verifier: JwtVerifier = Depends(get_jwt_verifier),
 ) -> RequestAuthContext:
     """Contract name for resolving optional user JWT and capability auth."""
-    return await resolve_request_auth_context(authorization, db, jwt_verifier)
+    ctx = await resolve_request_auth_context(authorization, db, jwt_verifier)
+    if ctx.user is None:
+        return ctx
+    user = await _user_repo.upsert_by_provider_subject(
+        db,
+        provider=ctx.user.provider,
+        subject=ctx.user.subject,
+        email=ctx.user.email,
+    )
+    return RequestAuthContext(
+        user=AuthenticatedUser(
+            id=user.id,
+            provider=user.provider,
+            subject=user.subject,
+            email=user.email,
+        )
+    )
 
 
 async def require_authenticated_user(
@@ -194,7 +226,8 @@ async def require_authenticated_user(
 async def require_room_owner_or_creator(
     room_id: UUID,
     ctx: RequestAuthContext = Depends(get_request_auth_context),
-) -> RequestAuthContext:
+    db: AsyncSession = Depends(get_db),
+) -> AuthorizedRoomActor:
     """Contract name for owner JWT or legacy creator capability authorization."""
     if ctx.participant is not None:
         if ctx.participant.room_id != room_id:
@@ -208,9 +241,21 @@ async def require_room_owner_or_creator(
             raise InvalidToken()
         if not ctx.participant.is_creator:
             raise NotAuthorized()
-        return ctx
+        return AuthorizedRoomActor(
+            room_id=room_id,
+            actor_id=ctx.participant.participant_id,
+            participant=ctx.participant,
+        )
 
     if ctx.user is not None:
-        raise RoomOwnerRequired()
+        room = await _room_repo.get_by_id(db, room_id)
+        if room is None or room.creator_user_id != ctx.user.id:
+            raise RoomOwnerRequired()
+        return AuthorizedRoomActor(room_id=room_id, actor_id=ctx.user.id, user=ctx.user)
 
     raise NotAuthorized()
+
+
+async def attach_room_owner(room_id: UUID, user: AuthenticatedUser, db: AsyncSession) -> None:
+    """Associate a newly created room with its authenticated creator."""
+    await _room_repo.attach_creator(db, room_id, user.id)

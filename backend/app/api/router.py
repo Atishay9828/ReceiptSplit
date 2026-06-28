@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.routers import adjustments, health, items, participants, rooms, split
+from app.api.routers import adjustments, auth, health, items, participants, rooms, split
 
 api_router = APIRouter()
 api_router.include_router(health.router)
+api_router.include_router(auth.router)
 api_router.include_router(rooms.router)
 api_router.include_router(participants.router)
 api_router.include_router(items.router)
