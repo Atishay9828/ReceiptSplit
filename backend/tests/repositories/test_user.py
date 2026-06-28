@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.asyncio
-async def test_user_create_and_find_by_provider_subject(db_session: AsyncSession):
+async def test_user_create_and_find_by_provider_subject(db_session: AsyncSession) -> None:
     repo = PostgresUserRepository()
     user = User(provider="google", subject="oidc-sub-1", email="aj@example.com")
 
@@ -30,7 +30,7 @@ async def test_user_create_and_find_by_provider_subject(db_session: AsyncSession
 @pytest.mark.asyncio
 async def test_user_upsert_creates_then_updates_existing_provider_subject(
     db_session: AsyncSession,
-):
+) -> None:
     repo = PostgresUserRepository()
 
     first = await repo.upsert_by_provider_subject(
@@ -55,7 +55,7 @@ async def test_user_upsert_creates_then_updates_existing_provider_subject(
 
 
 @pytest.mark.asyncio
-async def test_user_upsert_keeps_nullable_email(db_session: AsyncSession):
+async def test_user_upsert_keeps_nullable_email(db_session: AsyncSession) -> None:
     repo = PostgresUserRepository()
 
     user = await repo.upsert_by_provider_subject(

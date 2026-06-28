@@ -35,7 +35,7 @@ async def _create_user(
 
 
 @pytest.mark.asyncio
-async def test_attach_room_to_user(db_session: AsyncSession):
+async def test_attach_room_to_user(db_session: AsyncSession) -> None:
     room_repo = PostgresRoomRepository()
     user = await _create_user(db_session)
     room = await room_repo.create(db_session, _make_room())
@@ -55,7 +55,7 @@ async def test_attach_room_to_user(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_list_rooms_by_user_only_returns_owned_rooms(db_session: AsyncSession):
+async def test_list_rooms_by_user_only_returns_owned_rooms(db_session: AsyncSession) -> None:
     room_repo = PostgresRoomRepository()
     owner = await _create_user(db_session, subject="owner")
     unrelated = await _create_user(db_session, subject="unrelated")
@@ -83,7 +83,7 @@ async def test_list_rooms_by_user_only_returns_owned_rooms(db_session: AsyncSess
 
 
 @pytest.mark.asyncio
-async def test_existing_room_without_creator_remains_valid(db_session: AsyncSession):
+async def test_existing_room_without_creator_remains_valid(db_session: AsyncSession) -> None:
     room_repo = PostgresRoomRepository()
     room = await room_repo.create(db_session, _make_room())
     await db_session.flush()
