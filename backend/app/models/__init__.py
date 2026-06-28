@@ -16,6 +16,7 @@ from app.models.room_participant import RoomParticipant
 from app.models.room_sequence import RoomSequence
 from app.models.split_adjustment import SplitAdjustment
 from app.models.split_session import SplitSession
+from app.models.user import User
 
 __all__ = [
     "LineItem",
@@ -30,4 +31,5 @@ __all__ = [
     "RoomSequence",
     "SplitAdjustment",
     "SplitSession",
+    "User",
 ]

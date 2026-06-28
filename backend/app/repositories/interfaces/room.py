@@ -15,6 +15,14 @@ class RoomRepository(Protocol):
         """Retrieves a room by ID."""
         ...
 
+    async def attach_creator(self, db: AsyncSession, room_id: UUID, user_id: UUID) -> bool:
+        """Associates a room with its authenticated creator."""
+        ...
+
+    async def list_by_creator(self, db: AsyncSession, user_id: UUID) -> list[Room]:
+        """Lists rooms created by a user."""
+        ...
+
     async def update(
         self, db: AsyncSession, room_id: UUID, expected_version: int, update_fields: dict[str, Any]
     ) -> bool:

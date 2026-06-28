@@ -7,6 +7,7 @@ from app.repositories.postgres.receipt import PostgresReceiptRepository
 from app.repositories.postgres.receipt_edit import PostgresReceiptEditRepository
 from app.repositories.postgres.room import PostgresRoomRepository
 from app.repositories.postgres.split_session import PostgresSplitSessionRepository
+from app.repositories.postgres.user import PostgresUserRepository
 
 __all__ = [
     "PostgresAdjustmentRepository",
@@ -18,4 +19,5 @@ __all__ = [
     "PostgresReceiptRepository",
     "PostgresRoomRepository",
     "PostgresSplitSessionRepository",
+    "PostgresUserRepository",
 ]
