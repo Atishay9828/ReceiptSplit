@@ -5,7 +5,10 @@ from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, Field
 
+from app.api.schemas.adjustment import AdjustmentResponse  # noqa: TC001
 from app.api.schemas.common import ORMModel
+from app.api.schemas.item import ClaimResponse, ItemResponse  # noqa: TC001
+from app.api.schemas.participant import ParticipantResponse  # noqa: TC001
 
 if True:
     pass
@@ -41,3 +44,11 @@ class RoomCreateResponse(BaseModel):
     room: RoomResponse
     creator_token: str
     invite_token: str
+
+
+class RoomSummaryResponse(BaseModel):
+    room: RoomResponse
+    participants: list[ParticipantResponse]
+    items: list[ItemResponse]
+    adjustments: list[AdjustmentResponse]
+    assignments: list[ClaimResponse]
