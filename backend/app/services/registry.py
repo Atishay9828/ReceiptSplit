@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.realtime.broker import RoomEventBroker
 from app.repositories.postgres import (
     PostgresAdjustmentRepository,
     PostgresAssignmentRepository,
@@ -53,8 +54,21 @@ def _repos() -> dict:
 
 
 @lru_cache(maxsize=1)
+def get_broker() -> RoomEventBroker:
+    """Return the singleton in-process event broker."""
+    return RoomEventBroker()
+
+
+@lru_cache(maxsize=1)
 def get_event_publisher() -> EventPublisher:
-    return EventPublisher(event_repo=_repos()["event"])
+    return EventPublisher(event_repo=_repos()["event"], broker=get_broker())
+
+
+@lru_cache(maxsize=1)
+def get_event_repo() -> PostgresEventRepository:
+    """Return the singleton event repository (for the replay endpoint)."""
+    return _repos()["event"]  # type: ignore[return-value]
+
 
 
 # ── Service factories ────────────────────────────────────────────────────────

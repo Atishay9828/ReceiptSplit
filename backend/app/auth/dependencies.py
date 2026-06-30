@@ -259,3 +259,58 @@ async def require_room_owner_or_creator(
 async def attach_room_owner(room_id: UUID, user: AuthenticatedUser, db: AsyncSession) -> None:
     """Associate a newly created room with its authenticated creator."""
     await _room_repo.attach_creator(db, room_id, user.id)
+
+
+# ── Event-endpoint combined auth ───────────────────────────────────────────────
+
+async def require_room_event_access(
+    room_id: UUID,
+    authorization: str | None = Header(None),
+    db: AsyncSession = Depends(get_db),
+    jwt_verifier: JwtVerifier = Depends(get_jwt_verifier),
+) -> RequestAuthContext:
+    """
+    Accepts ANY valid room credential for read access to event endpoints:
+
+      - Participant capability token for this room
+      - Creator capability token for this room
+      - Owner JWT for this room (authenticated user who created it)
+
+    Rejects:
+      - No token
+      - Token for a different room
+      - Unrelated user JWT (not the room owner)
+      - Malformed token / invalid JWT
+
+    Used by:
+      GET /api/rooms/{room_id}/events
+      GET /api/rooms/{room_id}/events/stream
+      GET /api/rooms/{room_id}/events/latest
+    """
+    if authorization is None:
+        raise NotAuthorized()
+
+    ctx = await resolve_request_auth_context(authorization, db, jwt_verifier)
+
+    if ctx.participant is not None:
+        # Capability token path: enforce room_id match (cross-room isolation).
+        if ctx.participant.room_id != room_id:
+            logger.critical(
+                "SECURITY: cross-room token on event endpoint. "
+                "token_room=%s path_room=%s participant=%s",
+                ctx.participant.room_id,
+                room_id,
+                ctx.participant.participant_id,
+            )
+            raise InvalidToken()
+        return ctx
+
+    if ctx.user is not None:
+        # Owner JWT path: user must be the room creator.
+        room = await _room_repo.get_by_id(db, room_id)
+        if room is None or room.creator_user_id != ctx.user.id:
+            raise RoomOwnerRequired()
+        return ctx
+
+    raise NotAuthorized()
+
