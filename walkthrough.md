@@ -1,36 +1,53 @@
-# M008 Auth/OIDC Walkthrough
+# M010 Frontend MVP Walkthrough
 
 ## What Changed
 
-M008 adds account-level creator identity without removing the existing no-login room model.
+M010 adds the first mobile-first frontend for ReceiptSplit's manual receipt-first flow.
 
-1. User JWTs are parsed and verified behind `JwtVerifier`.
-2. Verified `(provider, subject, email)` claims are upserted into `users`.
-3. JWT-created rooms are linked with `rooms.creator_user_id`.
-4. Creator routes accept either the owner JWT or the same-room legacy creator token.
-5. Participant tokens remain valid for participant routes but are rejected from user-only and
-   creator-only routes.
+1. Creators create a room from `/create`.
+2. The frontend stores the creator capability token in localStorage.
+3. Creators add manual receipt items and optional adjustments.
+4. Creators share `/join/[inviteToken]`, which encodes the backend room id and invite token.
+5. Participants join with nickname only and store a participant capability token locally.
+6. Participants claim/unclaim item quantities from `/rooms/[roomId]`.
+7. Creator and participant rooms refresh through M009 replay/SSE event sync.
+8. Creators preview and lock/unlock the split where backend state allows it.
 
 ## Important Endpoints
 
-- `GET /api/auth/me`
-- `GET /api/users/me/rooms`
 - `POST /api/rooms`
+- `GET /api/rooms/{room_id}/summary`
 - `PATCH /api/rooms/{room_id}`
+- `POST /api/rooms/{room_id}/join`
+- `POST /api/rooms/{room_id}/items`
+- `PATCH /api/rooms/{room_id}/items/{item_id}`
+- `DELETE /api/rooms/{room_id}/items/{item_id}`
+- `POST /api/rooms/{room_id}/items/{item_id}/claim`
+- `DELETE /api/rooms/{room_id}/items/{item_id}/claim`
+- `GET /api/rooms/{room_id}/split/preview`
 - `POST /api/rooms/{room_id}/split/lock`
 - `POST /api/rooms/{room_id}/split/unlock`
+- `GET /api/rooms/{room_id}/events`
+- `GET /api/rooms/{room_id}/events/stream`
 
 ## Validation Commands
 
-Run from `backend`:
+Backend commands use `.venv` in this shell because `uv` is unavailable:
 
 ```powershell
-D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m pytest --collect-only -q
 D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m pytest tests\ -q
-D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m pytest tests\auth tests\api -q
 D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m ruff check .
-D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m mypy --cache-dir D:\ReceiptSplit\.mypy_cache_m008_final --follow-imports=silent app\auth\context.py app\auth\jwt.py app\auth\provider.py app\auth\errors.py app\auth\dependencies.py app\models\user.py app\models\room.py app\repositories\interfaces\user.py app\repositories\interfaces\room.py app\repositories\postgres\user.py app\repositories\postgres\room.py app\api\router.py app\api\routers\auth.py app\api\routers\rooms.py app\api\routers\split.py migrations\versions\002_m008_auth_users.py tests\api\test_auth_api.py tests\repositories\test_user.py tests\repositories\test_room_owner.py
 ```
 
-Full mypy is intentionally not listed as passing because the repo has a pre-existing strict-mode
-baseline.
+Frontend commands:
+
+```powershell
+cd D:\ReceiptSplit\frontend
+npm.cmd install
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd test
+npm.cmd run build
+```
+
+Full backend mypy remains blocked by the pre-existing strict-mode baseline.

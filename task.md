@@ -1,4 +1,4 @@
-# M008 Auth/OIDC Task
+# M010 Frontend MVP Task
 
 ## Status
 
@@ -6,25 +6,29 @@ PASS.
 
 ## Scope Completed
 
-- Shared auth contracts.
-- JWT verifier abstraction with development verifier and fail-closed unsupported-provider behavior.
-- User persistence through `users`.
-- Room ownership through `rooms.creator_user_id`.
-- Owner JWT support for creator routes.
-- Legacy creator and participant capability-token compatibility.
-- Auth architecture and milestone report docs.
+- Next.js mobile-first frontend scaffold.
+- Creator room creation with legacy capability token storage.
+- Manual receipt item add/edit/delete flow.
+- Invite link, QR, copy, and WhatsApp share flow.
+- Participant nickname join flow.
+- Participant claim/unclaim flow.
+- Split preview and lock/unlock controls.
+- Fetch-based SSE event sync using M009 endpoints.
+- Minimal backend room summary read endpoint for frontend refresh.
+- Frontend architecture and M010 report docs.
 
 ## Validation
 
-- 371 tests collected.
-- Full pytest passed with three skipped tests.
-- `tests/auth tests/api` passed.
-- Ruff passed.
-- Full mypy remains at the known 380-error baseline.
-- Focused M008 mypy passed with 0 introduced errors.
+- Backend pytest passed with Docker access and three skipped tests.
+- Backend Ruff passed.
+- Full backend mypy remains at the known baseline.
+- Frontend lint, typecheck, tests, and build passed.
 
 ## Deferred
 
-- Production OIDC/JWKS verifier.
-- Frontend login/account UX.
-- JWT revocation/account lifecycle policy.
+- OCR/camera/upload.
+- UPI settlement and payment verification.
+- Wallet, escrow, refunds, cashback.
+- Production auth UI.
+- Native mobile app.
+- Deployment.
