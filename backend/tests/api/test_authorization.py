@@ -28,7 +28,7 @@ async def test_creator_required(api_client: Any) -> Any:
             json={
                 "invite_token": created["invite_token"],
                 "nickname": "Bob",
-                },
+            },
         )
     ).json()
 

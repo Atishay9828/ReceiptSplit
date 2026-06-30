@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Auth FastAPI Dependencies
 
@@ -68,6 +67,7 @@ class AuthorizedRoomActor:
 
 
 # ── Core token resolution ──────────────────────────────────────────────────────
+
 
 async def get_current_participant(
     authorization: str = Header(..., description="Bearer <capability_token>"),
@@ -144,6 +144,7 @@ async def resolve_request_auth_context(
 
 # ── Room-scope enforcement (Amendment API-1) ───────────────────────────────────
 
+
 async def require_room_access(
     room_id: UUID,
     ctx: AuthContext = Depends(get_current_participant),
@@ -162,8 +163,7 @@ async def require_room_access(
         # This should never happen in production — it indicates either
         # a bug in the token issuance logic or a deliberate IDOR attempt.
         logger.critical(
-            "SECURITY: cross-room token use detected. "
-            "token_room=%s path_room=%s participant=%s",
+            "SECURITY: cross-room token use detected. token_room=%s path_room=%s participant=%s",
             ctx.room_id,
             room_id,
             ctx.participant_id,
@@ -190,7 +190,9 @@ async def require_creator_in_room(
 
 
 async def get_request_auth_context(
-    authorization: str | None = Header(default=None, description="Bearer <jwt_or_capability_token>"),
+    authorization: str | None = Header(
+        default=None, description="Bearer <jwt_or_capability_token>"
+    ),
     db: AsyncSession = Depends(get_db),
     jwt_verifier: JwtVerifier = Depends(get_jwt_verifier),
 ) -> RequestAuthContext:
@@ -263,6 +265,7 @@ async def attach_room_owner(room_id: UUID, user: AuthenticatedUser, db: AsyncSes
 
 # ── Event-endpoint combined auth ───────────────────────────────────────────────
 
+
 async def require_room_event_access(
     room_id: UUID,
     authorization: str | None = Header(None),
@@ -313,4 +316,3 @@ async def require_room_event_access(
         return ctx
 
     raise NotAuthorized()
-

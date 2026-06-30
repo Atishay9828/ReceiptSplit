@@ -35,7 +35,11 @@ class PostgresAdjustmentRepository(PostgresRepository[SplitAdjustment], Adjustme
         return list(result.scalars().all())
 
     async def update(
-        self, db: AsyncSession, adjustment_id: UUID, expected_version: int, update_fields: dict[str, Any]
+        self,
+        db: AsyncSession,
+        adjustment_id: UUID,
+        expected_version: int,
+        update_fields: dict[str, Any],
     ) -> bool:
         return await self.cas_update(
             db,

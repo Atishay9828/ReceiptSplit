@@ -40,7 +40,7 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Header, status
 from fastapi.responses import StreamingResponse
 
 from app.api.errors import ERROR_RESPONSES
@@ -93,11 +93,7 @@ def _dto_to_sse(dto: RoomEventDTO) -> str:
         "payload": dto.payload,
         "created_at": dto.created_at.isoformat(),
     }
-    return (
-        f"id: {dto.sequence_no}\n"
-        f"event: {dto.event_type}\n"
-        f"data: {json.dumps(data)}\n\n"
-    )
+    return f"id: {dto.sequence_no}\nevent: {dto.event_type}\ndata: {json.dumps(data)}\n\n"
 
 
 def _orm_to_sse(event: RoomEventResponse) -> str:
@@ -111,14 +107,11 @@ def _orm_to_sse(event: RoomEventResponse) -> str:
         "payload": event.payload,
         "created_at": event.created_at.isoformat(),
     }
-    return (
-        f"id: {event.sequence_no}\n"
-        f"event: {event.event_type}\n"
-        f"data: {json.dumps(data)}\n\n"
-    )
+    return f"id: {event.sequence_no}\nevent: {event.event_type}\ndata: {json.dumps(data)}\n\n"
 
 
 # ── 1. Event Replay ─────────────────────────────────────────────────────────────
+
 
 @router.get(
     "",
@@ -133,8 +126,12 @@ def _orm_to_sse(event: RoomEventResponse) -> str:
 )
 async def list_room_events(
     room_id: UUID,
-    after_sequence: int = Query(default=0, ge=0, description="Exclusive lower bound on sequence_no"),
-    limit: int = Query(default=100, ge=1, le=MAX_LIMIT, description="Max events to return (1–500)"),
+    after_sequence: int = Query(
+        default=0, ge=0, description="Exclusive lower bound on sequence_no"
+    ),
+    limit: int = Query(
+        default=100, ge=1, le=MAX_LIMIT, description="Max events to return (1–500)"
+    ),
     _ctx: RequestAuthContext = Depends(require_room_event_access),
     db: AsyncSession = Depends(get_db),
     event_repo: PostgresEventRepository = Depends(get_event_repo),
@@ -150,6 +147,7 @@ async def list_room_events(
 
 
 # ── 2. Latest Sequence ──────────────────────────────────────────────────────────
+
 
 @router.get(
     "/latest",
@@ -168,6 +166,7 @@ async def get_latest_sequence(
 
 
 # ── 3. SSE Stream ───────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/stream",
@@ -201,6 +200,7 @@ async def stream_room_events(
     db: AsyncSession = Depends(get_db),
     event_repo: PostgresEventRepository = Depends(get_event_repo),
     broker: RoomEventBroker = Depends(get_broker),
+    x_test_no_live: bool = Header(False, alias="X-Test-No-Live"),
 ) -> StreamingResponse:
     # Snapshot the durable replay rows before the SSE generator runs.
     replay_rows = await event_repo.list_after(db, room_id, after_sequence, limit=MAX_LIMIT)
@@ -216,6 +216,9 @@ async def stream_room_events(
             for event in replay_events:
                 sent_seqs.add(event.sequence_no)
                 yield _orm_to_sse(event)
+
+            if x_test_no_live:
+                return
 
             # Phase B: stream live broker events.
 

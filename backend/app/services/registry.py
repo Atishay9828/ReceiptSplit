@@ -70,7 +70,6 @@ def get_event_repo() -> PostgresEventRepository:
     return _repos()["event"]  # type: ignore[return-value]
 
 
-
 # ── Service factories ────────────────────────────────────────────────────────
 
 

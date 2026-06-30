@@ -54,9 +54,7 @@ class SplitAdjustment(Base):
         CheckConstraint(
             "amount_paise > -10000000 AND amount_paise <= 10000000", name="ck_adj_amount"
         ),
-        CheckConstraint(
-            "allocation_method IN ('proportional','equal')", name="ck_adj_alloc"
-        ),
+        CheckConstraint("allocation_method IN ('proportional','equal')", name="ck_adj_alloc"),
         CheckConstraint("version >= 1", name="ck_adj_version"),
         Index(
             "idx_adjustments_room",

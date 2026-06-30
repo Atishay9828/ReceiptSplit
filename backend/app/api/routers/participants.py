@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from app.services.participant_service import ParticipantService
 
 if True:
-
     pass
 
 router = APIRouter(prefix="/api/rooms/{room_id}", tags=["participants"], responses=ERROR_RESPONSES)
@@ -64,8 +63,5 @@ async def list_participants(
     service: ParticipantService = Depends(get_participant_service),
 ) -> list[ParticipantResponse]:
     participants = await service.list_active(db, room_id)
-    response = [
-        ParticipantResponse.model_validate(participant)
-        for participant in participants
-    ]
+    response = [ParticipantResponse.model_validate(participant) for participant in participants]
     return response

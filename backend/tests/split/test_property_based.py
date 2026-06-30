@@ -32,6 +32,7 @@ from app.split.rounding import RoundingPolicy
 
 # ── Custom strategies ────────────────────────────────────────────────────────
 
+
 def _paise_amount():
     """Non-negative paise amount up to ₹1,00,000 (10,000,000 paise)."""
     return st.integers(min_value=0, max_value=10_000_000)
@@ -43,6 +44,7 @@ def _participant_count():
 
 
 # ── EqualAllocator properties ────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestEqualAllocatorProperties:
@@ -80,13 +82,15 @@ class TestEqualAllocatorProperties:
 
 # ── ProportionalAllocator properties ─────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestProportionalAllocatorProperties:
     @given(
         total=st.integers(min_value=0, max_value=100_000_000),
         share_list=st.lists(
             st.integers(min_value=0, max_value=10_000_000),
-            min_size=1, max_size=20,
+            min_size=1,
+            max_size=20,
         ),
     )
     @settings(max_examples=10_000, suppress_health_check=[HealthCheck.too_slow])
@@ -100,7 +104,8 @@ class TestProportionalAllocatorProperties:
         total=st.integers(min_value=0, max_value=100_000_000),
         share_list=st.lists(
             st.integers(min_value=0, max_value=10_000_000),
-            min_size=1, max_size=20,
+            min_size=1,
+            max_size=20,
         ),
     )
     @settings(max_examples=10_000, suppress_health_check=[HealthCheck.too_slow])
@@ -112,6 +117,7 @@ class TestProportionalAllocatorProperties:
 
 
 # ── RoundingPolicy properties ────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestRoundingPolicyProperties:
@@ -155,6 +161,7 @@ class TestRoundingPolicyProperties:
 
 # ── SplitCalculator properties (equal mode) ─────────────────────────────────
 
+
 @pytest.mark.unit
 class TestSplitCalculatorEqualProperties:
     @given(
@@ -166,24 +173,34 @@ class TestSplitCalculatorEqualProperties:
     )
     @settings(max_examples=10_000, suppress_health_check=[HealthCheck.too_slow])
     def test_sum_conservation_equal(
-        self, subtotal: int, n: int, tax: int, discount: int, delivery: int,
+        self,
+        subtotal: int,
+        n: int,
+        tax: int,
+        discount: int,
+        delivery: int,
     ):
         """For any valid equal split input, sum(totals) == grand_total."""
         participants = [
-            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-            for i in range(n)
+            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)
         ]
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="tax", amount_paise=tax, allocation="proportional"),
-                SplitAdjustment(type="discount", amount_paise=discount, allocation="proportional"),
-                SplitAdjustment(type="delivery_fee", amount_paise=delivery, allocation="equal"),
-            ],
-            participants=participants,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="tax", amount_paise=tax, allocation="proportional"),
+                    SplitAdjustment(
+                        type="discount", amount_paise=discount, allocation="proportional"
+                    ),
+                    SplitAdjustment(
+                        type="delivery_fee", amount_paise=delivery, allocation="equal"
+                    ),
+                ],
+                participants=participants,
+            )
+        )
         assert sum(t.total_paise for t in result.participant_totals) == result.grand_total_paise
         assert result.invariant_holds is True
 
@@ -195,16 +212,17 @@ class TestSplitCalculatorEqualProperties:
     def test_non_negative_totals_equal(self, subtotal: int, n: int):
         """All participant totals are non-negative in equal mode."""
         participants = [
-            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-            for i in range(n)
+            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)
         ]
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
-            assignments=[],
-            adjustments=[],
-            participants=participants,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
+                assignments=[],
+                adjustments=[],
+                participants=participants,
+            )
+        )
         assert all(t.total_paise >= 0 for t in result.participant_totals)
 
     @given(
@@ -215,16 +233,17 @@ class TestSplitCalculatorEqualProperties:
     def test_payer_non_negative_equal(self, subtotal: int, n: int):
         """Payer total is always >= 0."""
         participants = [
-            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-            for i in range(n)
+            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)
         ]
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
-            assignments=[],
-            adjustments=[],
-            participants=participants,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=subtotal)],
+                assignments=[],
+                adjustments=[],
+                participants=participants,
+            )
+        )
         payer_total = next(t for t in result.participant_totals if t.is_payer)
         assert payer_total.total_paise >= 0
 
@@ -236,8 +255,7 @@ class TestSplitCalculatorEqualProperties:
     def test_determinism_equal(self, subtotal: int, n: int):
         """Same input always produces same output."""
         participants = [
-            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-            for i in range(n)
+            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)
         ]
         inp = SplitInput(
             mode="equal",
@@ -254,6 +272,7 @@ class TestSplitCalculatorEqualProperties:
 
 # ── SplitCalculator properties (item-wise mode) ─────────────────────────────
 
+
 @pytest.mark.unit
 class TestSplitCalculatorItemWiseProperties:
     @given(
@@ -264,8 +283,7 @@ class TestSplitCalculatorItemWiseProperties:
     def test_sum_conservation_item_wise(self, n: int, n_items: int):
         """Sum conservation holds for random item-wise splits."""
         participants = [
-            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-            for i in range(n)
+            SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)
         ]
 
         items = []
@@ -277,20 +295,24 @@ class TestSplitCalculatorItemWiseProperties:
             items.append(item)
             # Assign to a random participant
             assignee_idx = uuid4().int % n
-            assignments.append(SplitAssignment(
-                item_id=item.id,
-                participant_id=participants[assignee_idx].id,
-                claimed_qty=qty,
-                created_at=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
-            ))
+            assignments.append(
+                SplitAssignment(
+                    item_id=item.id,
+                    participant_id=participants[assignee_idx].id,
+                    claimed_qty=qty,
+                    created_at=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
+                )
+            )
 
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=items,
-            assignments=assignments,
-            adjustments=[],
-            participants=participants,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=items,
+                assignments=assignments,
+                adjustments=[],
+                participants=participants,
+            )
+        )
         assert sum(t.total_paise for t in result.participant_totals) == result.grand_total_paise
         assert result.invariant_holds is True
         assert all(t.total_paise >= 0 for t in result.participant_totals)

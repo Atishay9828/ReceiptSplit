@@ -27,6 +27,7 @@ from app.shared.validators import (
 
 # ── strip_html ─────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestStripHtml:
     def test_plain_text_unchanged(self):
@@ -53,6 +54,7 @@ class TestStripHtml:
 
 
 # ── validate_nickname ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestValidateNickname:
@@ -83,6 +85,7 @@ class TestValidateNickname:
 
 # ── validate_item_name ────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestValidateItemName:
     def test_valid(self):
@@ -106,6 +109,7 @@ class TestValidateItemName:
 
 # ── validate_vpa ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestValidateVpa:
     def test_valid(self):
@@ -126,6 +130,7 @@ class TestValidateVpa:
 
 
 # ── validate_paise ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestValidatePaise:
@@ -152,6 +157,7 @@ class TestValidatePaise:
 
 # ── validate_adjustment_amount ────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestValidateAdjustmentAmount:
     @pytest.mark.parametrize("adj_type", ["tax", "service_charge", "delivery_fee", "discount"])
@@ -166,7 +172,7 @@ class TestValidateAdjustmentAmount:
 
     def test_negative_adjustment_type_is_valid(self):
         # Amendment DB-4: 'adjustment' type may be negative for OCR reconciliation
-        validate_adjustment_amount("adjustment", -500)   # must not raise
+        validate_adjustment_amount("adjustment", -500)  # must not raise
 
     def test_zero_is_valid_for_all_types(self):
         for adj_type in ["tax", "service_charge", "delivery_fee", "discount", "adjustment"]:
@@ -175,6 +181,7 @@ class TestValidateAdjustmentAmount:
 
 # ── pick_available_color ──────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestPickAvailableColor:
     def test_picks_first_available(self):
@@ -182,7 +189,7 @@ class TestPickAvailableColor:
         assert color in COLOR_PALETTE
 
     def test_skips_used_colors(self):
-        used = set(COLOR_PALETTE[:11])   # use 11 of 12
+        used = set(COLOR_PALETTE[:11])  # use 11 of 12
         color = pick_available_color(used)
         assert color == COLOR_PALETTE[11]
 

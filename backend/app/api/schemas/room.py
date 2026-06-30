@@ -17,7 +17,9 @@ class RoomCreateRequest(BaseModel):
 
 class RoomUpdateRequest(BaseModel):
     version: int = Field(ge=1)
-    status: str | None = Field(default=None, pattern="^(draft|active|settling|settled|archived|expired)$")
+    status: str | None = Field(
+        default=None, pattern="^(draft|active|settling|settled|archived|expired)$"
+    )
     split_mode: str | None = Field(default=None, pattern="^(equal|item_wise)$")
     payer_vpa: str | None = Field(default=None, max_length=50)
     payer_name: str | None = Field(default=None, max_length=100)

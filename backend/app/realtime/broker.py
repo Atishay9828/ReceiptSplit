@@ -44,8 +44,8 @@ QUEUE_CAPACITY = 256
 class RoomEventDTO:
     """Wire-safe event DTO used by the broker and SSE serialiser."""
 
-    id: str          # UUID as str
-    room_id: str     # UUID as str
+    id: str  # UUID as str
+    room_id: str  # UUID as str
     sequence_no: int
     event_type: str
     actor_id: str | None
@@ -93,6 +93,7 @@ class RoomEventBroker:
                     except asyncio.QueueFull:
                         # Make room for the sentinel
                         import contextlib
+
                         with contextlib.suppress(asyncio.QueueEmpty, asyncio.QueueFull):
                             queue.get_nowait()
                             queue.put_nowait(None)
@@ -100,9 +101,7 @@ class RoomEventBroker:
                 subs.discard(queue)
 
     @asynccontextmanager
-    async def subscribe(
-        self, room_id: UUID
-    ) -> AsyncIterator[AsyncIterator[RoomEventDTO]]:
+    async def subscribe(self, room_id: UUID) -> AsyncIterator[AsyncIterator[RoomEventDTO]]:
         """
         Async context manager that yields an async iterator of events for the room.
 

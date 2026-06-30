@@ -19,9 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 #: Regex for UPI VPA validation.  Per PDD §6 / §14.
-_VPA_PATTERN: re.Pattern[str] = re.compile(
-    r"^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$"
-)
+_VPA_PATTERN: re.Pattern[str] = re.compile(r"^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$")
 
 #: 12-color palette assigned to room participants.  Per PDD §Q11.
 #: Colors chosen to be visually distinct and accessible.
@@ -49,6 +47,7 @@ MAX_ROOM_PAISE: int = 100_000_000
 
 # ── Paise ─────────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class Paise:
     """
@@ -74,9 +73,7 @@ class Paise:
     def __sub__(self, other: Paise) -> Paise:
         result = self.value - other.value
         if result < 0:
-            raise ValueError(
-                f"Paise subtraction result is negative: {self.value} - {other.value}"
-            )
+            raise ValueError(f"Paise subtraction result is negative: {self.value} - {other.value}")
         return Paise(result)
 
     def __lt__(self, other: Paise) -> bool:
@@ -140,6 +137,7 @@ def _format_indian(amount: Decimal) -> str:
 
 # ── VPA ───────────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class VPA:
     """
@@ -168,6 +166,7 @@ class VPA:
 
 # ── Nickname ──────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class Nickname:
     """
@@ -189,9 +188,7 @@ class Nickname:
         if not isinstance(self.value, str):
             raise TypeError(f"Nickname value must be str, got {type(self.value).__name__}")
         if len(self.value) < 1 or len(self.value) > 30:
-            raise ValueError(
-                f"Nickname must be 1-30 chars, got {len(self.value)}: {self.value!r}"
-            )
+            raise ValueError(f"Nickname must be 1-30 chars, got {len(self.value)}: {self.value!r}")
         if "\x00" in self.value:
             raise ValueError("Nickname must not contain null bytes")
 
@@ -203,6 +200,7 @@ class Nickname:
 
 
 # ── Color ─────────────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True, slots=True)
 class Color:
@@ -217,9 +215,7 @@ class Color:
         if not isinstance(self.hex, str):
             raise TypeError(f"Color hex must be str, got {type(self.hex).__name__}")
         if self.hex not in COLOR_PALETTE:
-            raise ValueError(
-                f"Color {self.hex!r} is not in the predefined palette"
-            )
+            raise ValueError(f"Color {self.hex!r} is not in the predefined palette")
 
     def __str__(self) -> str:
         return self.hex

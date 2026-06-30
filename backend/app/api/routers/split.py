@@ -26,10 +26,13 @@ if TYPE_CHECKING:
     from app.services.split_service import SplitService
 
 if True:
-
     pass
 
-router = APIRouter(prefix="/api/rooms/{room_id}/split", tags=["split"], responses={304: {"description": "Not modified"}, **ERROR_RESPONSES})
+router = APIRouter(
+    prefix="/api/rooms/{room_id}/split",
+    tags=["split"],
+    responses={304: {"description": "Not modified"}, **ERROR_RESPONSES},
+)
 
 
 @router.get(
@@ -50,15 +53,17 @@ async def preview_split(
     result, room_version = await split_service.preview.calculate_preview(db, room_id)
     etag = f"{room_id}-{room_version}"
     if if_none_match == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag, "Cache-Control": "no-store"})
+        return Response(
+            status_code=status.HTTP_304_NOT_MODIFIED,
+            headers={"ETag": etag, "Cache-Control": "no-store"},
+        )
 
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "no-store"
     preview = SplitPreviewResponse(
         grand_total_paise=result.grand_total_paise,
         participant_totals=[
-            ParticipantTotalResponse.model_validate(total)
-            for total in result.participant_totals
+            ParticipantTotalResponse.model_validate(total) for total in result.participant_totals
         ],
     )
     return preview
@@ -78,7 +83,9 @@ async def lock_split(
     db: AsyncSession = Depends(get_db),
     service: SplitService = Depends(get_split_service),
 ) -> SplitSessionResponse:
-    session = await service.lock(db, room_id=room_id, version=payload.version, actor_id=actor.actor_id)
+    session = await service.lock(
+        db, room_id=room_id, version=payload.version, actor_id=actor.actor_id
+    )
     return SplitSessionResponse.model_validate(session)
 
 

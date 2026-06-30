@@ -33,6 +33,7 @@ INVITE_PREFIX = "rs_inv_"
 
 # ── Generation ────────────────────────────────────────────────────────────────
 
+
 def generate_creator_token() -> str:
     """
     Generates a new creator capability token.
@@ -59,6 +60,7 @@ def generate_invite_token() -> str:
 
 # ── Hashing ───────────────────────────────────────────────────────────────────
 
+
 def hash_token(token: str) -> str:
     """
     Returns the SHA-256 hex digest of a token.
@@ -72,6 +74,7 @@ def hash_token(token: str) -> str:
 
 # ── Verification ──────────────────────────────────────────────────────────────
 
+
 def verify_token(raw_token: str, stored_hash: str) -> bool:
     """
     Constant-time comparison of hash(raw_token) against stored_hash.
@@ -84,6 +87,7 @@ def verify_token(raw_token: str, stored_hash: str) -> bool:
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
+
 
 def extract_bearer_token(authorization_header: str) -> str:
     """

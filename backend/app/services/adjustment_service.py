@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Adjustment Service
 
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     pass
 
 logger = logging.getLogger(__name__)
@@ -93,13 +91,17 @@ class AdjustmentService:
             )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.created", actor_id,
+                db,
+                room_id,
+                "adjustment.created",
+                actor_id,
                 {"adjustment_id": str(adj.id), "type": adj_type, "label": label},
             )
             await db.refresh(adj)
 
         await self._events.broadcast(
-            room_id, "adjustment.created",
+            room_id,
+            "adjustment.created",
             {"adjustment_id": str(adj.id), "type": adj_type, "label": label},
             seq,
         )
@@ -150,12 +152,16 @@ class AdjustmentService:
                 )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.updated", actor_id,
+                db,
+                room_id,
+                "adjustment.updated",
+                actor_id,
                 {"adjustment_id": str(adjustment_id), "fields": list(changes.keys())},
             )
 
         await self._events.broadcast(
-            room_id, "adjustment.updated",
+            room_id,
+            "adjustment.updated",
             {"adjustment_id": str(adjustment_id), "fields": list(changes.keys())},
             seq,
         )
@@ -178,9 +184,7 @@ class AdjustmentService:
                     message="Room is no longer open for edits.",
                 )
 
-            deleted = await self._adj_repo.soft_delete(
-                db, adjustment_id, expected_version
-            )
+            deleted = await self._adj_repo.soft_delete(db, adjustment_id, expected_version)
             if not deleted:
                 raise VersionConflict()
 
@@ -194,12 +198,16 @@ class AdjustmentService:
             )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.deleted", actor_id,
+                db,
+                room_id,
+                "adjustment.deleted",
+                actor_id,
                 {"adjustment_id": str(adjustment_id)},
             )
 
         await self._events.broadcast(
-            room_id, "adjustment.deleted",
+            room_id,
+            "adjustment.deleted",
             {"adjustment_id": str(adjustment_id)},
             seq,
         )

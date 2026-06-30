@@ -137,10 +137,14 @@ async def test_resolve_request_auth_context_resolves_user_jwt_without_capability
     token = _jwt({"sub": "user-123"})
     verifier = FakeJwtVerifier({token: JwtClaims(provider="dev", subject="user-123")})
 
-    ctx = await resolve_request_auth_context(f"Bearer {token}", cast("Any", _ExplodingDb()), verifier)
+    ctx = await resolve_request_auth_context(
+        f"Bearer {token}", cast("Any", _ExplodingDb()), verifier
+    )
 
     assert ctx.participant is None
-    assert ctx.user == authenticated_user_from_claims(JwtClaims(provider="dev", subject="user-123"))
+    assert ctx.user == authenticated_user_from_claims(
+        JwtClaims(provider="dev", subject="user-123")
+    )
 
 
 @pytest.mark.asyncio
@@ -149,7 +153,9 @@ async def test_malformed_jwt_returns_invalid_jwt_error() -> None:
     verifier = FakeJwtVerifier({})
 
     with pytest.raises(InvalidJwt):
-        await resolve_request_auth_context(f"Bearer {token}", cast("Any", _ExplodingDb()), verifier)
+        await resolve_request_auth_context(
+            f"Bearer {token}", cast("Any", _ExplodingDb()), verifier
+        )
 
 
 @pytest.mark.asyncio

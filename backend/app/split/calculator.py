@@ -45,7 +45,6 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 if True:
-
     from app.split.models import SplitInput
 
 
@@ -138,30 +137,19 @@ class SplitCalculator:
         # ── Compute grand total ──────────────────────────────────────────
         # PDD §5.5: grand_total = subtotal + sum(taxes) + service_charge
         #           + delivery_fee - sum(discounts) + sum(adjustments)
-        total_discount = sum(
-            a.amount_paise for a in inp.adjustments if a.type == "discount"
-        )
+        total_discount = sum(a.amount_paise for a in inp.adjustments if a.type == "discount")
         # PDD E6: Discount > subtotal → cap at subtotal.
         # This cap must be applied to grand_total too, not just the allocation.
         if total_discount > subtotal:
             total_discount = subtotal
 
-        total_tax = sum(
-            a.amount_paise for a in inp.adjustments if a.type == "tax"
-        )
-        total_svc = sum(
-            a.amount_paise for a in inp.adjustments if a.type == "service_charge"
-        )
-        total_delivery = sum(
-            a.amount_paise for a in inp.adjustments if a.type == "delivery_fee"
-        )
-        total_adjustment = sum(
-            a.amount_paise for a in inp.adjustments if a.type == "adjustment"
-        )
+        total_tax = sum(a.amount_paise for a in inp.adjustments if a.type == "tax")
+        total_svc = sum(a.amount_paise for a in inp.adjustments if a.type == "service_charge")
+        total_delivery = sum(a.amount_paise for a in inp.adjustments if a.type == "delivery_fee")
+        total_adjustment = sum(a.amount_paise for a in inp.adjustments if a.type == "adjustment")
 
         grand_total = (
-            subtotal - total_discount + total_tax + total_svc
-            + total_delivery + total_adjustment
+            subtotal - total_discount + total_tax + total_svc + total_delivery + total_adjustment
         )
 
         # ── Step 11: Compute raw totals ──────────────────────────────────
@@ -365,12 +353,8 @@ def _allocate_adjustments_by_type(
 
     # Determine allocation method. If mixed methods exist for the same type,
     # split into proportional and equal portions separately.
-    proportional_total = sum(
-        a.amount_paise for a in typed_adjs if a.allocation == "proportional"
-    )
-    equal_total = sum(
-        a.amount_paise for a in typed_adjs if a.allocation == "equal"
-    )
+    proportional_total = sum(a.amount_paise for a in typed_adjs if a.allocation == "proportional")
+    equal_total = sum(a.amount_paise for a in typed_adjs if a.allocation == "equal")
 
     # Cap proportional and equal totals for discounts.
     if adj_type == "discount":
@@ -384,10 +368,10 @@ def _allocate_adjustments_by_type(
     result: dict[UUID, int] = dict.fromkeys(round_robin, 0)
 
     if proportional_total != 0:
-        prop_alloc = ProportionalAllocator.allocate(
-            abs(proportional_total), shares, round_robin
+        prop_alloc = ProportionalAllocator.allocate(abs(proportional_total), shares, round_robin)
+        check_allocation_conservation(
+            prop_alloc, abs(proportional_total), f"{adj_type}(proportional)"
         )
-        check_allocation_conservation(prop_alloc, abs(proportional_total), f"{adj_type}(proportional)")
         sign = 1 if proportional_total >= 0 else -1
         for pid in round_robin:
             result[pid] += sign * prop_alloc.get(pid, 0)

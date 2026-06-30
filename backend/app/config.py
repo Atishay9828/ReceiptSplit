@@ -42,9 +42,7 @@ class Settings(BaseSettings):
     # Derived automatically from database_url by swapping the driver.
     @property
     def database_url_sync(self) -> str:
-        return self.database_url.replace(
-            "postgresql+asyncpg://", "postgresql+psycopg2://"
-        )
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
     # ── Supabase ─────────────────────────────────────────────────────────────
     supabase_url: str = "https://placeholder.supabase.co"
@@ -72,8 +70,8 @@ class Settings(BaseSettings):
     room_ttl_days: int = 30
 
     # ── Security ─────────────────────────────────────────────────────────────
-    token_byte_length: int = 32          # 256-bit entropy — do not reduce
-    room_creation_rate_limit_per_hour: int = 20   # per IP, in-process limiter
+    token_byte_length: int = 32  # 256-bit entropy — do not reduce
+    room_creation_rate_limit_per_hour: int = 20  # per IP, in-process limiter
     auth_oidc_provider: str = "dev"
     auth_oidc_issuer: str | None = None
     auth_oidc_audience: str | None = None

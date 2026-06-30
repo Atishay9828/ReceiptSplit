@@ -42,7 +42,11 @@ async def test_add_item_sanitizes_html_and_null_bytes(api_client: Any, db_sessio
 
     response = await api_client.post(
         f"/api/rooms/{created['room']['id']}/items",
-        json={"name": "<script>alert('xss')</script>Burger\x00", "quantity": 1, "total_paise": 25000},
+        json={
+            "name": "<script>alert('xss')</script>Burger\x00",
+            "quantity": 1,
+            "total_paise": 25000,
+        },
         headers=bearer(created["creator_token"]),
     )
 

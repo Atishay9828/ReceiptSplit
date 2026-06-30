@@ -83,7 +83,11 @@ class EventPublisher:
         that pass seq to the legacy broadcast() call).
         """
         result = await self._event_repo.append_in_tx(
-            db, room_id, event_type, actor_id, payload,
+            db,
+            room_id,
+            event_type,
+            actor_id,
+            payload,
         )
 
         # Store the full DTO data keyed by room_id for post-commit dispatch.

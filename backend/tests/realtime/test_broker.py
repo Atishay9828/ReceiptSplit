@@ -8,6 +8,7 @@ Covers:
   - queue overflow → subscriber disconnected (must reconnect)
   - transaction regression: rollback does not emit broker event
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -112,7 +113,7 @@ async def test_broker_queue_overflow_behavior() -> None:
     broker = RoomEventBroker()
     room_id = uuid4()
     received: list[RoomEventDTO] = []
-    
+
     # We use an event to block the consumer so we can overflow its queue.
     blocker = asyncio.Event()
 
@@ -120,7 +121,7 @@ async def test_broker_queue_overflow_behavior() -> None:
         async with broker.subscribe(room_id) as stream:
             async for event in stream:
                 received.append(event)
-                await blocker.wait() # Block forever until we let it go
+                await blocker.wait()  # Block forever until we let it go
 
     consumer = asyncio.create_task(_slow_consumer())
     await asyncio.sleep(0)  # let consumer subscribe

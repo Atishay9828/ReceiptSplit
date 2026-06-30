@@ -3,6 +3,7 @@ Tests for PostgresEventRepository — list_after, get_latest_sequence, scoping.
 
 Requires: postgres_container (from conftest.py), db_session, async_engine.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

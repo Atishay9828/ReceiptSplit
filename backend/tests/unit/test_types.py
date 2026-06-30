@@ -15,6 +15,7 @@ from app.shared.types import COLOR_PALETTE, VPA, Color, Nickname, Paise
 
 # ── Paise ──────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestPaise:
     def test_zero_is_valid(self):
@@ -85,28 +86,35 @@ class TestPaise:
 
 # ── VPA ───────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestVPA:
-    @pytest.mark.parametrize("vpa", [
-        "user@upi",
-        "john.doe@okaxis",
-        "mobile123@paytm",
-        "name-with-dash@icici",
-        "a@b",
-    ])
+    @pytest.mark.parametrize(
+        "vpa",
+        [
+            "user@upi",
+            "john.doe@okaxis",
+            "mobile123@paytm",
+            "name-with-dash@icici",
+            "a@b",
+        ],
+    )
     def test_valid_vpa(self, vpa: str):
         v = VPA(vpa)
         assert v.value == vpa
 
-    @pytest.mark.parametrize("bad", [
-        "",
-        "notavpa",
-        "@nousername",
-        "user@",
-        "user@@bank",
-        "user @bank",
-        "a" * 51 + "@b",
-    ])
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "",
+            "notavpa",
+            "@nousername",
+            "user@",
+            "user@@bank",
+            "user @bank",
+            "a" * 51 + "@b",
+        ],
+    )
     def test_invalid_vpa_raises(self, bad: str):
         with pytest.raises(ValueError):
             VPA(bad)
@@ -121,6 +129,7 @@ class TestVPA:
 
 
 # ── Nickname ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestNickname:
@@ -154,6 +163,7 @@ class TestNickname:
 
 
 # ── Color ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestColor:

@@ -26,7 +26,9 @@ async def test_add_adjustment(api_client: Any) -> Any:
     assert response.json()["label"] == "GST"
 
 
-async def test_add_adjustment_sanitizes_html_and_null_bytes(api_client: Any, db_session: Any) -> Any:
+async def test_add_adjustment_sanitizes_html_and_null_bytes(
+    api_client: Any, db_session: Any
+) -> Any:
     created = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
 
     response = await api_client.post(

@@ -37,23 +37,22 @@ def _ts(i: int = 0) -> datetime:
 
 def _participants(n: int):
     """Create n participants where first is payer."""
-    return [
-        SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i)
-        for i in range(n)
-    ]
+    return [SplitParticipant(id=uuid4(), is_payer=(i == 0), join_order=i) for i in range(n)]
 
 
 @pytest.mark.unit
 class TestEqualSplit:
     def test_simple_equal_2_people(self):
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 1000
         assert result.invariant_holds is True
         assert sum(t.total_paise for t in result.participant_totals) == 1000
@@ -63,60 +62,70 @@ class TestEqualSplit:
 
     def test_simple_equal_3_people_odd_amount(self):
         ps = _participants(3)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 1000
         assert sum(t.total_paise for t in result.participant_totals) == 1000
 
     def test_equal_with_tax(self):
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="tax", amount_paise=1800, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="tax", amount_paise=1800, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
         # Grand total = 10000 + 1800 = 11800
         assert result.grand_total_paise == 11800
         assert sum(t.total_paise for t in result.participant_totals) == 11800
 
     def test_equal_with_discount(self):
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="discount", amount_paise=2000, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="discount", amount_paise=2000, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
         # Grand total = 10000 - 2000 = 8000
         assert result.grand_total_paise == 8000
         assert sum(t.total_paise for t in result.participant_totals) == 8000
 
     def test_equal_with_all_adjustment_types(self):
         ps = _participants(3)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=30000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="discount", amount_paise=3000, allocation="proportional"),
-                SplitAdjustment(type="tax", amount_paise=4860, allocation="proportional"),
-                SplitAdjustment(type="service_charge", amount_paise=2700, allocation="proportional"),
-                SplitAdjustment(type="delivery_fee", amount_paise=5000, allocation="equal"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=30000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="discount", amount_paise=3000, allocation="proportional"),
+                    SplitAdjustment(type="tax", amount_paise=4860, allocation="proportional"),
+                    SplitAdjustment(
+                        type="service_charge", amount_paise=2700, allocation="proportional"
+                    ),
+                    SplitAdjustment(type="delivery_fee", amount_paise=5000, allocation="equal"),
+                ],
+                participants=ps,
+            )
+        )
         # Grand = 30000 - 3000 + 4860 + 2700 + 5000 = 39560
         assert result.grand_total_paise == 39560
         assert sum(t.total_paise for t in result.participant_totals) == 39560
@@ -127,15 +136,17 @@ class TestEqualSplit:
     def test_equal_with_delivery_fee_equal_allocation(self):
         """Delivery fee uses equal allocation, not proportional."""
         ps = _participants(3)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=9000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="delivery_fee", amount_paise=300, allocation="equal"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=9000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="delivery_fee", amount_paise=300, allocation="equal"),
+                ],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 9300
         # Delivery fee: 300 / 3 = 100 each
         for t in result.participant_totals:
@@ -143,17 +154,19 @@ class TestEqualSplit:
 
     def test_equal_with_multiple_items(self):
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[
-                SplitItem(id=uuid4(), quantity=1, total_paise=5000),
-                SplitItem(id=uuid4(), quantity=2, total_paise=3000),
-                SplitItem(id=uuid4(), quantity=1, total_paise=2000),
-            ],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[
+                    SplitItem(id=uuid4(), quantity=1, total_paise=5000),
+                    SplitItem(id=uuid4(), quantity=2, total_paise=3000),
+                    SplitItem(id=uuid4(), quantity=1, total_paise=2000),
+                ],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         # Subtotal = 5000 + 3000 + 2000 = 10000
         assert result.grand_total_paise == 10000
         assert sum(t.total_paise for t in result.participant_totals) == 10000
@@ -165,16 +178,22 @@ class TestItemWiseSplit:
         ps = _participants(2)
         item1 = SplitItem(id=uuid4(), quantity=1, total_paise=600)
         item2 = SplitItem(id=uuid4(), quantity=1, total_paise=400)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=[item1, item2],
-            assignments=[
-                SplitAssignment(item_id=item1.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)),
-                SplitAssignment(item_id=item2.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-            ],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[item1, item2],
+                assignments=[
+                    SplitAssignment(
+                        item_id=item1.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)
+                    ),
+                    SplitAssignment(
+                        item_id=item2.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)
+                    ),
+                ],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 1000
         assert sum(t.total_paise for t in result.participant_totals) == 1000
 
@@ -182,16 +201,22 @@ class TestItemWiseSplit:
         """Two participants share a 3-quantity item."""
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=3, total_paise=900)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=[item],
-            assignments=[
-                SplitAssignment(item_id=item.id, participant_id=ps[0].id, claimed_qty=2, created_at=_ts(0)),
-                SplitAssignment(item_id=item.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-            ],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[item],
+                assignments=[
+                    SplitAssignment(
+                        item_id=item.id, participant_id=ps[0].id, claimed_qty=2, created_at=_ts(0)
+                    ),
+                    SplitAssignment(
+                        item_id=item.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)
+                    ),
+                ],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 900
         # unit_cost = 900 // 3 = 300
         # ps[0] items: 300 * 2 = 600
@@ -204,22 +229,28 @@ class TestItemWiseSplit:
         ps = _participants(2)
         # 10 paise / 3 quantity => unit_cost = 3, remainder = 1
         item = SplitItem(id=uuid4(), quantity=3, total_paise=10)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=[item],
-            assignments=[
-                SplitAssignment(
-                    item_id=item.id, participant_id=ps[0].id,
-                    claimed_qty=2, created_at=_ts(0),
-                ),
-                SplitAssignment(
-                    item_id=item.id, participant_id=ps[1].id,
-                    claimed_qty=1, created_at=_ts(1),  # later => last claimer
-                ),
-            ],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[item],
+                assignments=[
+                    SplitAssignment(
+                        item_id=item.id,
+                        participant_id=ps[0].id,
+                        claimed_qty=2,
+                        created_at=_ts(0),
+                    ),
+                    SplitAssignment(
+                        item_id=item.id,
+                        participant_id=ps[1].id,
+                        claimed_qty=1,
+                        created_at=_ts(1),  # later => last claimer
+                    ),
+                ],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         # unit_cost = 10 // 3 = 3
         # ps[0] items: 3 * 2 = 6
         # ps[1] items: 3 * 1 = 3, + 1 remainder = 4
@@ -232,18 +263,24 @@ class TestItemWiseSplit:
         ps = _participants(2)
         item1 = SplitItem(id=uuid4(), quantity=1, total_paise=6000)
         item2 = SplitItem(id=uuid4(), quantity=1, total_paise=4000)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=[item1, item2],
-            assignments=[
-                SplitAssignment(item_id=item1.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)),
-                SplitAssignment(item_id=item2.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-            ],
-            adjustments=[
-                SplitAdjustment(type="tax", amount_paise=1800, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[item1, item2],
+                assignments=[
+                    SplitAssignment(
+                        item_id=item1.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)
+                    ),
+                    SplitAssignment(
+                        item_id=item2.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)
+                    ),
+                ],
+                adjustments=[
+                    SplitAdjustment(type="tax", amount_paise=1800, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
         # Grand = 10000 + 1800 = 11800
         assert result.grand_total_paise == 11800
         assert sum(t.total_paise for t in result.participant_totals) == 11800
@@ -252,16 +289,22 @@ class TestItemWiseSplit:
         """PDD: Creator can claim items (reduces their receive amount)."""
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=2, total_paise=1000)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="item_wise",
-            items=[item],
-            assignments=[
-                SplitAssignment(item_id=item.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)),
-                SplitAssignment(item_id=item.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-            ],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[item],
+                assignments=[
+                    SplitAssignment(
+                        item_id=item.id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)
+                    ),
+                    SplitAssignment(
+                        item_id=item.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)
+                    ),
+                ],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 1000
         assert sum(t.total_paise for t in result.participant_totals) == 1000
 
@@ -272,42 +315,48 @@ class TestEdgeCases:
         """PDD E5: Zero-price item is valid, claims contribute ₹0."""
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=1, total_paise=0)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[item],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[item],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 0
         assert all(t.total_paise == 0 for t in result.participant_totals)
 
     def test_zero_grand_total(self):
         """PDD E7: Grand total = ₹0. All totals = 0."""
         ps = _participants(3)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=0)],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=0)],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 0
         assert all(t.total_paise == 0 for t in result.participant_totals)
 
     def test_discount_exceeds_subtotal(self):
         """PDD E6: Discount > subtotal => capped at subtotal."""
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="discount", amount_paise=1500, allocation="proportional"),
-                SplitAdjustment(type="tax", amount_paise=180, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="discount", amount_paise=1500, allocation="proportional"),
+                    SplitAdjustment(type="tax", amount_paise=180, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
         # Discount capped at subtotal (1000).
         # Grand = 1000 - 1000 + 180 = 180
         assert result.grand_total_paise == 180
@@ -316,16 +365,18 @@ class TestEdgeCases:
     def test_discount_equals_subtotal(self):
         """Full discount: post-discount = 0, taxes shared equally (SE-1 fallback)."""
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="discount", amount_paise=1000, allocation="proportional"),
-                SplitAdjustment(type="tax", amount_paise=200, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="discount", amount_paise=1000, allocation="proportional"),
+                    SplitAdjustment(type="tax", amount_paise=200, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
         # Grand = 1000 - 1000 + 200 = 200
         assert result.grand_total_paise == 200
         assert sum(t.total_paise for t in result.participant_totals) == 200
@@ -333,29 +384,37 @@ class TestEdgeCases:
     def test_1_paise_among_3(self):
         """PDD E9: 1 paise split among 3 people."""
         ps = _participants(3)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=1)],
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1)],
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         assert result.grand_total_paise == 1
         assert sum(t.total_paise for t in result.participant_totals) == 1
 
     def test_multiple_taxes(self):
         """Multiple tax lines are summed and distributed together."""
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="tax", amount_paise=250, allocation="proportional"),  # CGST
-                SplitAdjustment(type="tax", amount_paise=250, allocation="proportional"),  # SGST
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(
+                        type="tax", amount_paise=250, allocation="proportional"
+                    ),  # CGST
+                    SplitAdjustment(
+                        type="tax", amount_paise=250, allocation="proportional"
+                    ),  # SGST
+                ],
+                participants=ps,
+            )
+        )
         # Grand = 10000 + 500 = 10500
         assert result.grand_total_paise == 10500
         assert sum(t.total_paise for t in result.participant_totals) == 10500
@@ -363,15 +422,19 @@ class TestEdgeCases:
     def test_generic_adjustment_negative(self):
         """'adjustment' type can be negative (OCR reconciliation per DB-4)."""
         ps = _participants(2)
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
-            assignments=[],
-            adjustments=[
-                SplitAdjustment(type="adjustment", amount_paise=-200, allocation="proportional"),
-            ],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=10000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(
+                        type="adjustment", amount_paise=-200, allocation="proportional"
+                    ),
+                ],
+                participants=ps,
+            )
+        )
         # Grand = 10000 + (-200) = 9800
         assert result.grand_total_paise == 9800
         assert sum(t.total_paise for t in result.participant_totals) == 9800
@@ -380,13 +443,15 @@ class TestEdgeCases:
         """10 items equally split among 4 people."""
         ps = _participants(4)
         items = [SplitItem(id=uuid4(), quantity=1, total_paise=i * 100 + 50) for i in range(10)]
-        result = SplitCalculator.calculate(SplitInput(
-            mode="equal",
-            items=items,
-            assignments=[],
-            adjustments=[],
-            participants=ps,
-        ))
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=items,
+                assignments=[],
+                adjustments=[],
+                participants=ps,
+            )
+        )
         subtotal = sum(item.total_paise for item in items)
         assert result.grand_total_paise == subtotal
         assert sum(t.total_paise for t in result.participant_totals) == subtotal
@@ -396,102 +461,135 @@ class TestEdgeCases:
 class TestInputValidation:
     def test_less_than_2_participants_raises(self):
         with pytest.raises(ValueError, match="2 participants"):
-            SplitCalculator.calculate(SplitInput(
-                mode="equal",
-                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-                assignments=[],
-                adjustments=[],
-                participants=[SplitParticipant(id=uuid4(), is_payer=True, join_order=0)],
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="equal",
+                    items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=[SplitParticipant(id=uuid4(), is_payer=True, join_order=0)],
+                )
+            )
 
     def test_no_payer_raises(self):
         with pytest.raises(ValueError, match="payer"):
-            SplitCalculator.calculate(SplitInput(
-                mode="equal",
-                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-                assignments=[],
-                adjustments=[],
-                participants=[
-                    SplitParticipant(id=uuid4(), is_payer=False, join_order=0),
-                    SplitParticipant(id=uuid4(), is_payer=False, join_order=1),
-                ],
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="equal",
+                    items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=[
+                        SplitParticipant(id=uuid4(), is_payer=False, join_order=0),
+                        SplitParticipant(id=uuid4(), is_payer=False, join_order=1),
+                    ],
+                )
+            )
 
     def test_two_payers_raises(self):
         with pytest.raises(ValueError, match="payer"):
-            SplitCalculator.calculate(SplitInput(
-                mode="equal",
-                items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
-                assignments=[],
-                adjustments=[],
-                participants=[
-                    SplitParticipant(id=uuid4(), is_payer=True, join_order=0),
-                    SplitParticipant(id=uuid4(), is_payer=True, join_order=1),
-                ],
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="equal",
+                    items=[SplitItem(id=uuid4(), quantity=1, total_paise=1000)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=[
+                        SplitParticipant(id=uuid4(), is_payer=True, join_order=0),
+                        SplitParticipant(id=uuid4(), is_payer=True, join_order=1),
+                    ],
+                )
+            )
 
     def test_negative_item_total_raises(self):
         with pytest.raises(ValueError, match="negative"):
-            SplitCalculator.calculate(SplitInput(
-                mode="equal",
-                items=[SplitItem(id=uuid4(), quantity=1, total_paise=-100)],
-                assignments=[],
-                adjustments=[],
-                participants=_participants(2),
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="equal",
+                    items=[SplitItem(id=uuid4(), quantity=1, total_paise=-100)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=_participants(2),
+                )
+            )
 
     def test_zero_quantity_raises(self):
         with pytest.raises(ValueError, match="quantity"):
-            SplitCalculator.calculate(SplitInput(
-                mode="equal",
-                items=[SplitItem(id=uuid4(), quantity=0, total_paise=100)],
-                assignments=[],
-                adjustments=[],
-                participants=_participants(2),
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="equal",
+                    items=[SplitItem(id=uuid4(), quantity=0, total_paise=100)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=_participants(2),
+                )
+            )
 
     def test_invalid_mode_raises(self):
         with pytest.raises(ValueError, match="mode"):
-            SplitCalculator.calculate(SplitInput(
-                mode="percentage",
-                items=[SplitItem(id=uuid4(), quantity=1, total_paise=100)],
-                assignments=[],
-                adjustments=[],
-                participants=_participants(2),
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="percentage",
+                    items=[SplitItem(id=uuid4(), quantity=1, total_paise=100)],
+                    assignments=[],
+                    adjustments=[],
+                    participants=_participants(2),
+                )
+            )
 
     def test_item_wise_not_fully_assigned_raises(self):
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=3, total_paise=900)
         from app.shared.errors import UnclaimedItemsExist
+
         with pytest.raises(UnclaimedItemsExist):
-            SplitCalculator.calculate(SplitInput(
-                mode="item_wise",
-                items=[item],
-                assignments=[
-                    SplitAssignment(item_id=item.id, participant_id=ps[0].id, claimed_qty=2, created_at=_ts(0)),
-                    # Only 2 of 3 assigned
-                ],
-                adjustments=[],
-                participants=ps,
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="item_wise",
+                    items=[item],
+                    assignments=[
+                        SplitAssignment(
+                            item_id=item.id,
+                            participant_id=ps[0].id,
+                            claimed_qty=2,
+                            created_at=_ts(0),
+                        ),
+                        # Only 2 of 3 assigned
+                    ],
+                    adjustments=[],
+                    participants=ps,
+                )
+            )
 
     def test_item_wise_over_assigned_raises(self):
         ps = _participants(2)
         item = SplitItem(id=uuid4(), quantity=2, total_paise=800)
         from app.shared.errors import UnclaimedItemsExist
+
         with pytest.raises(UnclaimedItemsExist):
-            SplitCalculator.calculate(SplitInput(
-                mode="item_wise",
-                items=[item],
-                assignments=[
-                    SplitAssignment(item_id=item.id, participant_id=ps[0].id, claimed_qty=2, created_at=_ts(0)),
-                    SplitAssignment(item_id=item.id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-                    # 3 assigned for 2 quantity
-                ],
-                adjustments=[],
-                participants=ps,
-            ))
+            SplitCalculator.calculate(
+                SplitInput(
+                    mode="item_wise",
+                    items=[item],
+                    assignments=[
+                        SplitAssignment(
+                            item_id=item.id,
+                            participant_id=ps[0].id,
+                            claimed_qty=2,
+                            created_at=_ts(0),
+                        ),
+                        SplitAssignment(
+                            item_id=item.id,
+                            participant_id=ps[1].id,
+                            claimed_qty=1,
+                            created_at=_ts(1),
+                        ),
+                        # 3 assigned for 2 quantity
+                    ],
+                    adjustments=[],
+                    participants=ps,
+                )
+            )
 
 
 @pytest.mark.unit
@@ -525,9 +623,15 @@ class TestDeterminism:
             mode="item_wise",
             items=items,
             assignments=[
-                SplitAssignment(item_id=items[0].id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)),
-                SplitAssignment(item_id=items[0].id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)),
-                SplitAssignment(item_id=items[1].id, participant_id=ps[2].id, claimed_qty=1, created_at=_ts(2)),
+                SplitAssignment(
+                    item_id=items[0].id, participant_id=ps[0].id, claimed_qty=1, created_at=_ts(0)
+                ),
+                SplitAssignment(
+                    item_id=items[0].id, participant_id=ps[1].id, claimed_qty=1, created_at=_ts(1)
+                ),
+                SplitAssignment(
+                    item_id=items[1].id, participant_id=ps[2].id, claimed_qty=1, created_at=_ts(2)
+                ),
             ],
             adjustments=[],
             participants=ps,

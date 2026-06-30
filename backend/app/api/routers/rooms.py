@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from app.services.room_service import RoomService
 
 if True:
-
     pass
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"], responses=ERROR_RESPONSES)
@@ -48,10 +47,16 @@ async def create_room(
     db: AsyncSession = Depends(get_db),
     service: RoomService = Depends(get_room_service),
 ) -> RoomCreateResponse:
-    room, creator_token, invite_token = await service.create_room(db, split_mode=payload.split_mode)
+    room, creator_token, invite_token = await service.create_room(
+        db, split_mode=payload.split_mode
+    )
     if auth_ctx.user is not None:
         await attach_room_owner(room.id, auth_ctx.user, db)
-    return RoomCreateResponse(room=RoomResponse.model_validate(room), creator_token=creator_token, invite_token=invite_token)
+    return RoomCreateResponse(
+        room=RoomResponse.model_validate(room),
+        creator_token=creator_token,
+        invite_token=invite_token,
+    )
 
 
 @router.get(
@@ -89,12 +94,18 @@ async def update_room(
     if "status" in changes:
         if len(changes) > 1:
             from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="Cannot mix status update with other fields")
+
+            raise HTTPException(
+                status_code=400, detail="Cannot mix status update with other fields"
+            )
 
         target_status = changes["status"]
         if target_status in ("settled", "expired"):
             from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail=f"Status {target_status} cannot be set manually via PATCH")
+
+            raise HTTPException(
+                status_code=400, detail=f"Status {target_status} cannot be set manually via PATCH"
+            )
 
         room = await service.transition_room(
             db,

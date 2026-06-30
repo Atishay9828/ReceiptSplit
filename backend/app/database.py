@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 # ── SQLAlchemy base class for all ORM models ──────────────────────────────────
 
+
 class Base(DeclarativeBase):
     """
     Shared declarative base.  All ORM table models inherit from this.
@@ -46,6 +47,7 @@ class Base(DeclarativeBase):
 
 # ── Engine ────────────────────────────────────────────────────────────────────
 
+
 def _build_engine() -> AsyncEngine:
     """
     Creates the async SQLAlchemy engine from settings.
@@ -58,7 +60,7 @@ def _build_engine() -> AsyncEngine:
     """
     return create_async_engine(
         settings.database_url,
-        echo=settings.is_development,   # log SQL in development only
+        echo=settings.is_development,  # log SQL in development only
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
@@ -77,7 +79,7 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,  # objects remain accessible after commit
-    autoflush=False,          # explicit flush control in service layer
+    autoflush=False,  # explicit flush control in service layer
     autocommit=False,
 )
 
@@ -95,4 +97,5 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
         # Transaction committed successfully.
         from app.services.registry import get_event_publisher
+
         await get_event_publisher().flush_deferred_events(session)

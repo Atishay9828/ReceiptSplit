@@ -22,7 +22,7 @@ async def _settlement_room(api_client: Any) -> Any:
         json={
             "invite_token": created["invite_token"],
             "nickname": "Bob",
-            },
+        },
     )
     assert join_response.status_code == 201
     item_response = await api_client.post(

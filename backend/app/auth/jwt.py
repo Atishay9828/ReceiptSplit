@@ -23,8 +23,7 @@ class JwtClaims:
 class JwtVerifier(Protocol):
     """Verifies a bearer JWT and returns normalized identity claims."""
 
-    async def verify(self, token: str) -> JwtClaims:
-        ...
+    async def verify(self, token: str) -> JwtClaims: ...
 
 
 def _decode_base64url_json(value: str) -> dict[str, Any]:

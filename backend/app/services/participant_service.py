@@ -64,6 +64,7 @@ class ParticipantService:
         async with db.begin_nested():
             if color is None:
                 from app.shared.validators import pick_available_color
+
                 active_participants = await self._participant_repo.list_active(db, room_id)
                 used_colors = {p.color for p in active_participants}
                 color = pick_available_color(used_colors)
@@ -95,14 +96,10 @@ class ParticipantService:
 
         return participant, raw_token
 
-    async def list_active(
-        self, db: AsyncSession, room_id: UUID
-    ) -> list[RoomParticipant]:
+    async def list_active(self, db: AsyncSession, room_id: UUID) -> list[RoomParticipant]:
         """List all active (non-left) participants for a room."""
         return await self._participant_repo.list_active(db, room_id)
 
-    async def get_by_token(
-        self, db: AsyncSession, token_hash: str
-    ) -> RoomParticipant | None:
+    async def get_by_token(self, db: AsyncSession, token_hash: str) -> RoomParticipant | None:
         """Look up a participant by their token hash."""
         return await self._participant_repo.get_by_token(db, token_hash)

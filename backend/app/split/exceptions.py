@@ -25,9 +25,7 @@ class NegativeTotalViolation(SplitInvariantFailed):
     """A participant's total_paise is negative."""
 
     def __init__(self, participant_id: str, total_paise: int) -> None:
-        super().__init__(
-            f"Negative total for participant {participant_id}: {total_paise} paise"
-        )
+        super().__init__(f"Negative total for participant {participant_id}: {total_paise} paise")
 
 
 class NegativePayerTotalViolation(SplitInvariantFailed):

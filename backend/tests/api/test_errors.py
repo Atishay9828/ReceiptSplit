@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.api.errors import domain_error_status

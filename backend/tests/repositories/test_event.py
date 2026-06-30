@@ -1,4 +1,5 @@
 """Tests for PostgresEventRepository — Atomic sequencing and rollback."""
+
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +66,7 @@ async def test_concurrent_event_sequencing(async_engine: AsyncEngine):
 
     count = 10
     tasks = [append_event(i) for i in range(count)]
-    
+
     # Gather results.
     results = await asyncio.gather(*tasks)
 
@@ -120,9 +121,7 @@ async def test_event_rollback_on_transaction_failure(async_engine: AsyncEngine):
 
     # Insert a second event and commit successfully.
     async with async_engine.connect() as conn:
-        result = await conn.execute(
-            select(RoomEvent).where(RoomEvent.room_id == room_id)
-        )
+        result = await conn.execute(select(RoomEvent).where(RoomEvent.room_id == room_id))
         events = result.all()
         assert len(events) == 1
         assert events[0].event_type == "successful_event"

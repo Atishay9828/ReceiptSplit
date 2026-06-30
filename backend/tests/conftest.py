@@ -30,12 +30,14 @@ if TYPE_CHECKING:
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def fixed_clock():
     """Returns a FixedClock set to 2026-06-01T12:00:00Z."""
     from datetime import datetime
 
     from app.shared.clock import FixedClock
+
     return FixedClock(datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC))
 
 

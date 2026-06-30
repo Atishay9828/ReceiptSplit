@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Room Service
 
@@ -40,7 +39,6 @@ if TYPE_CHECKING:
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     pass
 
 logger = logging.getLogger(__name__)
@@ -121,9 +119,7 @@ class RoomService:
             )
             await db.refresh(room)
 
-        await self._events.broadcast(
-            room.id, "room.created", {"split_mode": split_mode}, seq
-        )
+        await self._events.broadcast(room.id, "room.created", {"split_mode": split_mode}, seq)
 
         return room, raw_creator_token, raw_invite_token
 
@@ -154,9 +150,7 @@ class RoomService:
         Raises VersionConflict if stale.
         """
         async with db.begin_nested():
-            updated = await self._room_repo.update(
-                db, room_id, expected_version, update_fields
-            )
+            updated = await self._room_repo.update(db, room_id, expected_version, update_fields)
             if not updated:
                 raise VersionConflict()
 

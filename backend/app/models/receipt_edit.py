@@ -33,6 +33,4 @@ class ReceiptEdit(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    __table_args__ = (
-        Index("idx_receipt_edits_receipt", "receipt_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_receipt_edits_receipt", "receipt_id", "created_at"),)

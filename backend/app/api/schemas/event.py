@@ -6,11 +6,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RoomEventResponse(BaseModel):
     """Single room event as returned by the replay and stream endpoints."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     room_id: UUID

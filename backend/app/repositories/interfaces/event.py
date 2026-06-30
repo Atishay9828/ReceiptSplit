@@ -52,5 +52,5 @@ class AppendResult:
     """Return value from append_in_tx: the assigned event identity."""
 
     sequence_no: int
-    event_id: str    # UUID as string — safe to pass across asyncio boundaries
+    event_id: str  # UUID as string — safe to pass across asyncio boundaries
     created_at: datetime
