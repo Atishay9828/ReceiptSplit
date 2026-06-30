@@ -25,10 +25,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator  # noqa: TC003
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:

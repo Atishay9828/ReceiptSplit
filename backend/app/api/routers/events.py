@@ -36,11 +36,11 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from fastapi import APIRouter, Depends, Query, Header, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.api.errors import ERROR_RESPONSES
@@ -130,7 +130,7 @@ async def list_room_events(
         default=0, ge=0, description="Exclusive lower bound on sequence_no"
     ),
     limit: int = Query(
-        default=100, ge=1, le=MAX_LIMIT, description="Max events to return (1–500)"
+        default=100, ge=1, le=MAX_LIMIT, description="Max events to return (1-500)"
     ),
     _ctx: RequestAuthContext = Depends(require_room_event_access),
     db: AsyncSession = Depends(get_db),

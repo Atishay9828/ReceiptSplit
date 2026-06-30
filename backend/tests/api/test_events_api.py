@@ -24,7 +24,9 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.realtime.broker import RoomEventBroker
+    from app.realtime.broker import RoomEventBroker, RoomEventDTO
+
+ActiveRoom = dict[str, str]
 
 
 pytestmark = pytest.mark.asyncio
@@ -33,12 +35,12 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def broker() -> "RoomEventBroker":
+def broker() -> RoomEventBroker:
     return get_broker()
 
 
 @pytest.fixture
-async def active_room(api_client: "AsyncClient") -> dict:
+async def active_room(api_client: AsyncClient) -> ActiveRoom:
     """Creates a room via API and returns room_id and tokens."""
     r = await api_client.post("/api/rooms", json={"split_mode": "equal"})
     assert r.status_code == 201
@@ -68,8 +70,8 @@ async def active_room(api_client: "AsyncClient") -> dict:
 
 
 async def test_list_room_events_requires_auth(
-    api_client: "AsyncClient",
-    active_room: dict,
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
 ) -> None:
     """Missing token -> 401."""
     room_id = active_room["room_id"]
@@ -78,8 +80,8 @@ async def test_list_room_events_requires_auth(
 
 
 async def test_list_room_events_with_participant_token(
-    api_client: "AsyncClient",
-    active_room: dict,
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
 ) -> None:
     """Capability token grants access."""
     room_id = active_room["room_id"]
@@ -95,8 +97,8 @@ async def test_list_room_events_with_participant_token(
 
 
 async def test_list_room_events_rejects_cross_room_token(
-    api_client: "AsyncClient",
-    active_room: dict,
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
 ) -> None:
     """Token for room A cannot access room B."""
     room_a_token = active_room["participant_token"]
@@ -113,8 +115,8 @@ async def test_list_room_events_rejects_cross_room_token(
 
 
 async def test_list_room_events_after_sequence(
-    api_client: "AsyncClient",
-    active_room: dict,
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
 ) -> None:
     """after_sequence filters the returned events."""
     room_id = active_room["room_id"]
@@ -141,8 +143,8 @@ async def test_list_room_events_after_sequence(
 
 
 async def test_latest_sequence_endpoint(
-    api_client: "AsyncClient",
-    active_room: dict,
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
 ) -> None:
     room_id = active_room["room_id"]
     token = active_room["creator_token"]
@@ -161,9 +163,9 @@ async def test_latest_sequence_endpoint(
 
 
 async def test_failed_mutation_does_not_publish_event(
-    active_room: dict,
-    db_session: "AsyncSession",
-    broker: "RoomEventBroker",
+    active_room: ActiveRoom,
+    db_session: AsyncSession,
+    broker: RoomEventBroker,
 ) -> None:
     """
     Proves that if an outer transaction rolls back (e.g. exception raised in route),
@@ -175,7 +177,7 @@ async def test_failed_mutation_does_not_publish_event(
     room_id = UUID(active_room["room_id"])
     publisher = get_event_publisher()
 
-    received = []
+    received: list[RoomEventDTO] = []
 
     async def _consume() -> None:
         async with broker.subscribe(room_id) as stream:
@@ -239,9 +241,9 @@ async def test_failed_mutation_does_not_publish_event(
 
 
 async def test_event_stream_replays_missed_events(
-    api_client: "AsyncClient",
-    active_room: dict,
-    broker: "RoomEventBroker",
+    api_client: AsyncClient,
+    active_room: ActiveRoom,
+    broker: RoomEventBroker,
 ) -> None:
     """Smoke test: SSE endpoint replays missed events correctly formatted."""
     room_id = active_room["room_id"]

@@ -6,14 +6,21 @@ Requires: postgres_container (from conftest.py), db_session, async_engine.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.interfaces.event import AppendResult
 from app.repositories.postgres.event import PostgresEventRepository
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+SeededRoom = dict[str, "UUID"]
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -24,7 +31,7 @@ async def event_repo() -> PostgresEventRepository:
 
 
 @pytest_asyncio.fixture
-async def seeded_room(db_session: AsyncSession) -> dict:
+async def seeded_room(db_session: AsyncSession) -> SeededRoom:
     """
     Create a minimal room + room_sequence row using raw SQL
     (no service layer needed for repo-level tests).
@@ -55,7 +62,7 @@ async def seeded_room(db_session: AsyncSession) -> dict:
 
 @pytest.mark.asyncio
 async def test_append_in_tx_returns_append_result(
-    seeded_room: dict,
+    seeded_room: SeededRoom,
     db_session: AsyncSession,
     event_repo: PostgresEventRepository,
 ) -> None:
@@ -70,7 +77,7 @@ async def test_append_in_tx_returns_append_result(
 
 @pytest.mark.asyncio
 async def test_list_events_after_sequence(
-    seeded_room: dict,
+    seeded_room: SeededRoom,
     db_session: AsyncSession,
     event_repo: PostgresEventRepository,
 ) -> None:
@@ -95,7 +102,7 @@ async def test_list_events_after_sequence(
 
 @pytest.mark.asyncio
 async def test_events_ordered_by_sequence(
-    seeded_room: dict,
+    seeded_room: SeededRoom,
     db_session: AsyncSession,
     event_repo: PostgresEventRepository,
 ) -> None:
@@ -112,7 +119,7 @@ async def test_events_ordered_by_sequence(
 
 @pytest.mark.asyncio
 async def test_latest_sequence(
-    seeded_room: dict,
+    seeded_room: SeededRoom,
     db_session: AsyncSession,
     event_repo: PostgresEventRepository,
 ) -> None:
@@ -171,7 +178,7 @@ async def test_events_scoped_to_room(
 
 @pytest.mark.asyncio
 async def test_list_after_respects_limit(
-    seeded_room: dict,
+    seeded_room: SeededRoom,
     db_session: AsyncSession,
     event_repo: PostgresEventRepository,
 ) -> None:
