@@ -1,0 +1,145 @@
+export type SplitMode = "equal" | "item_wise";
+export type RoomStatus = "draft" | "active" | "settling" | "settled" | "archived" | "expired";
+export type AdjustmentType = "tax" | "service_charge" | "delivery_fee" | "discount" | "adjustment";
+export type AllocationMethod = "proportional" | "equal";
+
+export type ApiErrorShape = {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: unknown;
+  };
+  detail?: string;
+};
+
+export type ApiError = Error & {
+  status: number;
+  code: string;
+  details?: unknown;
+};
+
+export type Room = {
+  id: string;
+  status: RoomStatus;
+  split_mode: SplitMode;
+  payer_vpa: string | null;
+  payer_name: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+};
+
+export type Participant = {
+  id: string;
+  room_id: string;
+  nickname: string;
+  color: string;
+  role: "creator" | "participant";
+  joined_at: string;
+};
+
+export type Item = {
+  id: string;
+  receipt_id: string;
+  name: string;
+  quantity: number;
+  total_paise: number;
+  source: string;
+  confidence: number;
+  sort_order: number;
+  version: number;
+  created_at: string;
+};
+
+export type Assignment = {
+  id: string;
+  room_id: string;
+  line_item_id: string;
+  participant_id: string;
+  claimed_qty: number;
+  created_at: string;
+};
+
+export type Adjustment = {
+  id: string;
+  room_id: string;
+  type: AdjustmentType;
+  label: string;
+  amount_paise: number;
+  rate_basis_points: number | null;
+  allocation_method: AllocationMethod;
+  sort_order: number;
+  version: number;
+  created_at: string;
+};
+
+export type RoomCreateRequest = {
+  split_mode: SplitMode;
+  payer_name?: string;
+  payer_vpa?: string;
+};
+
+export type RoomCreateResponse = {
+  room: Room;
+  creator_token: string;
+  invite_token: string;
+};
+
+export type RoomSummary = {
+  room: Room;
+  participants: Participant[];
+  items: Item[];
+  adjustments: Adjustment[];
+  assignments: Assignment[];
+};
+
+export type JoinRoomResponse = {
+  participant: Participant;
+  participant_token: string;
+};
+
+export type ItemPayload = {
+  name: string;
+  quantity: number;
+  total_paise: number;
+};
+
+export type ClaimPayload = {
+  item_version: number;
+  claimed_qty: number;
+};
+
+export type AdjustmentPayload = {
+  type: AdjustmentType;
+  label: string;
+  amount_paise: number;
+  allocation_method: AllocationMethod;
+};
+
+export type ParticipantTotal = {
+  participant_id: string;
+  items_paise: number;
+  discount_paise: number;
+  tax_paise: number;
+  service_charge_paise: number;
+  delivery_fee_paise: number;
+  adjustment_paise: number;
+  total_paise: number;
+  is_payer: boolean;
+};
+
+export type SplitPreview = {
+  grand_total_paise: number;
+  participant_totals: ParticipantTotal[];
+};
+
+export type RoomEvent = {
+  id?: string;
+  room_id?: string;
+  sequence_no: number;
+  event_type: string;
+  actor_id?: string | null;
+  payload?: Record<string, unknown>;
+  created_at?: string;
+};
