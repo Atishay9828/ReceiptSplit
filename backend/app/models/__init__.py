@@ -6,9 +6,13 @@ All models are exported here for easy access by Alembic and other modules.
 
 from app.models.line_item import LineItem
 from app.models.line_item_assignment import LineItemAssignment
+from app.models.ocr_job import OcrJob
+from app.models.ocr_result import OcrResult
+from app.models.parsed_receipt import ParsedReceipt
 from app.models.participant_total import ParticipantTotal
 from app.models.receipt import Receipt
 from app.models.receipt_edit import ReceiptEdit
+from app.models.receipt_image import ReceiptImage
 from app.models.room import Room
 from app.models.room_event import RoomEvent
 from app.models.room_invite import RoomInvite
@@ -21,9 +25,13 @@ from app.models.user import User
 __all__ = [
     "LineItem",
     "LineItemAssignment",
+    "OcrJob",
+    "OcrResult",
+    "ParsedReceipt",
     "ParticipantTotal",
     "Receipt",
     "ReceiptEdit",
+    "ReceiptImage",
     "Room",
     "RoomEvent",
     "RoomInvite",

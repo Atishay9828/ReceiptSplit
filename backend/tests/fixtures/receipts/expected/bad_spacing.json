@@ -1,0 +1,13 @@
+{
+  "merchant_name": "TACO BELL",
+  "subtotal_paise": null,
+  "tax_paise": 1240,
+  "discount_paise": null,
+  "total_paise": 26040,
+  "items": [
+    {"name": "Taco Supreme", "quantity": 1, "unit_price_paise": null, "total_paise": 14900, "confidence": 1.0},
+    {"name": "Nachos", "quantity": 1, "unit_price_paise": 9900, "total_paise": 9900, "confidence": 1.0}
+  ],
+  "warnings": ["tax_detected"],
+  "needs_review": false
+}

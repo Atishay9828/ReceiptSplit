@@ -1,0 +1,13 @@
+{
+  "merchant_name": "DOSAI CORNER",
+  "subtotal_paise": null,
+  "tax_paise": null,
+  "discount_paise": null,
+  "total_paise": 10000,
+  "items": [
+    {"name": "Idli Plate", "quantity": 1, "unit_price_paise": null, "total_paise": 7000, "confidence": 1.0},
+    {"name": "Vada", "quantity": 1, "unit_price_paise": null, "total_paise": 3000, "confidence": 1.0}
+  ],
+  "warnings": [],
+  "needs_review": false
+}

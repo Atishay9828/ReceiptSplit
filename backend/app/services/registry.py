@@ -12,6 +12,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.config import settings
+from app.ocr.parser import IndianRestaurantReceiptParser
+from app.ocr.preprocessing import BasicReceiptPreprocessor
+from app.ocr.providers import MockOcrProvider, TesseractOcrProvider
+from app.ocr.service import ReceiptOcrService
+from app.ocr.storage import LocalReceiptImageStorage
+from app.ocr.validation import ImageValidationConfig, ReceiptImageValidator
 from app.realtime.broker import RoomEventBroker
 from app.repositories.postgres import (
     PostgresAdjustmentRepository,
@@ -139,3 +146,34 @@ def get_split_service() -> SplitService:
         session_repo=r["split_session"],
     )
     return SplitService(lock_coordinator=coordinator, preview=preview)
+
+
+@lru_cache(maxsize=1)
+def get_ocr_service() -> ReceiptOcrService:
+    r = _repos()
+    validator = ReceiptImageValidator(
+        ImageValidationConfig(
+            max_bytes=settings.ocr_max_image_bytes,
+            max_width=settings.ocr_max_width,
+            max_height=settings.ocr_max_height,
+        )
+    )
+    provider = (
+        MockOcrProvider()
+        if settings.ocr_provider == "mock"
+        else TesseractOcrProvider(
+            tesseract_cmd=settings.tesseract_cmd,
+            timeout_seconds=settings.ocr_timeout_seconds,
+        )
+    )
+    return ReceiptOcrService(
+        room_repo=r["room"],
+        receipt_repo=r["receipt"],
+        validator=validator,
+        preprocessor=BasicReceiptPreprocessor(validator),
+        storage=LocalReceiptImageStorage(settings.ocr_local_storage_dir),
+        provider=provider,
+        parser=IndianRestaurantReceiptParser(),
+        event_publisher=get_event_publisher(),
+        store_raw_text=settings.ocr_store_raw_text,
+    )

@@ -1,0 +1,5 @@
+TACO  BELL
+  Taco Supreme        149
+Nachos       1 x 99.00       99
+SERVICE CHARGE  12.40
+TOTAL     260.40

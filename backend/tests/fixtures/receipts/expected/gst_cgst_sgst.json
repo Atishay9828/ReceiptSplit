@@ -1,0 +1,13 @@
+{
+  "merchant_name": "SPICE ROOM",
+  "subtotal_paise": 34000,
+  "tax_paise": 1700,
+  "discount_paise": null,
+  "total_paise": 35700,
+  "items": [
+    {"name": "Paneer Tikka", "quantity": 1, "unit_price_paise": null, "total_paise": 25000, "confidence": 1.0},
+    {"name": "Naan", "quantity": 2, "unit_price_paise": 4500, "total_paise": 9000, "confidence": 1.0}
+  ],
+  "warnings": ["tax_detected"],
+  "needs_review": false
+}

@@ -77,6 +77,17 @@ class Settings(BaseSettings):
     auth_oidc_audience: str | None = None
     auth_jwks_url: str | None = None
 
+    # OCR MVP: free-first and local by default. Use "mock" in tests/dev fixtures.
+    ocr_provider: Literal["mock", "tesseract"] = "tesseract"
+    ocr_max_image_bytes: int = 5 * 1024 * 1024
+    ocr_max_width: int = 5000
+    ocr_max_height: int = 5000
+    ocr_timeout_seconds: int = 30
+    tesseract_cmd: str = "tesseract"
+    ocr_storage_backend: Literal["local"] = "local"
+    ocr_local_storage_dir: str = ".local/ocr"
+    ocr_store_raw_text: bool = True
+
     # ── Development helpers ───────────────────────────────────────────────────
     @property
     def is_development(self) -> bool:

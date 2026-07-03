@@ -1,0 +1,13 @@
+{
+  "merchant_name": "URBAN THALI",
+  "subtotal_paise": 24000,
+  "tax_paise": null,
+  "discount_paise": -2000,
+  "total_paise": 22050,
+  "items": [
+    {"name": "Veg Thali", "quantity": 1, "unit_price_paise": null, "total_paise": 18000, "confidence": 1.0},
+    {"name": "Lassi", "quantity": 1, "unit_price_paise": null, "total_paise": 6000, "confidence": 1.0}
+  ],
+  "warnings": ["discount_detected"],
+  "needs_review": false
+}

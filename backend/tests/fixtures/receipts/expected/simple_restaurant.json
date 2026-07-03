@@ -1,0 +1,13 @@
+{
+  "merchant_name": "CAFE SOUTH",
+  "subtotal_paise": 20000,
+  "tax_paise": null,
+  "discount_paise": null,
+  "total_paise": 20000,
+  "items": [
+    {"name": "Masala Dosa", "quantity": 1, "unit_price_paise": null, "total_paise": 12000, "confidence": 1.0},
+    {"name": "Filter Coffee", "quantity": 2, "unit_price_paise": 4000, "total_paise": 8000, "confidence": 1.0}
+  ],
+  "warnings": [],
+  "needs_review": false
+}
