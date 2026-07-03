@@ -19,21 +19,31 @@ ReceiptSplit/
 
 See [`backend/README.md`](backend/README.md) for full setup instructions.
 
-**Quick start (backend):**
-```bash
+**Quick start (local Postgres + backend):**
+```powershell
+docker compose -f docker-compose.dev.yml up -d
 cd backend
 uv sync
+cp .env.example .env
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+**Quick start (frontend):**
+```powershell
+cd frontend
+copy .env.example .env.local
+npm install
+npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
 ## Architecture
 
 - **Backend:** FastAPI (Python 3.12), modular monolith
-- **Database:** PostgreSQL via Supabase (with RLS)
+- **Database:** PostgreSQL 15 for local development; Supabase remains the production-oriented target
 - **Auth:** Capability tokens for participants; Supabase Auth for creators (Phase 2)
 - **Realtime:** Supabase Realtime broadcast channels
-- **OCR:** Google Vision API behind `OcrProvider` abstraction (Phase 3)
+- **OCR:** Free-first `OcrProvider` abstraction with mock and Tesseract providers
 
 ## Development Phases
 

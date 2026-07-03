@@ -97,3 +97,40 @@ cd D:\ReceiptSplit\backend
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m mypy app\ocr app\api\routers\ocr.py app\api\schemas\ocr.py app\models\receipt_image.py app\models\ocr_job.py app\models\ocr_result.py app\models\parsed_receipt.py
 ```
+
+## M011.1 Local Browser Smoke
+
+Local database setup:
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d
+cd D:\ReceiptSplit\backend
+$env:RECEIPTSPLIT_DATABASE_URL="postgresql+asyncpg://receiptsplit:receiptsplit@127.0.0.1:54329/receiptsplit_dev"
+$env:RECEIPTSPLIT_CORS_ORIGINS="http://127.0.0.1:3000,http://localhost:3000"
+$env:RECEIPTSPLIT_OCR_PROVIDER="mock"
+$env:RECEIPTSPLIT_OCR_STORAGE_BACKEND="local"
+$env:RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR=".local/ocr"
+$env:RECEIPTSPLIT_OCR_STORE_RAW_TEXT="false"
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Frontend:
+
+```powershell
+cd D:\ReceiptSplit\frontend
+$env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8000"
+npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+```
+
+Smoke evidence:
+
+- Sample receipt: `docs/reports/screenshots/M011.1/sample-receipt.jpg`.
+- Screenshots: `create-page.png`, `creator-room-upload-card.png`, `ocr-draft-review.png`,
+  `ocr-confirmed-items.png`, `participant-claim-after-ocr.png`, and
+  `split-preview-after-ocr.png` in `docs/reports/screenshots/M011.1/`.
+- Smoke room: `41667706-00bc-4029-a823-4219ed3b87ad`.
+- Result: OCR draft edited and confirmed into room items, participant joined separately, both
+  OCR-created items were claimed, and split preview returned `44600` paise.
+- Caveat: creator lock/unlock was not exercised; the scripted creator pass still saw Lock disabled
+  after preview.

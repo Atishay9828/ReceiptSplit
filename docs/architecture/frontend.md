@@ -66,6 +66,14 @@ action. The creator can add, edit, and delete manual receipt items, add supporte
 participants, share an invite link/QR/WhatsApp link, preview the split, lock the split, and unlock
 if supported by backend state.
 
+## OCR Review Flow
+
+M011.1 adds the creator OCR review UI to the existing creator room. The creator selects a PNG/JPEG
+receipt, uploads it to `POST /api/rooms/{room_id}/receipts/upload`, reviews the parsed draft, edits
+item names or amounts, saves the draft if needed, and confirms it into normal room items and
+adjustments. Confirmation does not auto-share, auto-claim, or auto-lock the room; the existing
+participant claim and split-preview flow still controls settlement readiness.
+
 ## Participant Flow
 
 Participants join with nickname only through `/join/[inviteToken]`; no login is required. Their
@@ -136,5 +144,7 @@ It returns room metadata, participants, active items, active adjustments, and cu
 - Invite URL encoding is frontend-specific because the backend does not expose a room-id-free invite
   lookup endpoint.
 - Realtime is process-local on the backend per M009.
-- There is no OCR, camera upload, UPI settlement, payment verification, wallet, escrow, native app,
-  analytics, or deployment work in M010.
+- Creator lock/unlock after OCR-created item claims was not exercised in the M011.1 browser smoke
+  because the scripted creator pass still saw Lock disabled after preview.
+- There is no camera capture, UPI settlement, payment verification, wallet, escrow, native app,
+  analytics, or deployment work in M011.1.

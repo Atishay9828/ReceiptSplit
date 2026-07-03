@@ -20,6 +20,18 @@ async def test_mock_provider_returns_fixture_text() -> None:
     assert result.provider == "mock"
 
 
+async def test_mock_provider_default_is_receipt_like() -> None:
+    provider = MockOcrProvider()
+
+    result = await provider.extract_text(
+        OcrImageInput(content=b"image", content_type="image/png", width=1, height=1)
+    )
+
+    assert "ReceiptSplit Cafe" in result.raw_text
+    assert "TOTAL 441.00" in result.raw_text
+    assert result.provider == "mock"
+
+
 async def test_tesseract_provider_missing_binary_maps_to_domain_error() -> None:
     provider = TesseractOcrProvider(tesseract_cmd="definitely-missing-tesseract", timeout_seconds=1)
 

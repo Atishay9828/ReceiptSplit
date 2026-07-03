@@ -7,6 +7,9 @@ M010 PASS.
 M010.1 CONDITIONAL PASS for code and automated validation; final manual browser evidence remains
 blocked by local Docker/Postgres and npm audit network escalation quota.
 
+M011.1 CONDITIONAL PASS for local OCR browser smoke. Docker is available; the prior
+ConnectionRefusedError was local app database setup, not Docker being off.
+
 ## Scope Completed
 
 - Next.js mobile-first frontend scaffold.
@@ -66,7 +69,36 @@ Validation:
 
 Deferred:
 
-- Frontend OCR UI.
 - Worker-backed OCR processing.
 - Advanced Pillow/OpenCV preprocessing.
 - EasyOCR, PaddleOCR, Google Vision, and custom ML providers.
+
+## M011.1 Local Browser Smoke
+
+Completed:
+
+- Added `docker-compose.dev.yml` for local Postgres 15 on `127.0.0.1:54329`.
+- Updated backend and frontend env examples for the local backend/frontend pair.
+- Added `pgcrypto` creation to the first migration for fresh local databases.
+- Added `psycopg2-binary` for Alembic's sync migration URL.
+- Fixed comma-separated `RECEIPTSPLIT_CORS_ORIGINS` parsing.
+- Made `MockOcrProvider` return deterministic synthetic receipt text by default.
+- Captured M011.1 screenshots under `docs/reports/screenshots/M011.1/`.
+
+Validation:
+
+- `uv run pytest tests/ -q`: passed with three skipped tests.
+- `uv run ruff check .`: passed.
+- Focused changed-scope mypy: passed.
+- `uv run mypy .`: known strict baseline failure, 383 errors in 31 files.
+- `npm.cmd run lint`: passed.
+- `npm.cmd run typecheck`: passed.
+- `npm.cmd test`: passed, 8 files and 34 tests.
+- `npm.cmd run build`: passed.
+- `npm.cmd audit --json`: two moderate Next/PostCSS advisories; no force fix run.
+
+Remaining:
+
+- Commit the final closeout changes.
+- Promote the smoke script to a maintained E2E test if this flow becomes a recurring gate.
+- Investigate why creator Lock stayed disabled in the scripted post-preview pass.

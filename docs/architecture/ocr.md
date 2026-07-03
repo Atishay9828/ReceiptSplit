@@ -75,17 +75,35 @@ the existing event transport.
 
 ## Configuration
 
-- `OCR_PROVIDER=tesseract | mock`
-- `TESSERACT_CMD=tesseract`
-- `OCR_TIMEOUT_SECONDS=30`
-- `OCR_MAX_IMAGE_BYTES=5242880`
-- `OCR_MAX_WIDTH=5000`
-- `OCR_MAX_HEIGHT=5000`
-- `OCR_STORAGE_BACKEND=local`
-- `OCR_LOCAL_STORAGE_DIR=.local/ocr`
-- `OCR_STORE_RAW_TEXT=true`
+- `RECEIPTSPLIT_OCR_PROVIDER=tesseract | mock`
+- `RECEIPTSPLIT_TESSERACT_CMD=tesseract`
+- `RECEIPTSPLIT_OCR_TIMEOUT_SECONDS=30`
+- `RECEIPTSPLIT_OCR_MAX_IMAGE_BYTES=5242880`
+- `RECEIPTSPLIT_OCR_MAX_WIDTH=5000`
+- `RECEIPTSPLIT_OCR_MAX_HEIGHT=5000`
+- `RECEIPTSPLIT_OCR_STORAGE_BACKEND=local`
+- `RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR=.local/ocr`
+- `RECEIPTSPLIT_OCR_STORE_RAW_TEXT=true`
 
-The settings are exposed with the existing `RECEIPTSPLIT_` prefix.
+For local browser smoke, use `RECEIPTSPLIT_OCR_PROVIDER=mock`. The mock provider now has a
+deterministic synthetic receipt fixture by default, so local OCR review can be exercised without
+Tesseract or paid OCR credentials.
+
+## Local Development Database
+
+Local browser smoke uses `docker-compose.dev.yml` with Postgres 15 on host port `54329`:
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d
+cd backend
+$env:RECEIPTSPLIT_DATABASE_URL="postgresql+asyncpg://receiptsplit:receiptsplit@127.0.0.1:54329/receiptsplit_dev"
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Alembic derives a sync `postgresql+psycopg2://...` URL from the async URL, so `psycopg2-binary` is
+a runtime dependency. Revision `001` creates `pgcrypto` before table creation because the schema
+uses `gen_random_uuid()`.
 
 ## Deferred
 

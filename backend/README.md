@@ -6,24 +6,30 @@ FastAPI backend for ReceiptSplit. Python 3.12, SQLAlchemy 2 async, PostgreSQL.
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) package manager
-- PostgreSQL 15+ (or Supabase project)
+- Docker Desktop for the local Postgres compose service, or another PostgreSQL 15+ database
 
 ## Setup
 
-```bash
+```powershell
+# Start local Postgres on 127.0.0.1:54329
+docker compose -f ..\docker-compose.dev.yml up -d
+
 # Install dependencies (creates .venv automatically)
 uv sync --extra dev
 
 # Copy environment template
 cp .env.example .env
-# Edit .env with your database URL and Supabase keys
+# The template points to the local compose database and safe dev OCR defaults.
 
 # Run migrations
 uv run alembic upgrade head
 
 # Start development server
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+
+Alembic runs synchronously and derives a `postgresql+psycopg2://...` URL from
+`RECEIPTSPLIT_DATABASE_URL`, so `psycopg2-binary` is a normal backend dependency.
 
 ## Environment Variables
 
@@ -34,6 +40,8 @@ uv run uvicorn app.main:app --reload --port 8000
 | `RECEIPTSPLIT_SUPABASE_SERVICE_KEY` | Yes | Supabase service role key (for Realtime publishing) |
 | `RECEIPTSPLIT_ENV` | No | `development` / `production` (default: `development`) |
 | `RECEIPTSPLIT_CORS_ORIGINS` | No | Comma-separated allowed origins |
+| `RECEIPTSPLIT_OCR_PROVIDER` | No | `mock` for local smoke, `tesseract` for local OCR binary |
+| `RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR` | No | Local private receipt image storage path |
 
 ## Running Tests
 

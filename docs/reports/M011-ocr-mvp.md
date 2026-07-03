@@ -121,15 +121,82 @@ this shell.
 Full backend mypy remains blocked by the pre-existing strict baseline. M011-introduced mypy errors
 are 0 based on focused mypy over new OCR source, API, schema, and model files.
 
+## M011.1 Local Browser Smoke
+
+Current local closeout no longer classifies the previous browser failure as Docker being off.
+Docker Desktop was reachable from this agent shell, and `docker ps` plus `docker info` worked.
+The actual blocker was local app database setup: the dev backend needed a running Postgres
+container, a valid `RECEIPTSPLIT_DATABASE_URL`, a sync Alembic driver, and fresh migrations.
+
+Local setup added:
+
+- `docker-compose.dev.yml` runs `postgres:15-alpine` on host port `54329`.
+- `backend/.env.example` now points to
+  `postgresql+asyncpg://receiptsplit:receiptsplit@127.0.0.1:54329/receiptsplit_dev`.
+- Alembic revision `001` creates `pgcrypto` before using `gen_random_uuid()`.
+- `psycopg2-binary` is now a backend dependency because Alembic uses the derived sync
+  `postgresql+psycopg2://...` URL.
+- `frontend/.env.example` sets `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`.
+
+Commands and results:
+
+- `docker compose -f docker-compose.dev.yml up -d`: passed; `receiptsplit-postgres-dev`
+  became healthy.
+- `uv run alembic upgrade head`: passed after adding `psycopg2-binary`.
+- Backend ran at `http://127.0.0.1:8000`; `GET /health` returned `{"status":"ok"}`.
+- `GET /openapi.json` contained OCR upload, OCR job, parsed receipt, patch, and confirm routes.
+- Frontend was already running at `http://127.0.0.1:3000`; starting a duplicate dev server
+  returned `EADDRINUSE`, and `/create` returned HTTP 200 from the existing server.
+
+Browser smoke result:
+
+- Created room `41667706-00bc-4029-a823-4219ed3b87ad`.
+- Uploaded `docs/reports/screenshots/M011.1/sample-receipt.jpg`.
+- Mock OCR produced a draft, creator edited `Paneer Tikka` to `Smoke Paneer Tikka` and changed
+  the amount to `245.00`.
+- Confirming the draft created normal room items: `Smoke Paneer Tikka` and `Masala Dosa`.
+- A separate participant context joined as `AJ Smoke`.
+- Participant-authenticated claim calls assigned both OCR-created items.
+- Split preview returned `44600` paise and the UI showed creator total `0.00` and participant
+  total `446.00`.
+- No auto-share and no auto-lock happened; the room remained `active`.
+- Creator lock/unlock was not exercised in this automated closeout because the Lock button stayed
+  disabled in the scripted creator pass after preview. Treat this as a remaining UI follow-up, not
+  as a backend split-preview failure.
+
+Screenshots:
+
+- `docs/reports/screenshots/M011.1/create-page.png`
+- `docs/reports/screenshots/M011.1/creator-room-upload-card.png`
+- `docs/reports/screenshots/M011.1/ocr-draft-review.png`
+- `docs/reports/screenshots/M011.1/ocr-confirmed-items.png`
+- `docs/reports/screenshots/M011.1/participant-claim-after-ocr.png`
+- `docs/reports/screenshots/M011.1/split-preview-after-ocr.png`
+
+Current validation:
+
+- `uv run pytest tests/ -q`: passed, with three skipped tests.
+- `uv run ruff check .`: passed.
+- Focused mypy for changed backend config/OCR provider tests passed:
+  `Success: no issues found in 4 source files`.
+- `uv run mypy .`: still fails on the known strict baseline, now reported as
+  `383 errors in 31 files (checked 172 source files)`.
+- Frontend `npm.cmd run lint`: passed.
+- Frontend `npm.cmd run typecheck`: passed.
+- Frontend `npm.cmd test`: passed, 8 files and 34 tests.
+- Frontend `npm.cmd run build`: passed on Next.js 16.2.9.
+- `npm.cmd audit --json`: two moderate advisories through Next/PostCSS
+  (`GHSA-qx2v-qp2m-jg93`); npm reports a semver-major downgrade-style fix, so no force fix was run.
+
 ## Deferred Work
 
 - Worker-backed OCR processing.
-- OCR frontend review UI.
 - Pillow/OpenCV grayscale, denoise, threshold, and deskew preprocessing.
 - EasyOCR/PaddleOCR/Google Vision providers.
 - Production object storage such as Supabase Storage.
 - Raw OCR retention policy automation.
-- Browser E2E coverage for OCR review.
+- Browser E2E coverage should be promoted from local smoke script to a committed test harness.
+- Creator lock enablement after OCR-created item claims needs a focused follow-up.
 
 ## Files Changed
 
@@ -172,11 +239,18 @@ uncommitted M010.1 frontend/docs changes that are intentionally not part of M011
 - [x] M011-introduced mypy errors are 0.
 - [x] `docs/reports/M011-ocr-mvp.md` exists.
 - [x] `docs/architecture/ocr.md` exists.
+- [x] Local dev Postgres compose path exists.
+- [x] Local M011.1 OCR browser smoke evidence exists.
 - [x] No paid OCR default, payment, deployment, or settlement work started.
-- [ ] Full backend suite passes: blocked by Docker/Testcontainers access in this environment.
-- [ ] Frontend OCR UI: deferred due dirty M010.1 frontend tree.
+- [x] Full backend suite passes with local Docker/Testcontainers access.
+- [x] Frontend OCR review UI is present and smoke-tested.
+- [ ] Full backend mypy passes: blocked by pre-existing strict baseline.
+- [ ] `npm audit --json` is clean: blocked by moderate Next/PostCSS advisory chain.
+- [ ] Creator lock/unlock is exercised after OCR-created claims.
 
 ## Verdict
 
-CONDITIONAL PASS for backend OCR MVP. The implementation meets the backend architecture and focused
-validation gates, but the full backend test-suite gate is blocked by environment-level Docker access.
+CONDITIONAL PASS for M011/M011.1 local closeout. The local Postgres path, migrations, backend,
+frontend, OCR review/confirm, item creation, participant claim state, and split preview are proven.
+Remaining conditions are the repo-wide mypy baseline, moderate npm audit advisories, and the
+unexercised creator lock/unlock UI path.

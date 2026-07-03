@@ -1,0 +1,20 @@
+services:
+  receiptsplit-postgres:
+    image: postgres:15-alpine
+    container_name: receiptsplit-postgres-dev
+    environment:
+      POSTGRES_USER: receiptsplit
+      POSTGRES_PASSWORD: receiptsplit
+      POSTGRES_DB: receiptsplit_dev
+    ports:
+      - "54329:5432"
+    volumes:
+      - receiptsplit_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U receiptsplit -d receiptsplit_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  receiptsplit_postgres_data:

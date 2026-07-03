@@ -38,6 +38,8 @@ depends_on: str | None = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+
     # ── rooms ─────────────────────────────────────────────────────────────────
     op.create_table(
         "rooms",

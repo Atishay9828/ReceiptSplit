@@ -5,9 +5,16 @@ import asyncio
 from app.ocr.contracts import OcrImageInput, OcrProviderResult
 from app.ocr.errors import OcrProviderFailed, OcrProviderTimeout, OcrProviderUnavailable
 
+DEFAULT_MOCK_RECEIPT_TEXT = """ReceiptSplit Cafe
+Paneer Tikka 240.00
+Masala Dosa 180.00
+CGST 10.50
+SGST 10.50
+TOTAL 441.00"""
+
 
 class MockOcrProvider:
-    def __init__(self, fixture_text: str = "") -> None:
+    def __init__(self, fixture_text: str = DEFAULT_MOCK_RECEIPT_TEXT) -> None:
         self._fixture_text = fixture_text
 
     async def extract_text(self, image: OcrImageInput) -> OcrProviderResult:
