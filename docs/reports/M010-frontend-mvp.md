@@ -122,6 +122,26 @@ blocked by the documented pre-existing baseline.
 - Browser E2E coverage.
 - Native mobile app and deployment.
 
+## M010.1 Preview Readiness Cleanup
+
+M010.1 gates split preview requests so item-wise rooms do not call
+`GET /api/rooms/{room_id}/split/preview` until every item quantity is fully claimed. Equal split
+rooms can preview after at least one participant exists and the room has positive item totals.
+
+Incomplete rooms now render a friendly not-ready preview card instead of producing normal-flow API
+validation noise, and the creator Lock button remains disabled until readiness is true and preview
+data exists. If backend validation still rejects a ready-gated preview, the frontend shows an inline
+retry message and suppresses repeated calls for the same summary state.
+
+Added frontend coverage for readiness decisions, lock gating, incomplete split messaging, and
+validation-failure suppression. Frontend lint, typecheck, Vitest, and build passed after the change.
+Backend regression tests and Ruff passed in preflight using the existing `.venv` fallback because
+`uv` is not installed in this shell.
+
+Manual browser screenshots and fresh `npm audit --json` are documented as blocked for this run:
+Docker/Postgres and npm registry network escalation were rejected by the environment quota. See
+`docs/reports/M010.1-preview-readiness-cleanup.md`.
+
 ## Files Changed
 
 Primary files:

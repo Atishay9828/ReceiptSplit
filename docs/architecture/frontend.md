@@ -90,6 +90,26 @@ The event client:
 
 For M010, events trigger refetches rather than optimistic event-payload application.
 
+## Split Preview Readiness
+
+`frontend/lib/split-readiness.ts` gates preview requests from the room summary before the frontend
+calls `GET /api/rooms/{room_id}/split/preview`.
+
+The readiness rules are intentionally conservative:
+
+- Archived and expired rooms are not preview-ready.
+- A room needs at least one participant, at least one item, and positive item totals.
+- Equal split rooms are preview-ready after those base checks.
+- Item-wise rooms are preview-ready only when every item quantity is fully claimed.
+
+Room events still refetch the summary. After each refetch, the room client recomputes readiness and
+only calls split preview when readiness is true. If the backend still rejects preview with a
+validation or locked/conflict status, the frontend shows an inline retry state and suppresses
+duplicate preview retries for the same summary key.
+
+Creator lock controls use the same readiness result plus actual preview data, so Lock remains
+disabled until the visible preview is valid.
+
 ## Money Conversion
 
 `frontend/lib/money.ts` converts rupee strings to integer paise with validation:

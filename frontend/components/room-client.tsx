@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, Copy, Lock, Share2, Unlock } from "lucide-react";
+import { Check, Copy, Lock, RotateCcw, Share2, Unlock } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 
 import { ClaimButton } from "@/components/claim-button";
@@ -15,6 +15,13 @@ import { api } from "@/lib/api";
 import { RoomEventSync } from "@/lib/events";
 import { encodeInviteParam } from "@/lib/invite";
 import { formatPaise, parseRupeesToPaise } from "@/lib/money";
+import {
+  canLockSplit,
+  getSplitPreviewReadiness,
+  getSplitPreviewRequestKey,
+  shouldRequestSplitPreview,
+  type SplitPreviewReadiness
+} from "@/lib/split-readiness";
 import {
   getCreatorSession,
   getParticipantSession,
@@ -35,22 +42,43 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   );
   const [summary, setSummary] = useState<RoomSummary | null>(null);
   const [preview, setPreview] = useState<SplitPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const suppressedPreviewKeyRef = useRef<string | null>(null);
 
   const token = session?.token;
   const locked = summary?.room.status === "settling" || summary?.room.status === "settled";
 
   const refresh = useCallback(
-    async (activeToken = token) => {
+    async (activeToken = token, options: { forcePreview?: boolean } = {}) => {
       if (!activeToken) {
         return;
       }
       const nextSummary = await api.getSummary(roomId, activeToken);
       setSummary(nextSummary);
+
+      const suppressedKey = options.forcePreview ? null : suppressedPreviewKeyRef.current;
+      if (!shouldRequestSplitPreview(nextSummary, suppressedKey)) {
+        setPreview(null);
+        if (!getSplitPreviewReadiness(nextSummary).ready) {
+          setPreviewError(null);
+        }
+        return;
+      }
+
       try {
-        setPreview(await api.previewSplit(roomId, activeToken));
-      } catch {
+        const nextPreview = await api.previewSplit(roomId, activeToken);
+        suppressedPreviewKeyRef.current = null;
+        setPreview(nextPreview);
+        setPreviewError(null);
+      } catch (err) {
+        if (isPreviewValidationError(err)) {
+          suppressedPreviewKeyRef.current = getSplitPreviewRequestKey(nextSummary);
+          setPreviewError("Split preview is not ready yet. Refresh after claims update and try again.");
+        } else {
+          setPreviewError("Could not load split preview. Refresh and try again.");
+        }
         setPreview(null);
       }
     },
@@ -100,6 +128,8 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
     return <main className="mx-auto max-w-3xl px-4 py-6 text-ink">Loading room...</main>;
   }
 
+  const readiness = getSplitPreviewReadiness(summary);
+
   return (
     <main className="mx-auto grid max-w-3xl gap-4 px-4 py-5 pb-12 text-ink">
       <RoomHeader summary={summary} connected={connected} />
@@ -108,16 +138,22 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
           session={session}
           summary={summary}
           preview={preview}
+          previewError={previewError}
+          readiness={readiness}
           locked={locked}
           onRefresh={() => refresh(session.token)}
+          onPreviewRetry={() => refresh(session.token, { forcePreview: true })}
         />
       ) : (
         <ParticipantTools
           session={session as ParticipantSession}
           summary={summary}
           preview={preview}
+          previewError={previewError}
+          readiness={readiness}
           locked={locked}
           onRefresh={() => refresh(session.token)}
+          onPreviewRetry={() => refresh(session.token, { forcePreview: true })}
         />
       )}
     </main>
@@ -147,16 +183,23 @@ function CreatorTools({
   session,
   summary,
   preview,
+  previewError,
+  readiness,
   locked,
-  onRefresh
+  onRefresh,
+  onPreviewRetry
 }: {
   session: CreatorSession;
   summary: RoomSummary;
   preview: SplitPreview | null;
+  previewError: string | null;
+  readiness: SplitPreviewReadiness;
   locked: boolean;
   onRefresh: () => Promise<void>;
+  onPreviewRetry: () => Promise<void>;
 }) {
   const [actionError, setActionError] = useState<string | null>(null);
+  const lockReady = canLockSplit({ locked, preview, readiness });
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);
@@ -213,26 +256,20 @@ function CreatorTools({
           onError={setActionError}
         />
       ) : null}
-      <SplitPreviewCard preview={preview} summary={summary} />
-      <section className="grid grid-cols-2 gap-3">
-        <Button
-          type="button"
-          disabled={locked}
-          onClick={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
-        >
-          <Lock size={16} aria-hidden="true" />
-          Lock
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={!locked}
-          onClick={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
-        >
-          <Unlock size={16} aria-hidden="true" />
-          Unlock
-        </Button>
-      </section>
+      <SplitPreviewCard
+        preview={preview}
+        previewError={previewError}
+        readiness={readiness}
+        summary={summary}
+        onRetry={onPreviewRetry}
+      />
+      <CreatorLockControls
+        canLock={lockReady}
+        locked={locked}
+        readiness={readiness}
+        onLock={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
+        onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
+      />
       {locked ? (
         <p className="rounded-md bg-mint p-3 text-sm font-medium">
           Room is locked. Settlement tools are coming later.
@@ -246,14 +283,20 @@ function ParticipantTools({
   session,
   summary,
   preview,
+  previewError,
+  readiness,
   locked,
-  onRefresh
+  onRefresh,
+  onPreviewRetry
 }: {
   session: ParticipantSession;
   summary: RoomSummary;
   preview: SplitPreview | null;
+  previewError: string | null;
+  readiness: SplitPreviewReadiness;
   locked: boolean;
   onRefresh: () => Promise<void>;
+  onPreviewRetry: () => Promise<void>;
 }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const myTotal = preview?.participant_totals.find(
@@ -326,7 +369,13 @@ function ParticipantTools({
           })}
         </div>
       </section>
-      <SplitPreviewCard preview={preview} summary={summary} />
+      <SplitPreviewCard
+        preview={preview}
+        previewError={previewError}
+        readiness={readiness}
+        summary={summary}
+        onRetry={onPreviewRetry}
+      />
       {locked ? (
         <p className="rounded-md bg-mint p-3 text-sm font-medium">
           Room is locked. Settlement tools are coming later.
@@ -547,7 +596,53 @@ function AdjustmentForm({
   );
 }
 
-function SplitPreviewCard({ preview, summary }: { preview: SplitPreview | null; summary: RoomSummary }) {
+export function CreatorLockControls({
+  canLock,
+  locked,
+  readiness,
+  onLock,
+  onUnlock
+}: {
+  canLock: boolean;
+  locked: boolean;
+  readiness: SplitPreviewReadiness;
+  onLock: () => void;
+  onUnlock: () => void;
+}) {
+  const helper = !readiness.ready
+    ? "Complete all claims before locking the split."
+    : "Preview totals before locking the split.";
+
+  return (
+    <section className="grid gap-2">
+      <div className="grid grid-cols-2 gap-3">
+        <Button type="button" disabled={!canLock} onClick={onLock}>
+          <Lock size={16} aria-hidden="true" />
+          Lock
+        </Button>
+        <Button type="button" variant="secondary" disabled={!locked} onClick={onUnlock}>
+          <Unlock size={16} aria-hidden="true" />
+          Unlock
+        </Button>
+      </div>
+      {!locked && !canLock ? <p className="text-sm text-[#63706b]">{helper}</p> : null}
+    </section>
+  );
+}
+
+export function SplitPreviewCard({
+  preview,
+  previewError,
+  readiness,
+  summary,
+  onRetry
+}: {
+  preview: SplitPreview | null;
+  previewError: string | null;
+  readiness: SplitPreviewReadiness;
+  summary: RoomSummary;
+  onRetry: () => Promise<void> | void;
+}) {
   const participantsById = useMemo(
     () => new Map(summary.participants.map((participant) => [participant.id, participant])),
     [summary.participants]
@@ -560,13 +655,49 @@ function SplitPreviewCard({ preview, summary }: { preview: SplitPreview | null; 
         <strong>{formatPaise(preview?.grand_total_paise ?? 0)}</strong>
       </div>
       <div className="mt-3 grid gap-2">
-        {preview?.participant_totals.map((total) => (
-          <div key={total.participant_id} className="flex items-center justify-between rounded-md bg-cloud px-3 py-2 text-sm">
-            <span>{participantsById.get(total.participant_id)?.nickname ?? "Participant"}</span>
-            <strong>{formatPaise(total.total_paise)}</strong>
+        {!readiness.ready ? (
+          <div className="rounded-md bg-cloud p-3 text-sm">
+            <p className="font-semibold">Split preview is not ready yet.</p>
+            <p className="mt-1 text-[#63706b]">{readiness.message}</p>
           </div>
-        )) ?? <p className="text-sm text-[#63706b]">Preview appears after the room has enough data.</p>}
+        ) : previewError ? (
+          <div className="rounded-md bg-cloud p-3 text-sm">
+            <p className="font-semibold">{previewError}</p>
+            <Button className="mt-3" type="button" variant="secondary" onClick={onRetry}>
+              <RotateCcw size={16} aria-hidden="true" />
+              Retry preview
+            </Button>
+          </div>
+        ) : preview ? (
+          preview.participant_totals.map((total) => (
+            <div
+              key={total.participant_id}
+              className="flex items-center justify-between rounded-md bg-cloud px-3 py-2 text-sm"
+            >
+              <span>{participantsById.get(total.participant_id)?.nickname ?? "Participant"}</span>
+              <strong>{formatPaise(total.total_paise)}</strong>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-md bg-cloud p-3 text-sm">
+            <p className="font-semibold">Split preview is ready.</p>
+            <p className="mt-1 text-[#63706b]">Refresh to calculate totals.</p>
+            <Button className="mt-3" type="button" variant="secondary" onClick={onRetry}>
+              <RotateCcw size={16} aria-hidden="true" />
+              Retry preview
+            </Button>
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function isPreviewValidationError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    [400, 409, 422, 423].includes(Number((err as { status: unknown }).status))
   );
 }
