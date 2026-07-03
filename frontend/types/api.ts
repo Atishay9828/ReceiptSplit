@@ -143,3 +143,84 @@ export type RoomEvent = {
   payload?: Record<string, unknown>;
   created_at?: string;
 };
+
+// --- OCR types ---
+
+export type ParsedReceiptLine = {
+  name: string;
+  quantity: number;
+  unit_price_paise: number | null;
+  total_paise: number;
+  confidence: number;
+};
+
+export type ParsedReceiptAdjustment = {
+  type: string;
+  label: string;
+  amount_paise: number;
+  allocation_method: string;
+};
+
+export type ReceiptUploadResponse = {
+  receipt_id: string;
+  image_id: string;
+  job_id: string;
+  status: string;
+  parsed_receipt_id: string | null;
+};
+
+export type OcrJobResponse = {
+  id: string;
+  room_id: string;
+  receipt_id: string;
+  image_id: string;
+  provider: string;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  parsed_receipt_id: string | null;
+};
+
+export type ParsedReceiptDraftResponse = {
+  id: string;
+  room_id: string;
+  receipt_id: string;
+  ocr_job_id: string;
+  merchant_name: string | null;
+  subtotal_paise: number | null;
+  tax_paise: number | null;
+  discount_paise: number | null;
+  total_paise: number | null;
+  items: ParsedReceiptLine[];
+  adjustments: ParsedReceiptAdjustment[];
+  warnings: string[];
+  confidence: number;
+  needs_review: boolean;
+  parser_version: string;
+  status: string;
+  redacted_raw_text: string | null;
+};
+
+export type ParsedReceiptUpdateRequest = {
+  merchant_name?: string | null;
+  subtotal_paise?: number | null;
+  tax_paise?: number | null;
+  discount_paise?: number | null;
+  total_paise?: number | null;
+  items?: ParsedReceiptLine[];
+  adjustments?: ParsedReceiptAdjustment[];
+  warnings?: string[];
+  needs_review?: boolean;
+};
+
+export type ParsedReceiptConfirmResponse = {
+  parsed_receipt_id: string;
+  status: string;
+  already_confirmed: boolean;
+  created_item_ids: string[];
+  created_adjustment_ids: string[];
+  events: string[];
+};

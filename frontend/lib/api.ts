@@ -8,6 +8,11 @@ import type {
   Item,
   ItemPayload,
   JoinRoomResponse,
+  OcrJobResponse,
+  ParsedReceiptConfirmResponse,
+  ParsedReceiptDraftResponse,
+  ParsedReceiptUpdateRequest,
+  ReceiptUploadResponse,
   Room,
   RoomCreateRequest,
   RoomCreateResponse,
@@ -174,6 +179,67 @@ export class ReceiptSplitApi {
       token,
       body: { version }
     });
+  }
+
+  // --- OCR ---
+
+  async uploadReceipt(roomId: string, token: string, file: File): Promise<ReceiptUploadResponse> {
+    const form = new FormData();
+    form.append("file", file);
+
+    const response = await fetch(`${this.baseUrl}/api/rooms/${roomId}/receipts/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw await parseApiError(response);
+    }
+
+    return (await response.json()) as ReceiptUploadResponse;
+  }
+
+  getOcrJob(roomId: string, token: string, jobId: string): Promise<OcrJobResponse> {
+    return this.request<OcrJobResponse>(`/api/rooms/${roomId}/ocr-jobs/${jobId}`, { token });
+  }
+
+  getParsedReceipt(roomId: string, token: string, parsedReceiptId: string): Promise<ParsedReceiptDraftResponse> {
+    return this.request<ParsedReceiptDraftResponse>(
+      `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
+      { token }
+    );
+  }
+
+  getParsedReceiptDebug(roomId: string, token: string, parsedReceiptId: string): Promise<ParsedReceiptDraftResponse> {
+    return this.request<ParsedReceiptDraftResponse>(
+      `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
+      { token, query: { include_raw_text: "true" } }
+    );
+  }
+
+  updateParsedReceipt(
+    roomId: string,
+    token: string,
+    parsedReceiptId: string,
+    payload: ParsedReceiptUpdateRequest
+  ): Promise<ParsedReceiptDraftResponse> {
+    return this.request<ParsedReceiptDraftResponse>(
+      `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
+      { method: "PATCH", token, body: payload }
+    );
+  }
+
+  confirmParsedReceipt(
+    roomId: string,
+    token: string,
+    parsedReceiptId: string
+  ): Promise<ParsedReceiptConfirmResponse> {
+    return this.request<ParsedReceiptConfirmResponse>(
+      `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}/confirm`,
+      { method: "POST", token }
+    );
   }
 }
 

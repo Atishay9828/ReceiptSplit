@@ -8,6 +8,7 @@ import QRCode from "qrcode";
 import { ClaimButton } from "@/components/claim-button";
 import { ErrorState } from "@/components/error-state";
 import { ItemForm } from "@/components/item-form";
+import { ReceiptUpload } from "@/components/receipt-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -235,7 +236,12 @@ function CreatorTools({
       <section className="rounded-md bg-white p-4 shadow-soft">
         <h2 className="text-lg font-bold">Items</h2>
         {!locked ? (
-          <div className="mt-3">
+          <div className="mt-3 grid gap-4">
+            <ReceiptUpload
+              roomId={summary.room.id}
+              token={session.token}
+              onConfirmed={onRefresh}
+            />
             <ItemForm
               onSubmit={(payload) => run(() => api.addItem(summary.room.id, session.token, payload))}
             />
