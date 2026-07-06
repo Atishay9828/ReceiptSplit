@@ -142,27 +142,45 @@ Commands and results:
 
 - `docker compose -f docker-compose.dev.yml up -d`: passed; `receiptsplit-postgres-dev`
   became healthy.
-- `uv run alembic upgrade head`: passed after adding `psycopg2-binary`.
+- `uv run alembic upgrade head`: `uv` was not installed in this shell; fallback
+  `.venv\Scripts\python.exe -m alembic upgrade head` passed.
 - Backend ran at `http://127.0.0.1:8000`; `GET /health` returned `{"status":"ok"}`.
 - `GET /openapi.json` contained OCR upload, OCR job, parsed receipt, patch, and confirm routes.
 - Frontend was already running at `http://127.0.0.1:3000`; starting a duplicate dev server
   returned `EADDRINUSE`, and `/create` returned HTTP 200 from the existing server.
 
+## M011.1 Final Browser Smoke - OCR + Lock/Unlock
+
+Final acceptance smoke ran against:
+
+- Docker Desktop Linux engine: reachable after launching Docker Desktop.
+- `receiptsplit-postgres-dev`: healthy on `127.0.0.1:54329`.
+- `RECEIPTSPLIT_DATABASE_URL=postgresql+asyncpg://receiptsplit:receiptsplit@127.0.0.1:54329/receiptsplit_dev`.
+- `RECEIPTSPLIT_OCR_PROVIDER=mock`.
+- Backend: `http://127.0.0.1:8000`; `GET /health` returned `{"status":"ok"}`.
+- Frontend: clean Next dev server on `http://localhost:3000`; `/create` returned HTTP 200.
+
 Browser smoke result:
 
-- Created room `41667706-00bc-4029-a823-4219ed3b87ad`.
+- Created final smoke room `086e25eb-951f-44ae-98a8-98095510752f`.
 - Uploaded `docs/reports/screenshots/M011.1/sample-receipt.jpg`.
-- Mock OCR produced a draft, creator edited `Paneer Tikka` to `Smoke Paneer Tikka` and changed
+- Mock OCR produced a draft, creator edited `Paneer Tikka` to `Final Smoke Paneer Tikka` and changed
   the amount to `245.00`.
-- Confirming the draft created normal room items: `Smoke Paneer Tikka` and `Masala Dosa`.
-- A separate participant context joined as `AJ Smoke`.
+- Confirming the draft created normal room items: `Final Smoke Paneer Tikka` and `Masala Dosa`.
+- A separate participant context joined as `AJ Lock Smoke`.
 - Participant-authenticated claim calls assigned both OCR-created items.
 - Split preview returned `44600` paise and the UI showed creator total `0.00` and participant
   total `446.00`.
 - No auto-share and no auto-lock happened; the room remained `active`.
-- Creator lock/unlock was not exercised in this automated closeout because the Lock button stayed
-  disabled in the scripted creator pass after preview. Treat this as a remaining UI follow-up, not
-  as a backend split-preview failure.
+- Creator summary reflected both participant claims through the live sync path without reload.
+- Creator Lock became enabled after preview was available.
+- Creator Lock transitioned the room to `settling`.
+- Locked mutation controls were hidden or disabled: scan receipt, add adjustment, and item edit
+  controls were not available while locked.
+- Creator Unlock transitioned the room back to `active`.
+- Unlock restored mutation controls: scan receipt, add adjustment, and two item edit controls were
+  available again.
+- Final summary after unlock: status `active`, 2 items, 2 assignments, 2 participants.
 
 Screenshots:
 
@@ -172,15 +190,20 @@ Screenshots:
 - `docs/reports/screenshots/M011.1/ocr-confirmed-items.png`
 - `docs/reports/screenshots/M011.1/participant-claim-after-ocr.png`
 - `docs/reports/screenshots/M011.1/split-preview-after-ocr.png`
+- `docs/reports/screenshots/M011.1/lock-enabled-after-ocr-preview.png`
+- `docs/reports/screenshots/M011.1/locked-after-ocr.png`
+- `docs/reports/screenshots/M011.1/unlocked-after-ocr.png`
+- `docs/reports/screenshots/M011.1/unlock-controls-restored-after-ocr.png`
 
 Current validation:
 
-- `uv run pytest tests/ -q`: passed, with three skipped tests.
-- `uv run ruff check .`: passed.
-- Focused mypy for changed backend config/OCR provider tests passed:
-  `Success: no issues found in 4 source files`.
-- `uv run mypy .`: still fails on the known strict baseline, now reported as
-  `383 errors in 31 files (checked 172 source files)`.
+- `uv run pytest tests/ -q`: `uv` was not installed in this shell; escalated fallback
+  `.venv\Scripts\python.exe -m pytest tests/ -q` passed, with three skipped tests.
+- `.venv\Scripts\python.exe -m ruff check .`: passed.
+- Focused mypy for OCR backend scope passed:
+  `Success: no issues found in 21 source files`.
+- `.venv\Scripts\python.exe -m mypy .`: still fails on the known strict baseline, now
+  reported as `382 errors in 30 files (checked 172 source files)`.
 - Frontend `npm.cmd run lint`: passed.
 - Frontend `npm.cmd run typecheck`: passed.
 - Frontend `npm.cmd test`: passed, 8 files and 34 tests.
@@ -196,7 +219,6 @@ Current validation:
 - Production object storage such as Supabase Storage.
 - Raw OCR retention policy automation.
 - Browser E2E coverage should be promoted from local smoke script to a committed test harness.
-- Creator lock enablement after OCR-created item claims needs a focused follow-up.
 
 ## Files Changed
 
@@ -244,13 +266,18 @@ uncommitted M010.1 frontend/docs changes that are intentionally not part of M011
 - [x] No paid OCR default, payment, deployment, or settlement work started.
 - [x] Full backend suite passes with local Docker/Testcontainers access.
 - [x] Frontend OCR review UI is present and smoke-tested.
+- [x] Creator lock/unlock is exercised after OCR-created claims.
+- [x] Locked and unlocked mutation-control behavior is smoke-tested.
 - [ ] Full backend mypy passes: blocked by pre-existing strict baseline.
 - [ ] `npm audit --json` is clean: blocked by moderate Next/PostCSS advisory chain.
-- [ ] Creator lock/unlock is exercised after OCR-created claims.
 
 ## Verdict
 
-CONDITIONAL PASS for M011/M011.1 local closeout. The local Postgres path, migrations, backend,
-frontend, OCR review/confirm, item creation, participant claim state, and split preview are proven.
-Remaining conditions are the repo-wide mypy baseline, moderate npm audit advisories, and the
-unexercised creator lock/unlock UI path.
+FULL PASS for M011.1 OCR Frontend Review UI acceptance. The local Postgres path, migrations,
+backend, frontend, OCR upload/review/edit/confirm, item creation, participant join, participant
+claim state, split preview, creator lock, creator unlock, and locked/unlocked mutation controls
+are proven.
+
+Deferred repo-level risks remain outside M011.1 acceptance: full backend mypy is still blocked by
+the pre-existing strict baseline, and npm audit still reports the moderate Next/PostCSS advisory
+chain.
