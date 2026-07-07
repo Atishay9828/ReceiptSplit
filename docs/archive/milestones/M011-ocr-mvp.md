@@ -1,3 +1,7 @@
+> Historical milestone evidence.
+> Do not load this file into default working context unless investigating this milestone.
+> For current project state, read `docs/ACTIVE_CONTEXT.md` and `docs/MILESTONE_INDEX.md`.
+
 # M011 OCR MVP Report
 
 ## Goal
@@ -235,7 +239,7 @@ Primary M011 files:
 - `backend/tests/ocr/**`
 - `backend/tests/fixtures/receipts/**`
 - `docs/architecture/ocr.md`
-- `docs/reports/M011-ocr-mvp.md`
+- `docs/archive/milestones/M011-ocr-mvp.md`
 
 ## Git Commits
 
@@ -259,7 +263,7 @@ uncommitted M010.1 frontend/docs changes that are intentionally not part of M011
 - [x] Parser fixtures pass.
 - [x] Ruff passes.
 - [x] M011-introduced mypy errors are 0.
-- [x] `docs/reports/M011-ocr-mvp.md` exists.
+- [x] `docs/archive/milestones/M011-ocr-mvp.md` exists.
 - [x] `docs/architecture/ocr.md` exists.
 - [x] Local dev Postgres compose path exists.
 - [x] Local M011.1 OCR browser smoke evidence exists.

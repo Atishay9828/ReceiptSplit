@@ -1,18 +1,44 @@
-# M010 Frontend MVP Walkthrough
+# ReceiptSplit Flow Walkthrough
 
-## What Changed
+This is a compact workflow reference. For current project state, read `docs/ACTIVE_CONTEXT.md`; for
+milestone history, read `docs/MILESTONE_INDEX.md`.
 
-M010 adds the first mobile-first frontend for ReceiptSplit's manual receipt-first flow.
+## Manual Room Flow
 
-1. Creators create a room from `/create`.
-2. The frontend stores the creator capability token in localStorage.
-3. Creators add manual receipt items and optional adjustments.
-4. Creators share `/join/[inviteToken]`, which encodes the backend room id and invite token.
-5. Participants join with nickname only and store a participant capability token locally.
-6. Participants claim/unclaim item quantities from `/rooms/[roomId]`.
-7. Creator and participant rooms refresh through M009 replay/SSE event sync.
-8. Split preview stays in a friendly not-ready state until preview data is valid.
-9. Creators preview and lock/unlock the split where backend state allows it.
+1. Creator creates a room from `/create`.
+2. Frontend stores the creator capability token locally.
+3. Creator adds receipt items and supported adjustments.
+4. Creator opens claiming when ready.
+5. Participants join through `/join/[inviteToken]` with nickname only.
+6. Participants claim or unclaim item quantities.
+7. Creator previews and locks the split when preview readiness passes.
+8. Creator can unlock where backend state allows it.
+
+## OCR Review Flow
+
+1. Creator uploads a PNG/JPEG receipt image.
+2. Backend validates image type, size, magic bytes, dimensions, and strips metadata.
+3. Configured OCR provider returns text.
+4. Parser creates an editable receipt draft.
+5. Creator reviews and edits draft items or adjustments.
+6. Creator confirms the draft into normal room items and adjustments.
+7. Existing claim, preview, lock, and settlement rules continue to apply.
+
+M011.1 browser evidence lives under `docs/reports/screenshots/M011.1/`.
+
+## Settlement Flow
+
+M012 adds coordinator-safe settlement after room lock. It remains CONDITIONAL PASS until API tests,
+browser smoke, screenshots, and commit are complete.
+
+1. Creator locks the split.
+2. Creator saves payer display name and VPA.
+3. Creator prepares settlement requests from locked participant totals.
+4. Participant opens the server-generated UPI URI/QR payload.
+5. Participant manually marks `I paid`.
+6. Creator manually chooses `Confirm payment` or `Mark disputed`.
+
+ReceiptSplit does not process, hold, verify, refund, or auto-confirm funds.
 
 ## Important Endpoints
 
@@ -28,109 +54,54 @@ M010 adds the first mobile-first frontend for ReceiptSplit's manual receipt-firs
 - `GET /api/rooms/{room_id}/split/preview`
 - `POST /api/rooms/{room_id}/split/lock`
 - `POST /api/rooms/{room_id}/split/unlock`
+- `POST /api/rooms/{room_id}/receipts/upload`
+- `GET /api/rooms/{room_id}/ocr-jobs/{job_id}`
+- `GET /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}`
+- `PATCH /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}`
+- `POST /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}/confirm`
+- `GET /api/rooms/{room_id}/settlement`
+- `PUT /api/rooms/{room_id}/settlement/payer`
+- `POST /api/rooms/{room_id}/settlement/prepare`
+- `POST /api/rooms/{room_id}/settlement/requests/{request_id}/open-payment`
+- `POST /api/rooms/{room_id}/settlement/requests/{request_id}/claim-paid`
+- `POST /api/rooms/{room_id}/settlement/requests/{request_id}/confirm`
+- `POST /api/rooms/{room_id}/settlement/requests/{request_id}/dispute`
 - `GET /api/rooms/{room_id}/events`
 - `GET /api/rooms/{room_id}/events/stream`
 
 ## Validation Commands
 
-Backend commands use `.venv` in this shell because `uv` is unavailable:
+Backend commands use `.venv` in this shell when `uv` is unavailable:
 
 ```powershell
-D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m pytest tests\ -q
-D:\ReceiptSplit\backend\.venv\Scripts\python.exe -m ruff check .
+cd D:\ReceiptSplit\backend
+.\.venv\Scripts\python.exe -m pytest tests\ -q
+.\.venv\Scripts\python.exe -m ruff check .
 ```
 
 Frontend commands:
 
 ```powershell
 cd D:\ReceiptSplit\frontend
-npm.cmd install
 npm.cmd run lint
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
 ```
 
-Full backend mypy remains blocked by the pre-existing strict-mode baseline.
-
-## M010.1 Preview Readiness Cleanup
-
-M010.1 adds a frontend-only readiness gate before split preview calls.
-
-- Item-wise rooms do not call preview until every item quantity is claimed.
-- Equal rooms can preview once participants and positive item totals exist.
-- Incomplete rooms show `Split preview is not ready yet.` instead of normal-flow API errors.
-- Creator Lock remains disabled until a valid preview exists.
-- Realtime refetches recompute readiness before calling preview.
-
-Manual smoke screenshots for this run are blocked because Docker/Postgres startup and npm audit
-network escalation were rejected by the environment quota. The blocked evidence note is in
-`docs/reports/screenshots/M010/M010.1-screenshots-blocked.md`.
-
-## M011 OCR MVP Walkthrough
-
-M011 adds a backend OCR draft flow:
-
-1. Creator uploads a PNG/JPEG receipt image to `POST /api/rooms/{room_id}/receipts/upload`.
-2. Backend validates size, content type, magic bytes, and dimensions.
-3. Backend strips metadata and saves normalized private image bytes.
-4. Backend creates an OCR job and runs the configured provider.
-5. `MockOcrProvider` is available for tests; `TesseractOcrProvider` is the free local provider.
-6. Raw OCR text is parsed into an editable draft.
-7. Creator can fetch and patch the draft.
-8. Creator confirms the draft into normal room items and adjustments.
-9. Confirmation emits normal room events so existing realtime clients can refresh.
-
-Important M011 endpoints:
-
-- `POST /api/rooms/{room_id}/receipts/upload`
-- `GET /api/rooms/{room_id}/ocr-jobs/{job_id}`
-- `GET /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}`
-- `PATCH /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}`
-- `POST /api/rooms/{room_id}/parsed-receipts/{parsed_receipt_id}/confirm`
-
-Focused validation:
+Focused M012 commands:
 
 ```powershell
 cd D:\ReceiptSplit\backend
-.\.venv\Scripts\python.exe -m pytest tests\ocr -q
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m mypy app\ocr app\api\routers\ocr.py app\api\schemas\ocr.py app\models\receipt_image.py app\models\ocr_job.py app\models\ocr_result.py app\models\parsed_receipt.py
-```
+.\.venv\Scripts\python.exe -m pytest tests\unit\test_settlement_link_builder.py -q
+.\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py -q
 
-## M011.1 Local Browser Smoke
-
-Local database setup:
-
-```powershell
-docker compose -f docker-compose.dev.yml up -d
-cd D:\ReceiptSplit\backend
-$env:RECEIPTSPLIT_DATABASE_URL="postgresql+asyncpg://receiptsplit:receiptsplit@127.0.0.1:54329/receiptsplit_dev"
-$env:RECEIPTSPLIT_CORS_ORIGINS="http://127.0.0.1:3000,http://localhost:3000"
-$env:RECEIPTSPLIT_OCR_PROVIDER="mock"
-$env:RECEIPTSPLIT_OCR_STORAGE_BACKEND="local"
-$env:RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR=".local/ocr"
-$env:RECEIPTSPLIT_OCR_STORE_RAW_TEXT="false"
-uv run alembic upgrade head
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Frontend:
-
-```powershell
 cd D:\ReceiptSplit\frontend
-$env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8000"
-npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+npm.cmd test -- settlement-ui.test.tsx api.test.ts
 ```
 
-Smoke evidence:
+Known blockers:
 
-- Sample receipt: `docs/reports/screenshots/M011.1/sample-receipt.jpg`.
-- Screenshots: `create-page.png`, `creator-room-upload-card.png`, `ocr-draft-review.png`,
-  `ocr-confirmed-items.png`, `participant-claim-after-ocr.png`, and
-  `split-preview-after-ocr.png` in `docs/reports/screenshots/M011.1/`.
-- Smoke room: `41667706-00bc-4029-a823-4219ed3b87ad`.
-- Result: OCR draft edited and confirmed into room items, participant joined separately, both
-  OCR-created items were claimed, and split preview returned `44600` paise.
-- Caveat: creator lock/unlock was not exercised; the scripted creator pass still saw Lock disabled
-  after preview.
+- full backend mypy is still at the known strict baseline
+- M012 API test/browser smoke need local Docker/Postgres access
+- M012 screenshots are pending; see `docs/reports/screenshots/M012/M012-screenshots-blocked.md`

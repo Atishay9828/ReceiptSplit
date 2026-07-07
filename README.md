@@ -1,25 +1,25 @@
 # ReceiptSplit
 
-> **UPI-native, receipt-first bill splitting for India.**
+> UPI-native, receipt-first bill splitting for India.
 > Split restaurant bills by item. Pay via UPI. No app install required.
-
----
 
 ## Repository Structure
 
-```
+```text
 ReceiptSplit/
 ├── backend/          FastAPI backend (Python 3.12)
-├── frontend/         Next.js frontend (Phase 10 — not yet implemented)
-├── CHANGELOG.md      Milestone changelog
+├── frontend/         Next.js frontend for room, OCR review, and settlement UI
+├── docs/             Active context, architecture notes, and archived reports
+├── task.md           Short current-task pointer
 └── README.md
 ```
 
 ## Development Setup
 
-See [`backend/README.md`](backend/README.md) for full setup instructions.
+See `backend/README.md` for backend setup details.
 
-**Quick start (local Postgres + backend):**
+Local backend:
+
 ```powershell
 docker compose -f docker-compose.dev.yml up -d
 cd backend
@@ -29,7 +29,8 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-**Quick start (frontend):**
+Local frontend:
+
 ```powershell
 cd frontend
 copy .env.example .env.local
@@ -39,26 +40,39 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 
 ## Architecture
 
-- **Backend:** FastAPI (Python 3.12), modular monolith
-- **Database:** PostgreSQL 15 for local development; Supabase remains the production-oriented target
-- **Auth:** Capability tokens for participants; Supabase Auth for creators (Phase 2)
-- **Realtime:** Supabase Realtime broadcast channels
-- **OCR:** Free-first `OcrProvider` abstraction with mock and Tesseract providers
+- Backend: FastAPI modular monolith.
+- Database: PostgreSQL 15 locally; Supabase remains the production-oriented target.
+- Auth: owner JWT for creators, legacy creator capability tokens, and participant capability tokens.
+- Realtime: durable `room_events` with fetch-based SSE refetch.
+- OCR: free-first `OcrProvider` abstraction with mock and Tesseract providers.
+- Settlement: coordinator-safe UPI URI/QR generation and manual payer confirmation.
+
+## Product Boundary
+
+ReceiptSplit coordinates settlement; it does not process funds.
+
+M012 generates server-controlled UPI payment links/QR payloads, records participant `marked paid`
+claims, and lets the payer manually confirm or dispute. It does not implement wallet, escrow,
+payment gateway, webhooks, bank verification, refunds, or auto-confirmation.
 
 ## Development Phases
 
 | Phase | Status | Description |
 |---|---|---|
-| 1 | 🚧 In Progress | Foundation — manual items, rooms, claims, equal + item-wise split |
-| 2 | ⬜ Planned | Creator auth + receipt image upload |
-| 3 | ⬜ Planned | OCR + receipt parsing |
-| 4 | ⬜ Planned | UPI settlement |
-| 5 | ⬜ Planned | Security hardening |
-| 6 | ⬜ Planned | Pilot readiness |
+| 1 | Implemented | Foundation: manual items, rooms, claims, equal and item-wise split |
+| 2 | Implemented | Creator auth and receipt image upload |
+| 3 | Implemented | OCR and receipt parsing |
+| 4 | Conditional | UPI settlement coordination |
+| 5 | Planned | Security hardening |
+| 6 | Planned | Pilot readiness |
 
-## Design Documents
+## Current Context
 
-- [Product Decisions Document](docs/product_decisions.md)
-- [Implementation Plan](docs/implementation_plan.md)
-- [Phase 1 Design](docs/phase1_design.md)
-- [Phase 1 Design Amendments v1](docs/phase1_design_amendments_v1.md)
+- `docs/ACTIVE_CONTEXT.md`
+- `docs/MILESTONE_INDEX.md`
+- `task.md`
+- `docs/architecture/frontend.md`
+- `docs/architecture/settlement.md`
+
+Historical milestone reports are archived under `docs/archive/milestones/`. Do not use them as the
+default working context unless investigating a specific milestone.

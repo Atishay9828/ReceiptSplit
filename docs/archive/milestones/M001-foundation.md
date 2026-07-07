@@ -1,3 +1,7 @@
+> Historical milestone evidence.
+> Do not load this file into default working context unless investigating this milestone.
+> For current project state, read `docs/ACTIVE_CONTEXT.md` and `docs/MILESTONE_INDEX.md`.
+
 # Milestone M001 — Foundation
 
 ## Goal

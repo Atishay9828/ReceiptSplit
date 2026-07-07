@@ -1,10 +1,14 @@
 # Frontend Architecture
 
+For current project state, read `docs/ACTIVE_CONTEXT.md` and `docs/MILESTONE_INDEX.md` before this
+architecture note. Archived milestone reports are under `docs/archive/milestones/`.
+
 ## Purpose
 
 M010 adds a mobile-first Next.js frontend for the manual receipt-first ReceiptSplit flow. It
-supports anonymous creator capability sessions and accountless participant sessions. OCR, payment,
-settlement verification, wallet, escrow, deployment, and production auth UI remain deferred.
+supports anonymous creator capability sessions and accountless participant sessions. M011.1 adds OCR
+draft review. M012 adds coordinator-safe UPI settlement coordination. Payment verification, wallet,
+escrow, deployment, and production auth UI remain deferred.
 
 ## App Structure
 
@@ -44,7 +48,7 @@ frontend invite URL encodes both values into the dynamic route parameter.
 - JSON request/response handling.
 - Backend error parsing for `{ error: { code, message } }`.
 - Helpers for room creation/update, summary fetch, joining, item mutations, adjustments, claims,
-  split preview, lock, and unlock.
+  split preview, lock, unlock, and settlement coordination.
 
 The frontend sends money only as integer paise fields.
 
@@ -66,6 +70,11 @@ action. The creator can add, edit, and delete manual receipt items, add supporte
 participants, share an invite link/QR/WhatsApp link, preview the split, lock the split, and unlock
 if supported by backend state.
 
+After locking, M012 shows settlement setup. The creator can save payout details, prepare settlement
+requests from locked participant totals, see each participant's status, confirm payment manually, or
+mark a payment disputed. The UI says `Confirm payment`, `Mark disputed`, `Settlement status`, and
+`Payer confirmation`; it does not say `verified paid`.
+
 ## OCR Review Flow
 
 M011.1 adds the creator OCR review UI to the existing creator room. The creator selects a PNG/JPEG
@@ -80,6 +89,11 @@ Participants join with nickname only through `/join/[inviteToken]`; no login is 
 participant capability token is stored locally. The participant room shows participants, items,
 claim state, the participant total, split preview, and locked-state messaging. Claim conflicts are
 shown as visible errors and trigger a room refresh.
+
+After settlement requests exist, the participant room shows `Pay your share`, amount due, payer
+name, payer UPI ID, payment reference, status, `Open UPI app`, `Copy UPI ID`, QR fallback, and `I
+paid`. The UPI URI and QR payload come from the backend `open-payment` endpoint. The frontend does
+not submit payable amount, payee VPA, payee name, or payment reference for settlement mutations.
 
 ## Event Sync
 
@@ -96,7 +110,9 @@ The event client:
 - Refetches room state after each new event.
 - Reconnects after disconnect using the last seen sequence.
 
-For M010, events trigger refetches rather than optimistic event-payload application.
+Events trigger refetches rather than optimistic event-payload application. M012 settlement events use
+the same path, so creator and participant settlement cards update through room refetches after
+`settlement.*` events.
 
 ## Split Preview Readiness
 
@@ -144,7 +160,7 @@ It returns room metadata, participants, active items, active adjustments, and cu
 - Invite URL encoding is frontend-specific because the backend does not expose a room-id-free invite
   lookup endpoint.
 - Realtime is process-local on the backend per M009.
-- Creator lock/unlock after OCR-created item claims was not exercised in the M011.1 browser smoke
-  because the scripted creator pass still saw Lock disabled after preview.
-- There is no camera capture, UPI settlement, payment verification, wallet, escrow, native app,
-  analytics, or deployment work in M011.1.
+- Creator lock/unlock after OCR-created item claims was exercised in the final M011.1 browser smoke.
+- There is no payment verification, wallet, escrow, native app, analytics, or deployment work in
+  M012.
+- M012 browser smoke screenshots are blocked until local Docker/Postgres access is available.

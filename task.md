@@ -1,104 +1,61 @@
-# M010 Frontend MVP Task
+# ReceiptSplit Current Task
 
-## Status
+Read `docs/ACTIVE_CONTEXT.md` first, then `docs/MILESTONE_INDEX.md`, then current `git status` and
+`git diff`.
 
-M010 PASS.
+Archived milestone reports are evidence under `docs/archive/milestones/`. Do not load them by
+default.
 
-M010.1 CONDITIONAL PASS for code and automated validation; final manual browser evidence remains
-blocked by local Docker/Postgres and npm audit network escalation quota.
+## Current Status
 
-M011.1 CONDITIONAL PASS for local OCR browser smoke. Docker is available; the prior
-ConnectionRefusedError was local app database setup, not Docker being off.
+- Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
+- Current active milestone: M012 UPI Settlement MVP.
+- M012 state: CONDITIONAL PASS only.
+- M012 product code exists in the working tree but closeout is not complete.
+- Do not start M013, gateway work, payment verification, wallet, escrow, refunds, or deployment.
 
-## Scope Completed
+## M012 Delivered So Far
 
-- Next.js mobile-first frontend scaffold.
-- Creator room creation with legacy capability token storage.
-- Manual receipt item add/edit/delete flow.
-- Invite link, QR, copy, and WhatsApp share flow.
-- Participant nickname join flow.
-- Participant claim/unclaim flow.
-- Split preview and lock/unlock controls.
-- M010.1 preview readiness gate before split preview calls.
-- Friendly incomplete split preview state.
-- Creator Lock disabled until preview is valid.
-- Fetch-based SSE event sync using M009 endpoints.
-- Minimal backend room summary read endpoint for frontend refresh.
-- Frontend architecture and M010 report docs.
+- Backend settlement domain, status transitions, service, schemas, routes, and models.
+- Migration `backend/migrations/versions/004_m012_settlement_mvp.py`.
+- Server-side `SettlementLinkBuilder` for UPI URI and QR payload strings.
+- Creator settlement setup/dashboard and participant payment flow.
+- Settlement architecture doc: `docs/architecture/settlement.md`.
+- Conditional closeout evidence: `docs/archive/milestones/M012-upi-settlement.md`.
 
-## Validation
+## M012 Validation State
 
-- Backend pytest passed with Docker access and three skipped tests.
-- Backend Ruff passed.
-- Full backend mypy remains at the known baseline.
-- Frontend lint, typecheck, tests, and build passed.
-- M010.1 frontend lint, typecheck, tests, and build passed after preview readiness cleanup.
-- M010.1 fresh `npm.cmd audit --json` and manual browser screenshots are blocked until environment
-  escalation quota is available.
+Passed in the focused prior run:
 
-## Deferred
+- settlement link builder unit test
+- focused backend Ruff
+- full backend Ruff
+- focused M012 mypy
+- frontend lint
+- frontend typecheck
+- focused settlement frontend tests
+- full frontend tests
+- frontend build
+- `git diff --check`
 
-- OCR/camera/upload.
-- UPI settlement and payment verification.
-- Wallet, escrow, refunds, cashback.
-- Production auth UI.
-- Native mobile app.
-- Deployment.
+Blocked or pending:
 
-## M011 OCR MVP Status
+- DB-backed settlement API integration tests
+- full backend pytest completion
+- browser smoke
+- M012 screenshots
+- `npm.cmd audit --json`
+- M012 commit
 
-M011 backend OCR MVP is implemented as a free-first modular pipeline.
+Blocked screenshot note:
 
-Completed:
+- `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
 
-- Modular OCR contracts, mock provider, and Tesseract provider.
-- Image validation, magic-byte checks, dimension limits, and metadata stripping.
-- Local private receipt image storage abstraction.
-- OCR job/result/parsed-draft persistence tables and migration.
-- Conservative Indian restaurant receipt parser with fixture coverage.
-- Creator-only OCR upload, job, parsed draft, update, and confirm endpoints.
-- Confirmation flow creates normal room items/adjustments and emits room events.
-- OCR architecture and M011 report docs.
+## Product Boundary
 
-Validation:
+ReceiptSplit coordinates settlement only. It does not process funds, verify transfers, integrate a
+payment gateway, hold funds, pool balances, escrow money, refund payments, or auto-confirm payment.
 
-- Focused OCR tests pass.
-- Backend Ruff passes.
-- Focused M011 mypy passes.
-- Full backend pytest is blocked by Docker/Testcontainers named-pipe access in this environment.
+Use `marked paid`, `payer confirmed`, and `disputed`. Do not use `verified paid`.
 
-Deferred:
-
-- Worker-backed OCR processing.
-- Advanced Pillow/OpenCV preprocessing.
-- EasyOCR, PaddleOCR, Google Vision, and custom ML providers.
-
-## M011.1 Local Browser Smoke
-
-Completed:
-
-- Added `docker-compose.dev.yml` for local Postgres 15 on `127.0.0.1:54329`.
-- Updated backend and frontend env examples for the local backend/frontend pair.
-- Added `pgcrypto` creation to the first migration for fresh local databases.
-- Added `psycopg2-binary` for Alembic's sync migration URL.
-- Fixed comma-separated `RECEIPTSPLIT_CORS_ORIGINS` parsing.
-- Made `MockOcrProvider` return deterministic synthetic receipt text by default.
-- Captured M011.1 screenshots under `docs/reports/screenshots/M011.1/`.
-
-Validation:
-
-- `uv run pytest tests/ -q`: passed with three skipped tests.
-- `uv run ruff check .`: passed.
-- Focused changed-scope mypy: passed.
-- `uv run mypy .`: known strict baseline failure, 383 errors in 31 files.
-- `npm.cmd run lint`: passed.
-- `npm.cmd run typecheck`: passed.
-- `npm.cmd test`: passed, 8 files and 34 tests.
-- `npm.cmd run build`: passed.
-- `npm.cmd audit --json`: two moderate Next/PostCSS advisories; no force fix run.
-
-Remaining:
-
-- Commit the final closeout changes.
-- Promote the smoke script to a maintained E2E test if this flow becomes a recurring gate.
-- Investigate why creator Lock stayed disabled in the scripted post-preview pass.
+Money stays as integer paise except at display and UPI URI formatting boundaries.
