@@ -2,9 +2,9 @@
 
 ## Current Status Summary
 
-- Current active milestone: M013 Security Hardening & Abuse Controls.
-- Last full pass: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
-- Current blocker: M013 closeout commit is pending in this checkout.
+- Current active milestone: M014 Frontend Experience & Pilot Polish.
+- Last full pass: M013 Security Hardening & Abuse Controls, commits `44fede4` and `49b3c21`.
+- Current blocker: none recorded.
 - Default context: read `docs/ACTIVE_CONTEXT.md`, this file, `task.md`, and current git status/diff.
 
 ## Milestones
