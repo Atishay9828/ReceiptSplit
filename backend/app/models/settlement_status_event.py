@@ -56,4 +56,3 @@ class SettlementStatusEvent(Base):
             "created_at",
         ),
     )
-

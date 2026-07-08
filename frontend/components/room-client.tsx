@@ -16,7 +16,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 
-import { ClaimButton } from "@/components/claim-button";
+
 import { ErrorState } from "@/components/error-state";
 import { ItemForm } from "@/components/item-form";
 import { ReceiptUpload } from "@/components/receipt-upload";
@@ -252,12 +252,14 @@ function LifecycleIndicator({ status }: { status: RoomSummary["room"]["status"] 
 
 export function CreatorNextActionCard({
   roomStatus,
-  canLock
+  canLock,
+  itemCount
 }: {
   roomStatus: RoomSummary["room"]["status"];
   canLock: boolean;
+  itemCount: number;
 }) {
-  const copy = getCreatorNextAction(roomStatus, canLock);
+  const copy = getCreatorNextAction(roomStatus, canLock, itemCount);
 
   return (
     <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
@@ -275,34 +277,44 @@ export function CreatorNextActionCard({
   );
 }
 
-function getCreatorNextAction(roomStatus: RoomSummary["room"]["status"], canLock: boolean) {
+function getCreatorNextAction(
+  roomStatus: RoomSummary["room"]["status"],
+  canLock: boolean,
+  itemCount: number
+) {
   if (roomStatus === "draft") {
+    if (itemCount === 0) {
+      return {
+        title: "Add receipt items first",
+        description: "Add items manually or scan a receipt before opening claims."
+      };
+    }
     return {
       title: "Open claiming",
-      description: "Share the link when you are ready. Friends can join without installing an app."
+      description: "Items are ready. Share the link so friends can join and claim what they had."
     };
   }
   if (roomStatus === "active") {
     return canLock
       ? {
           title: "Lock bill",
-          description: "Friends can stop changing claims once everything looks right."
+          description: "Everyone has claimed their items. Lock when ready to settle."
         }
       : {
-          title: "Wait for claims",
-          description: "Some items still need claims before you can lock the bill."
+          title: "Share and collect claims",
+          description: "Share the invite link. Lock the bill once everyone has claimed their items."
         };
   }
   if (roomStatus === "settling") {
     return {
       title: "Confirm payments",
-      description: "Participants pay you directly, then you manually confirm or dispute each request."
+      description: "Participants pay you directly. Confirm each payment manually below."
     };
   }
   if (roomStatus === "settled") {
     return {
-      title: "View summary",
-      description: "All payments that needed payer confirmation are complete."
+      title: "All payments confirmed",
+      description: "This split is fully settled. Nothing left to do."
     };
   }
   return {
@@ -333,7 +345,11 @@ function CreatorTools({
   onPreviewRetry: () => Promise<void>;
 }) {
   const [actionError, setActionError] = useState<string | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const lockReady = canLockSplit({ locked, preview, readiness });
+  const itemCount = summary.items.length;
+  // Find creator participant for self-claim
+  const creatorParticipant = summary.participants.find((p) => p.role === "creator");
   const participantsById = useMemo(
     () => new Map(summary.participants.map((participant) => [participant.id, participant.nickname])),
     [summary.participants]
@@ -345,32 +361,33 @@ function CreatorTools({
       await action();
       await onRefresh();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Action failed");
+      setActionError(friendlyError(err));
     }
+  }
+
+  async function removeParticipant(participantId: string) {
+    setRemoveConfirm(null);
+    await run(() => api.removeParticipant(summary.room.id, participantId, session.token));
   }
 
   return (
     <>
       {actionError ? <ErrorState message={actionError} onRetry={() => setActionError(null)} /> : null}
-      <CreatorNextActionCard roomStatus={summary.room.status} canLock={lockReady} />
+      <CreatorNextActionCard
+        roomStatus={summary.room.status}
+        canLock={lockReady}
+        itemCount={itemCount}
+      />
       <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
-      <Participants participants={summary.participants} />
-      {summary.room.status === "draft" ? (
-        <Button
-          type="button"
-          onClick={() =>
-            run(() =>
-              api.updateRoom(summary.room.id, session.token, {
-                version: summary.room.version,
-                status: "active"
-              })
-            )
-          }
-        >
-          <Check size={16} aria-hidden="true" />
-          Open claiming
-        </Button>
-      ) : null}
+      <Participants
+        participants={summary.participants}
+        mode="creator"
+        roomStatus={summary.room.status}
+        confirmRemoveId={removeConfirm}
+        onRequestRemove={(id) => setRemoveConfirm(id)}
+        onCancelRemove={() => setRemoveConfirm(null)}
+        onConfirmRemove={removeParticipant}
+      />
       <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
         <h2 className="text-lg font-bold">Items</h2>
         {!locked ? (
@@ -385,6 +402,28 @@ function CreatorTools({
             />
           </div>
         ) : null}
+        {summary.room.status === "draft" ? (
+          <div className="mt-4">
+            <Button
+              type="button"
+              disabled={itemCount === 0}
+              onClick={() =>
+                run(() =>
+                  api.updateRoom(summary.room.id, session.token, {
+                    version: summary.room.version,
+                    status: "active"
+                  })
+                )
+              }
+            >
+              <Check size={16} aria-hidden="true" />
+              Open claiming
+            </Button>
+            {itemCount === 0 ? (
+              <p className="mt-2 text-sm text-[#63706b]">Add at least one item before opening claims.</p>
+            ) : null}
+          </div>
+        ) : null}
         <ItemList
           summary={summary}
           locked={locked}
@@ -392,6 +431,17 @@ function CreatorTools({
           onRefresh={onRefresh}
         />
       </section>
+      {/* Creator self-claim — available in active mode */}
+      {summary.room.status === "active" && creatorParticipant ? (
+        <CreatorClaimSection
+          summary={summary}
+          creatorParticipantId={creatorParticipant.id}
+          onClaim={(itemId, payload) =>
+            run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
+          }
+          onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
+        />
+      ) : null}
       {!locked ? (
         <AdjustmentForm
           roomId={summary.room.id}
@@ -484,7 +534,7 @@ function ParticipantTools({
       await action();
       await onRefresh();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Refresh and try again");
+      setActionError(friendlyError(err));
       await onRefresh();
     }
   }
@@ -497,7 +547,7 @@ function ParticipantTools({
         status={participantStatus}
         participantName={session.nickname}
       />
-      <Participants participants={summary.participants} />
+      <Participants participants={summary.participants} mode="participant" roomStatus={summary.room.status} />
       <ParticipantClaimList
         summary={summary}
         participantId={session.participantId}
@@ -507,51 +557,6 @@ function ParticipantTools({
         }
         onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
       />
-      <section aria-hidden="true" className="hidden">
-        <h2 className="text-lg font-bold">Claims</h2>
-        <div className="mt-3 grid gap-3">
-          {summary.items.map((item) => {
-            const itemAssignments = summary.assignments.filter(
-              (assignment) => assignment.line_item_id === item.id
-            );
-            const myClaim = itemAssignments.find(
-              (assignment) => assignment.participant_id === session.participantId
-            );
-            const claimed = itemAssignments.reduce((sum, assignment) => sum + assignment.claimed_qty, 0);
-            const available = Math.max(item.quantity - claimed, 0);
-            return (
-              <div key={item.id} className="rounded-md border border-[#dbe5df] p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-sm text-[#63706b]">
-                      {formatPaise(item.total_paise)} · {available} of {item.quantity} open
-                    </p>
-                  </div>
-                  {myClaim ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={locked}
-                      onClick={() => run(() => api.unclaimItem(summary.room.id, session.token, item.id))}
-                    >
-                      Unclaim
-                    </Button>
-                  ) : (
-                    <ClaimButton
-                      itemVersion={item.version}
-                      disabled={locked || available < 1 || summary.room.split_mode !== "item_wise"}
-                      onClaim={(payload) =>
-                        run(() => api.claimItem(summary.room.id, session.token, item.id, payload))
-                      }
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
       <SplitPreviewCard
         preview={preview}
         previewError={previewError}
@@ -723,32 +728,55 @@ export function ParticipantClaimList({
             (assignment) => assignment.line_item_id === item.id
           );
           const myClaim = itemAssignments.find((assignment) => assignment.participant_id === participantId);
-          const claimed = itemAssignments.reduce((sum, assignment) => sum + assignment.claimed_qty, 0);
-          const available = Math.max(item.quantity - claimed, 0);
+          const totalClaimed = itemAssignments.reduce((sum, a) => sum + a.claimed_qty, 0);
+          const available = Math.max(item.quantity - totalClaimed, 0);
           const status = myClaim ? "claimed_by_you" : available > 0 ? "available" : "claimed";
+          const unitPaise = item.quantity > 1 ? Math.round(item.total_paise / item.quantity) : null;
 
           return (
             <div key={item.id} className="rounded-md border border-[#dbe5df] bg-cloud/50 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="truncate text-base font-bold">{item.name}</h3>
                   <p className="mt-1 text-sm text-[#63706b]">
-                    {formatPaise(item.total_paise)} - {available} of {item.quantity} open
+                    {unitPaise
+                      ? `${formatPaise(item.total_paise)} total · ${formatPaise(unitPaise)}/unit`
+                      : formatPaise(item.total_paise)}
                   </p>
+                  {item.quantity > 1 ? (
+                    <p className="text-xs text-[#63706b]">
+                      {available} of {item.quantity} available
+                      {itemAssignments.length > 0 ? (
+                        <> · {itemAssignments.map((a) => {
+                          const others = summary.participants.find((p) => p.id === a.participant_id);
+                          return `${others?.nickname ?? "Someone"} ×${a.claimed_qty}`;
+                        }).join(", ")}</>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </div>
                 <ItemClaimStatusBadge status={status} />
               </div>
               <div className="mt-3">
                 {myClaim ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={locked}
-                    aria-label={`Unclaim ${item.name}`}
-                    onClick={() => onUnclaim(item.id)}
-                  >
-                    Unclaim
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <StatusBadge tone="info">You claimed {myClaim.claimed_qty}</StatusBadge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={locked}
+                      aria-label={`Unclaim ${item.name}`}
+                      onClick={() => onUnclaim(item.id)}
+                    >
+                      Unclaim
+                    </Button>
+                  </div>
+                ) : item.quantity > 1 && available > 0 && !locked && summary.room.split_mode === "item_wise" ? (
+                  <QuantityClaimControl
+                    item={item}
+                    available={available}
+                    onClaim={onClaim}
+                  />
                 ) : (
                   <Button
                     type="button"
@@ -766,6 +794,63 @@ export function ParticipantClaimList({
         })}
       </div>
     </section>
+  );
+}
+
+function QuantityClaimControl({
+  item,
+  available,
+  onClaim
+}: {
+  item: Item;
+  available: number;
+  onClaim: (itemId: string, payload: ClaimPayload) => Promise<void> | void;
+}) {
+  const [qty, setQty] = useState(1);
+  const [busy, setBusy] = useState(false);
+
+  async function claim() {
+    setBusy(true);
+    try {
+      await onClaim(item.id, { item_version: item.version, claimed_qty: qty });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 rounded-md border border-[#dbe5df] bg-white">
+        <button
+          type="button"
+          className="grid h-8 w-8 place-items-center rounded-l-md text-sm font-bold text-[#52625b] hover:bg-cloud disabled:opacity-40"
+          disabled={qty <= 1 || busy}
+          onClick={() => setQty((q) => Math.max(1, q - 1))}
+          aria-label="Decrease quantity"
+        >
+          −
+        </button>
+        <span className="min-w-6 text-center text-sm font-bold">{qty}</span>
+        <button
+          type="button"
+          className="grid h-8 w-8 place-items-center rounded-r-md text-sm font-bold text-[#52625b] hover:bg-cloud disabled:opacity-40"
+          disabled={qty >= available || busy}
+          onClick={() => setQty((q) => Math.min(available, q + 1))}
+          aria-label="Increase quantity"
+        >
+          +
+        </button>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={busy}
+        onClick={claim}
+        aria-label={`Claim ${qty} of ${item.name}`}
+      >
+        Claim {qty}
+      </Button>
+    </div>
   );
 }
 
@@ -864,40 +949,61 @@ export function CreatorSettlementPanel({
 
       {requests.length > 0 ? (
         <div className="mt-4 grid gap-3">
-          {requests.map((request) => (
-            <div key={request.id} className="rounded-md border border-[#dbe5df] bg-cloud/40 p-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold">
-                    {participantsById.get(request.participant_id) ?? "Participant"}
-                  </h3>
-                  <p className="text-sm text-[#63706b]">
-                    {formatPaise(request.amount_paise)} · {settlementStatusLabel(request.status)}
-                  </p>
-                  <p className="break-all text-xs text-[#63706b]">{request.payment_reference}</p>
+          {requests.map((request) => {
+            const canConfirm = request.status === "claimed_paid";
+            const canDispute = request.status === "claimed_paid";
+            const isTerminal = request.status === "payer_confirmed";
+            const statusMessage = {
+              due: "Waiting for participant to open payment.",
+              payment_opened: "Participant opened the UPI link.",
+              claimed_paid: "Participant marked paid — waiting for your confirmation.",
+              payer_confirmed: "Payment confirmed.",
+              disputed: "Marked disputed."
+            }[request.status];
+            return (
+              <div
+                key={request.id}
+                className={`rounded-md border p-3 ${
+                  isTerminal
+                    ? "border-[#c3e6d4] bg-mint/30"
+                    : "border-[#dbe5df] bg-cloud/40"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">
+                      {participantsById.get(request.participant_id) ?? "Participant"}
+                    </h3>
+                    <p className="text-sm text-[#63706b]">
+                      {formatPaise(request.amount_paise)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#63706b]">{statusMessage}</p>
+                  </div>
+                  <SettlementStatusBadge status={request.status} />
                 </div>
-                <SettlementStatusBadge status={request.status} />
+                {!isTerminal ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={!canConfirm}
+                      onClick={() => onConfirm(request.id)}
+                    >
+                      Confirm payment
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      disabled={!canDispute}
+                      onClick={() => onDispute(request.id)}
+                    >
+                      Mark disputed
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!["claimed_paid", "disputed"].includes(request.status)}
-                  onClick={() => onConfirm(request.id)}
-                >
-                  Confirm payment
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  disabled={!["due", "payment_opened", "claimed_paid"].includes(request.status)}
-                  onClick={() => onDispute(request.id)}
-                >
-                  Mark disputed
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </section>
@@ -916,17 +1022,32 @@ export function ParticipantSettlementPanel({
   onClaimPaid: (requestId: string) => Promise<void> | void;
 }) {
   const request = settlement?.requests.find((entry) => entry.participant_id === participantId) ?? null;
-  const [openedPayment, setOpenedPayment] = useState<OpenPaymentResponse | null>(null);
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isMobile = typeof navigator !== "undefined" && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  // Build UPI URI directly from request data for immediate QR display
+  const upiUri = useMemo(() => {
+    if (!request) return "";
+    const params = new URLSearchParams({
+      pa: request.payee_vpa,
+      pn: request.payee_name,
+      am: (Math.floor(request.amount_paise / 100) + "." + String(request.amount_paise % 100).padStart(2, "0")),
+      cu: "INR",
+      tn: `ReceiptSplit ${request.payment_reference}`,
+      tr: request.payment_reference
+    });
+    return `upi://pay?${params.toString()}`;
+  }, [request]);
 
   useEffect(() => {
-    if (!openedPayment?.qr_payload) {
+    if (!upiUri || request?.status === "payer_confirmed") {
       return;
     }
-    void QRCode.toDataURL(openedPayment.qr_payload, { margin: 1, width: 180 }).then(setQr);
-  }, [openedPayment?.qr_payload]);
+    void QRCode.toDataURL(upiUri, { margin: 1, width: 200 }).then(setQr);
+  }, [upiUri, request?.status]);
 
   if (!request) {
     return (
@@ -937,16 +1058,18 @@ export function ParticipantSettlementPanel({
     );
   }
 
+  const isConfirmed = request.status === "payer_confirmed";
+  const isDisputed = request.status === "disputed";
+  const canPay = !isConfirmed && !isDisputed || isDisputed;
+
   async function openPayment() {
-    if (!request) {
-      return;
-    }
+    if (!request) return;
     setBusy(true);
     setActionError(null);
     try {
-      setOpenedPayment(await onOpenPayment(request.id));
+      await onOpenPayment(request.id);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Too many attempts. Please try again later.");
+      setActionError(friendlyError(err));
     } finally {
       setBusy(false);
     }
@@ -961,69 +1084,130 @@ export function ParticipantSettlementPanel({
         </div>
         <SettlementStatusBadge status={request.status} />
       </div>
+
+      {/* Payment details — always shown */}
       <div className="mt-4 grid gap-3 rounded-md bg-cloud p-4 text-sm">
         <div className="grid gap-1">
-          <span>Amount due</span>
-          <strong className="text-4xl font-bold text-ink">{formatPaise(request.amount_paise)}</strong>
+          <span className="text-[#63706b]">{isConfirmed ? "Amount" : "Amount due"}</span>
+          <strong className={`text-4xl font-bold ${isConfirmed ? "text-leaf" : "text-ink"}`}>
+            {formatPaise(request.amount_paise)}
+          </strong>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span>Payer</span>
+          <span className="text-[#63706b]">Payer</span>
           <strong className="text-right">{request.payee_name}</strong>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span>UPI ID</span>
-          <strong className="break-all text-right">{request.payee_vpa}</strong>
+          <span className="text-[#63706b]">UPI ID</span>
+          <strong className="break-all text-right font-mono text-sm">{request.payee_vpa}</strong>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span>Reference</span>
-          <strong className="break-all text-right">{request.payment_reference}</strong>
+          <span className="text-[#63706b]">Reference</span>
+          <strong className="break-all text-right text-xs">{request.payment_reference}</strong>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-1 text-sm">
-        <p className="font-medium">{settlementStatusLabel(request.status)}. {participantSettlementCopy(request.status)}</p>
-        <SafetyNotice />
-      </div>
-      {actionError ? <p className="mt-3 text-sm font-medium text-coral">{actionError}</p> : null}
+      {/* Confirmed final state */}
+      {isConfirmed ? (
+        <div className="mt-4 rounded-md border border-[#c3e6d4] bg-mint/40 p-4 text-center">
+          <p className="font-bold text-leaf">Payer confirmed this payment.</p>
+          <p className="mt-1 text-sm text-[#52625b]">You&apos;re all set.</p>
+          <p className="mt-2 text-xs text-[#63706b]">ReceiptSplit does not verify bank transfers.</p>
+        </div>
+      ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <Button type="button" size="lg" disabled={busy} onClick={openPayment}>
-          Open UPI app
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => navigator.clipboard?.writeText(request.payee_vpa)}
-        >
-          <Copy size={16} aria-hidden="true" />
-          Copy UPI ID
-        </Button>
-        <Button
-          type="button"
-          className="col-span-2"
-          variant="secondary"
-          disabled={request.status === "payer_confirmed"}
-          onClick={() => onClaimPaid(request.id)}
-        >
-          I paid
-        </Button>
-      </div>
+      {/* Disputed state */}
+      {isDisputed ? (
+        <div className="mt-4 rounded-md border border-[#ffd6d0] bg-[#fff0ea] p-4">
+          <p className="font-bold text-coral">Payment disputed by payer.</p>
+          <p className="mt-1 text-sm text-[#52625b]">Check with the payer and retry if needed.</p>
+        </div>
+      ) : null}
 
-      {openedPayment ? (
-        <div className="mt-4 grid gap-3 rounded-md border border-[#dbe5df] p-3">
-          <h3 className="font-semibold">QR fallback</h3>
+      {/* QR for non-confirmed states */}
+      {!isConfirmed ? (
+        <div className="mt-4 grid gap-3">
           {qr ? (
-            <Image
-              className="h-36 w-36 rounded-md border border-[#dbe5df]"
-              src={qr}
-              alt="UPI payment QR"
-              width={144}
-              height={144}
-              unoptimized
-            />
+            <div className="grid gap-2">
+              <p className="text-xs font-semibold text-[#63706b]">
+                {isMobile ? "Scan or tap Open UPI app" : "Scan with your phone's camera or UPI app"}
+              </p>
+              <Image
+                className="h-48 w-48 rounded-md border border-[#dbe5df] bg-white p-1"
+                src={qr}
+                alt="UPI payment QR code"
+                width={192}
+                height={192}
+                unoptimized
+              />
+            </div>
           ) : null}
-          <p className="break-all text-sm text-[#63706b]">{openedPayment.copy_vpa}</p>
-          <p className="text-xs text-[#63706b]">{openedPayment.disclaimer}</p>
+          <SafetyNotice />
+          {actionError ? <p className="text-sm font-medium text-coral">{actionError}</p> : null}
+          <div className="grid grid-cols-2 gap-2">
+            {isMobile ? (
+              <Button
+                type="button"
+                size="lg"
+                disabled={busy}
+                onClick={openPayment}
+                aria-label="Open UPI payment app"
+              >
+                Open UPI app
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                variant="secondary"
+                disabled={busy}
+                onClick={openPayment}
+                aria-label="Try to open UPI deep link"
+              >
+                Open UPI link
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigator.clipboard?.writeText(request.payee_vpa)}
+              aria-label="Copy UPI ID to clipboard"
+            >
+              <Copy size={16} aria-hidden="true" />
+              Copy UPI ID
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="col-span-2"
+              onClick={() => navigator.clipboard?.writeText(upiUri)}
+              aria-label="Copy UPI payment link"
+            >
+              <Copy size={16} aria-hidden="true" />
+              Copy payment link
+            </Button>
+          </div>
+          {!isMobile ? (
+            <p className="text-xs text-[#63706b]">
+              On desktop, scan the QR with your phone or copy the UPI ID into your banking app.
+            </p>
+          ) : null}
+          {isIOS ? (
+            <p className="text-xs text-[#63706b]">
+              On iOS, copy the UPI ID and enter it in your preferred UPI app.
+            </p>
+          ) : null}
+          {canPay ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={request.status === "claimed_paid"}
+              onClick={() => onClaimPaid(request.id)}
+              aria-label="Mark payment as done"
+            >
+              I paid
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -1148,20 +1332,165 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
   );
 }
 
-function Participants({ participants }: { participants: RoomSummary["participants"] }) {
+function Participants({
+  participants,
+  mode = "participant",
+  roomStatus,
+  confirmRemoveId,
+  onRequestRemove,
+  onCancelRemove,
+  onConfirmRemove
+}: {
+  participants: RoomSummary["participants"];
+  mode?: "creator" | "participant";
+  roomStatus?: RoomSummary["room"]["status"];
+  confirmRemoveId?: string | null;
+  onRequestRemove?: (id: string) => void;
+  onCancelRemove?: () => void;
+  onConfirmRemove?: (id: string) => void;
+}) {
+  const canRemove = mode === "creator" && (roomStatus === "draft" || roomStatus === "active");
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
       <h2 className="text-lg font-bold">Participants</h2>
       <div className="mt-3 flex flex-wrap gap-2">
-        {participants.map((participant) => (
-          <span
-            key={participant.id}
-            className="rounded-full px-3 py-1 text-sm font-semibold text-white"
-            style={{ backgroundColor: participant.color }}
-          >
-            {participant.nickname}
-          </span>
-        ))}
+        {participants.map((participant) => {
+          const isCreator = participant.role === "creator";
+          const isBeingRemoved = confirmRemoveId === participant.id;
+          return (
+            <div key={participant.id} className="flex items-center gap-1">
+              <span
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold text-white"
+                style={{ backgroundColor: participant.color }}
+              >
+                {participant.nickname}
+                {isCreator ? (
+                  <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                    Creator
+                  </span>
+                ) : null}
+              </span>
+              {canRemove && !isCreator ? (
+                isBeingRemoved ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="rounded-full bg-coral px-2 py-0.5 text-xs font-bold text-white"
+                      onClick={() => onConfirmRemove?.(participant.id)}
+                      aria-label={`Confirm remove ${participant.nickname}`}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full bg-cloud px-2 py-0.5 text-xs font-bold text-[#52625b]"
+                      onClick={() => onCancelRemove?.()}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="grid h-5 w-5 place-items-center rounded-full bg-[#ffd6d0] text-xs font-bold text-coral hover:bg-coral hover:text-white"
+                    onClick={() => onRequestRemove?.(participant.id)}
+                    aria-label={`Remove ${participant.nickname}`}
+                    title={`Remove ${participant.nickname}`}
+                  >
+                    ×
+                  </button>
+                )
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {confirmRemoveId ? (
+        <p className="mt-2 text-xs text-[#63706b]">
+          Removing this participant will release their item claims.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function CreatorClaimSection({
+  summary,
+  creatorParticipantId,
+  onClaim,
+  onUnclaim
+}: {
+  summary: RoomSummary;
+  creatorParticipantId: string;
+  onClaim: (itemId: string, payload: ClaimPayload) => Promise<void>;
+  onUnclaim: (itemId: string) => Promise<void>;
+}) {
+  return (
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">Your items</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Claim what you had too.</p>
+        </div>
+        <StatusBadge tone="info">Creator</StatusBadge>
+      </div>
+      <div className="mt-4 grid gap-3">
+        {summary.items.length === 0 ? (
+          <EmptyState title="No items yet." description="Add items above before claiming." />
+        ) : null}
+        {summary.items.map((item) => {
+          const itemAssignments = summary.assignments.filter(
+            (a) => a.line_item_id === item.id
+          );
+          const myClaim = itemAssignments.find((a) => a.participant_id === creatorParticipantId);
+          const totalClaimed = itemAssignments.reduce((sum, a) => sum + a.claimed_qty, 0);
+          const available = Math.max(item.quantity - totalClaimed, 0);
+
+          return (
+            <div key={item.id} className="rounded-md border border-[#dbe5df] bg-cloud/50 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold">{item.name}</h3>
+                  <p className="mt-1 text-sm text-[#63706b]">
+                    {formatPaise(item.total_paise)}
+                    {item.quantity > 1 ? ` · ${available} of ${item.quantity} available` : ""}
+                  </p>
+                </div>
+                {myClaim ? (
+                  <StatusBadge tone="info">You claimed {myClaim.claimed_qty}</StatusBadge>
+                ) : null}
+              </div>
+              <div className="mt-3">
+                {myClaim ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Unclaim ${item.name}`}
+                    onClick={() => onUnclaim(item.id)}
+                  >
+                    Unclaim
+                  </Button>
+                ) : item.quantity > 1 && available > 0 ? (
+                  <QuantityClaimControl
+                    item={item}
+                    available={available}
+                    onClaim={onClaim}
+                  />
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={available < 1 || summary.room.split_mode !== "item_wise"}
+                    aria-label={`Claim ${item.name}`}
+                    onClick={() => onClaim(item.id, { item_version: item.version, claimed_qty: 1 })}
+                  >
+                    Claim
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -1486,19 +1815,46 @@ function settlementStatusLabel(status: SettlementStatus): string {
   }
 }
 
-function participantSettlementCopy(status: SettlementStatus): string {
-  switch (status) {
-    case "due":
-      return "Pay your share directly to the payer.";
-    case "payment_opened":
-      return "Complete payment in your UPI app, then return and tap I paid.";
-    case "claimed_paid":
-      return "Waiting for payer confirmation.";
-    case "payer_confirmed":
-      return "Payer confirmed this payment.";
-    case "disputed":
-      return "Payer marked this payment as disputed. Check with them and try again if needed.";
+
+function friendlyError(err: unknown): string {
+  if (typeof err === "object" && err !== null && "code" in err && "message" in err) {
+    const e = err as { code: string; message: string; status?: number };
+    // Map known API error codes to human-friendly messages
+    if (e.code === "RATE_LIMIT_EXCEEDED" || e.status === 429) {
+      return "Too many attempts. Please wait a moment and try again.";
+    }
+    if (e.code === "QUANTITY_EXCEEDED") {
+      return "Someone may have claimed the remaining quantity. Refresh and try again.";
+    }
+    if (e.code === "INVALID_STATE_TRANSITION") {
+      return "This action is not available in the current room state.";
+    }
+    if (e.code === "VERSION_CONFLICT") {
+      return "The room changed while you were acting. Refresh and try again.";
+    }
+    if (e.code === "CLAIM_NOT_FOUND") {
+      return "No active claim found for this item. Refresh and try again.";
+    }
+    if (e.code === "PARTICIPANT_NOT_FOUND") {
+      return "This participant was already removed or does not exist.";
+    }
+    if (e.code === "FORBIDDEN") {
+      return "You do not have permission to do this.";
+    }
+    if (e.message) {
+      if (e.message.includes("Failed to fetch") || e.message.includes("NetworkError")) {
+        return "Network connection failed. Please check your internet and try again.";
+      }
+      return e.message;
+    }
   }
+  if (err instanceof Error) {
+    if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+      return "Network connection failed. Please check your internet and try again.";
+    }
+    return err.message || "Something went wrong. Please refresh.";
+  }
+  return "Something went wrong. Please check your connection and refresh.";
 }
 
 function isPreviewValidationError(err: unknown): boolean {

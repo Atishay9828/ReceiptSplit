@@ -135,23 +135,31 @@ async def update_parsed_receipt(
 ) -> ParsedReceiptDraftResponse:
     current = await service.get_parsed(db, room_id, parsed_receipt_id)
     draft = ParsedReceiptDraft(
-        merchant_name=payload.merchant_name if payload.merchant_name is not None else current.merchant_name,
-        subtotal_paise=payload.subtotal_paise if payload.subtotal_paise is not None else current.subtotal_paise,
+        merchant_name=payload.merchant_name
+        if payload.merchant_name is not None
+        else current.merchant_name,
+        subtotal_paise=payload.subtotal_paise
+        if payload.subtotal_paise is not None
+        else current.subtotal_paise,
         tax_paise=payload.tax_paise if payload.tax_paise is not None else current.tax_paise,
         discount_paise=payload.discount_paise
         if payload.discount_paise is not None
         else current.discount_paise,
-        total_paise=payload.total_paise if payload.total_paise is not None else current.total_paise,
+        total_paise=payload.total_paise
+        if payload.total_paise is not None
+        else current.total_paise,
         items=payload.items if payload.items is not None else current.items,
-        adjustments=payload.adjustments if payload.adjustments is not None else current.adjustments,
+        adjustments=payload.adjustments
+        if payload.adjustments is not None
+        else current.adjustments,
         warnings=payload.warnings if payload.warnings is not None else current.warnings,
         confidence=current.confidence,
-        needs_review=payload.needs_review if payload.needs_review is not None else current.needs_review,
+        needs_review=payload.needs_review
+        if payload.needs_review is not None
+        else current.needs_review,
         parser_version=current.parser_version,
     )
-    parsed = await service.update_parsed(
-        db, room_id, parsed_receipt_id, draft, actor.actor_id
-    )
+    parsed = await service.update_parsed(db, room_id, parsed_receipt_id, draft, actor.actor_id)
     return parsed_receipt_response_from_model(parsed)
 
 
@@ -179,7 +187,10 @@ async def confirm_parsed_receipt(
         actor_participant_id=actor.participant.participant_id if actor.participant else None,
         actor_user_id=actor.user.id if actor.user else None,
         actor_type="creator",
-        metadata={"parsed_receipt_id": str(parsed_receipt_id), "already_confirmed": already_confirmed},
+        metadata={
+            "parsed_receipt_id": str(parsed_receipt_id),
+            "already_confirmed": already_confirmed,
+        },
         request=request,
     )
     return ParsedReceiptConfirmResponse(

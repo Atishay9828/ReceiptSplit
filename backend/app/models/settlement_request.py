@@ -41,7 +41,9 @@ class SettlementRequest(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
     opened_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    claimed_paid_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    claimed_paid_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
     payer_confirmed_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
@@ -66,4 +68,3 @@ class SettlementRequest(Base):
             unique=True,
         ),
     )
-

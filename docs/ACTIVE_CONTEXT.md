@@ -37,14 +37,11 @@ context.
 
 ## Current Milestone Status
 
-- Last full pass before M014: M013 Security Hardening & Abuse Controls, commits `44fede4` and
-  `49b3c21`.
-- Current active milestone: M014 Frontend Experience & Pilot Polish.
-- M014 state: FULL PASS after frontend validation, backend CORS regression proof, production
-  browser smoke, and screenshots. Closeout commit pending.
-- M014 polishes create/join, participant room, creator room, OCR review copy, settlement/payment
-  UI, abuse reporting, loading/error states, mobile layout, status colors, and Tailwind v4 styling.
-- M014 also fixes CORS `PUT` preflight for browser settlement payer-detail save.
+- Last full pass before M014.1: M014 Frontend Experience & Pilot Polish, commit `79f2041`.
+- Current active milestone: M014.1 Real-World UX Bug Bash & Payment Flow Repair.
+- M014.1 state: FULL PASS after frontend validation, backend tests, and browser smoke tests. Closeout commit pending.
+- M014.1 repairs quantity claiming, payment status visibility (QR codes and state), settlement state-machine, room settled transitions, and participant removal.
+- M014 fixed CORS `PUT` preflight for browser settlement payer-detail save.
 
 See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
@@ -52,26 +49,25 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 M014 closeout is recorded in commit `79f2041`; keep the working tree clean.
 
-## M014 Current Implementation
+## M014.1 Current Implementation
 
 Frontend:
 
-- polished `/create` and `/join/[inviteToken]` first-impression flows
-- participant "You owe" summary, item claim cards, safe payment card, and mobile-first layout
-- creator next-step card, item/OCR area polish, split preview, and settlement dashboard
-- tone-aware settlement badges: `claimed_paid` amber/pending, `payer_confirmed` green/final
-- visible but calm abuse-report UI
-- Tailwind v4 CSS import plus local design tokens for app colors and shadows
+- Quantity selection in `CreatorClaimSection` and `ParticipantClaimList`
+- Participant settlement panel shows QR codes and payment states
+- Creator settlement panel allows safe payment confirmation
+- Automatic transition to `settled` state when all payments confirmed
+- Full participant removal UI
 
 Backend:
 
-- CORS now allows `PUT` preflight so browser settlement payer-detail save works.
+- `removeParticipant` API with claim cleanup and event broadcast
+- Room `settled` auto-transition on payment confirmation
 
 Docs:
 
 - active architecture: `docs/architecture/frontend.md`
 - archived closeout evidence: `docs/archive/milestones/M014-frontend-experience-polish.md`
-- screenshots: `docs/reports/screenshots/M014/`
 
 ## Validation Baselines
 
@@ -90,17 +86,16 @@ Docs:
   the approval reviewer.
 - Browser E2E harness is deferred.
 
-M014 closeout checks:
+M014.1 closeout checks:
 
-- `npm.cmd run lint`
-- `npm.cmd run typecheck`
+- `npm.cmd run lint` -> passed
+- `npm.cmd run typecheck` -> passed
 - `npm.cmd test` -> 11 files, 51 tests passed
-- `npm.cmd run build`
+- `npm.cmd run build` -> passed
 - `npm.cmd audit --json` -> 2 moderate, 0 high, 0 critical; no force fix
 - `.\.venv\Scripts\python.exe -m pytest tests\ -q` -> full backend suite passed with 3 skipped
-- `.\.venv\Scripts\python.exe -m ruff check .`
-- Production browser smoke passed through create, join, claim, lock, save payer details, prepare
-  settlement, open payment, copy fallback, claim paid, payer confirm, and abuse report.
+- `.\.venv\Scripts\python.exe -m ruff check .` -> passed
+- Production browser smoke passed through create, join, claim, quantity change, lock, save payer details, prepare settlement, open payment, claim paid, payer confirm, and room transition to settled.
 
 ## Non-Negotiables For Future Agents
 

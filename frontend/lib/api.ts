@@ -264,6 +264,13 @@ export class ReceiptSplitApi {
     });
   }
 
+  removeParticipant(roomId: string, participantId: string, token: string): Promise<{ ok: true }> {
+    return this.request<{ ok: true }>(`/api/rooms/${roomId}/participants/${participantId}`, {
+      method: "DELETE",
+      token
+    });
+  }
+
   // --- OCR ---
 
   async uploadReceipt(roomId: string, token: string, file: File): Promise<ReceiptUploadResponse> {

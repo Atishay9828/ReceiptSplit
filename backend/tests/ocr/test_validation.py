@@ -48,9 +48,7 @@ def test_upload_rejects_corrupt_image() -> None:
 def test_upload_strips_exif_png_ancillary_chunks() -> None:
     validator = ReceiptImageValidator(ImageValidationConfig(max_bytes=2048))
     png_with_text_chunk = (
-        PNG_1X1[:33]
-        + b"\x00\x00\x00\x08tEXtsecret!!\x00\x00\x00\x00"
-        + PNG_1X1[33:]
+        PNG_1X1[:33] + b"\x00\x00\x00\x08tEXtsecret!!\x00\x00\x00\x00" + PNG_1X1[33:]
     )
 
     sanitized = validator.strip_metadata(png_with_text_chunk, "image/png")

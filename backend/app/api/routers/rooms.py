@@ -165,7 +165,9 @@ async def update_room(
                 db,
                 action="settlement.payer_details_change_blocked",
                 room_id=room_id,
-                actor_participant_id=actor.participant.participant_id if actor.participant else None,
+                actor_participant_id=actor.participant.participant_id
+                if actor.participant
+                else None,
                 actor_user_id=actor.user.id if actor.user else None,
                 actor_type="creator",
                 metadata={

@@ -33,7 +33,9 @@ async def test_mock_provider_default_is_receipt_like() -> None:
 
 
 async def test_tesseract_provider_missing_binary_maps_to_domain_error() -> None:
-    provider = TesseractOcrProvider(tesseract_cmd="definitely-missing-tesseract", timeout_seconds=1)
+    provider = TesseractOcrProvider(
+        tesseract_cmd="definitely-missing-tesseract", timeout_seconds=1
+    )
 
     with pytest.raises(OcrProviderUnavailable):
         await provider.extract_text(

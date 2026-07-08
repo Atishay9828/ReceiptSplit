@@ -23,7 +23,9 @@ class SettlementNotReadyError(DomainError):
 
 class SettlementRequestNotFoundError(DomainError):
     def __init__(self) -> None:
-        super().__init__(code="SETTLEMENT_REQUEST_NOT_FOUND", message="Settlement request not found.")
+        super().__init__(
+            code="SETTLEMENT_REQUEST_NOT_FOUND", message="Settlement request not found."
+        )
 
 
 class InvalidSettlementTransitionError(DomainError):
@@ -47,7 +49,9 @@ class InvalidPayerDetailsError(DomainError):
 
 class SettlementAmountError(DomainError):
     def __init__(self) -> None:
-        super().__init__(code="SETTLEMENT_AMOUNT_ERROR", message="Settlement amount must be positive.")
+        super().__init__(
+            code="SETTLEMENT_AMOUNT_ERROR", message="Settlement amount must be positive."
+        )
 
 
 class RoomNotLockedOrSettlingError(DomainError):
@@ -59,7 +63,11 @@ class RoomNotLockedOrSettlingError(DomainError):
 
 
 ALLOWED_SETTLEMENT_TRANSITIONS: dict[SettlementStatus, set[SettlementStatus]] = {
-    SettlementStatus.DUE: {SettlementStatus.PAYMENT_OPENED, SettlementStatus.CLAIMED_PAID, SettlementStatus.DISPUTED},
+    SettlementStatus.DUE: {
+        SettlementStatus.PAYMENT_OPENED,
+        SettlementStatus.CLAIMED_PAID,
+        SettlementStatus.DISPUTED,
+    },
     SettlementStatus.PAYMENT_OPENED: {SettlementStatus.CLAIMED_PAID, SettlementStatus.DISPUTED},
     SettlementStatus.CLAIMED_PAID: {SettlementStatus.PAYER_CONFIRMED, SettlementStatus.DISPUTED},
     SettlementStatus.DISPUTED: {
@@ -84,7 +92,9 @@ class SettlementLink:
     payment_reference: str
 
 
-def assert_settlement_transition(old_status: SettlementStatus, new_status: SettlementStatus) -> None:
+def assert_settlement_transition(
+    old_status: SettlementStatus, new_status: SettlementStatus
+) -> None:
     if old_status == new_status:
         return
     if new_status not in ALLOWED_SETTLEMENT_TRANSITIONS[old_status]:
@@ -140,4 +150,3 @@ class SettlementLinkBuilder:
             payee_name=normalized_name,
             payment_reference=reference,
         )
-

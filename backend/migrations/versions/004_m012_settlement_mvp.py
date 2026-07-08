@@ -25,7 +25,12 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "settlement_requests",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("room_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("split_session_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("participant_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -35,8 +40,12 @@ def upgrade() -> None:
         sa.Column("payee_name", sa.String(length=100), nullable=False),
         sa.Column("payment_reference", sa.String(length=80), nullable=False),
         sa.Column("status", sa.String(length=30), server_default="due", nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("opened_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("claimed_paid_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("payer_confirmed_at", sa.TIMESTAMP(timezone=True), nullable=True),
@@ -74,7 +83,12 @@ def upgrade() -> None:
 
     op.create_table(
         "settlement_status_events",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("settlement_request_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("room_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("participant_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -83,13 +97,22 @@ def upgrade() -> None:
         sa.Column("old_status", sa.String(length=30), nullable=True),
         sa.Column("new_status", sa.String(length=30), nullable=False),
         sa.Column("reason", sa.Text(), nullable=True),
-        sa.Column("event_metadata", postgresql.JSONB(astext_type=sa.Text()), server_default="{}", nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "event_metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="{}",
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["actor_participant_id"], ["room_participants.id"]),
         sa.ForeignKeyConstraint(["actor_user_id"], ["users.id"]),
         sa.ForeignKeyConstraint(["participant_id"], ["room_participants.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["room_id"], ["rooms.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["settlement_request_id"], ["settlement_requests.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["settlement_request_id"], ["settlement_requests.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -105,9 +128,10 @@ def downgrade() -> None:
         table_name="settlement_status_events",
     )
     op.drop_table("settlement_status_events")
-    op.drop_index("uq_settlement_requests_room_participant_session", table_name="settlement_requests")
+    op.drop_index(
+        "uq_settlement_requests_room_participant_session", table_name="settlement_requests"
+    )
     op.drop_index("idx_settlement_requests_room_status", table_name="settlement_requests")
     op.drop_index("idx_settlement_requests_room_participant", table_name="settlement_requests")
     op.drop_index("idx_settlement_requests_room", table_name="settlement_requests")
     op.drop_table("settlement_requests")
-

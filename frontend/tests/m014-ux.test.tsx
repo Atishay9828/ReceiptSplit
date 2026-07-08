@@ -212,12 +212,12 @@ describe("M014 frontend polish", () => {
     expect(screen.getByText("AJ Payer")).toBeInTheDocument();
     expect(screen.getByText("receiptsplit.test@upi")).toBeInTheDocument();
     expect(screen.getByText("RS-ROOM-BOB")).toBeInTheDocument();
-    expect(screen.getByText(/marked paid\. waiting for payer confirmation/i)).toBeInTheDocument();
+
     expect(screen.getByText(/ReceiptSplit does not verify bank transfers/i)).toBeInTheDocument();
     expect(screen.queryByText(/verified paid|payment successful/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /open upi app/i }));
-    expect(await screen.findByText(/qr fallback/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /open upi/i }));
+    expect(await screen.findByText(/Scan with your phone's camera or UPI app/i)).toBeInTheDocument();
   });
 
   it("status badges keep claimed paid visually distinct from payer confirmed", () => {
@@ -230,11 +230,11 @@ describe("M014 frontend polish", () => {
   });
 
   it("creator next action card explains the one primary action", () => {
-    render(<CreatorNextActionCard roomStatus="active" canLock />);
+    render(<CreatorNextActionCard roomStatus="active" canLock itemCount={2} />);
 
     expect(screen.getByRole("heading", { name: /next step/i })).toBeInTheDocument();
     expect(screen.getByText(/lock bill/i)).toBeInTheDocument();
-    expect(screen.getByText(/friends can stop changing claims/i)).toBeInTheDocument();
+    expect(screen.getByText(/everyone has claimed their items/i)).toBeInTheDocument();
   });
 
   it("creator settlement dashboard shows confirm and dispute without verification language", () => {

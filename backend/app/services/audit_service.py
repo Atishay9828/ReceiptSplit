@@ -42,7 +42,9 @@ class AuditService:
             actor_participant_id=actor_participant_id,
             actor_user_id=actor_user_id,
             actor_type=actor_type,
-            ip_fingerprint=fingerprint(request.client.host if request and request.client else None),
+            ip_fingerprint=fingerprint(
+                request.client.host if request and request.client else None
+            ),
             user_agent=(request.headers.get("user-agent", "")[:200] if request else None),
             event_metadata=metadata or {},
         )

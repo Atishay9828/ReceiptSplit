@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 SETTLEMENT_DISCLAIMER = (
     "Check the recipient UPI ID and amount inside your UPI app before paying. "
-    "ReceiptSplit does not verify bank transfer. Mark \"I paid\" only after completing payment."
+    'ReceiptSplit does not verify bank transfer. Mark "I paid" only after completing payment.'
 )
 
 
@@ -209,7 +209,10 @@ class SettlementService:
                     actor_participant_id=actor.actor_participant_id,
                     actor_user_id=actor.actor_user_id,
                     actor_type="creator",
-                    metadata={"created_count": len(created), "request_count": len(existing) + len(created)},
+                    metadata={
+                        "created_count": len(created),
+                        "request_count": len(existing) + len(created),
+                    },
                 )
 
         return await self._list_requests(db, room_id)
@@ -225,7 +228,9 @@ class SettlementService:
             return await self._list_requests(db, room_id)
         if actor.participant is None or actor.participant.room_id != room_id:
             raise SettlementForbiddenError()
-        return await self._list_requests(db, room_id, participant_id=actor.participant.participant_id)
+        return await self._list_requests(
+            db, room_id, participant_id=actor.participant.participant_id
+        )
 
     async def has_settlement_requests(self, db: AsyncSession, room_id: UUID) -> bool:
         return await self._has_requests(db, room_id)
@@ -409,6 +414,41 @@ class SettlementService:
                         "reason_present": bool(reason),
                     },
                 )
+
+            # Auto-settle check: if new_status is PAYER_CONFIRMED, check if all are confirmed
+            if new_status == SettlementStatus.PAYER_CONFIRMED:
+                requests = await self._list_requests(db, request.room_id)
+                if all(r.status == SettlementStatus.PAYER_CONFIRMED.value for r in requests):
+                    room = await self._room_repo.get_by_id(db, request.room_id)
+                    if room and room.status == "settling":
+                        room.status = "settled"
+                        room.version += 1
+                        await db.flush()
+
+                        await self._events.append_in_tx(
+                            db,
+                            request.room_id,
+                            "room.state_changed",
+                            actor_id=actor.actor_id,
+                            payload={"from": "settling", "to": "settled", "auto": True},
+                        )
+                        if self._audit is not None:
+                            await self._audit.record(
+                                db,
+                                action="room.state_changed",
+                                room_id=request.room_id,
+                                actor_participant_id=actor.actor_participant_id,
+                                actor_user_id=actor.actor_user_id,
+                                actor_type="creator" if actor.is_creator else "participant",
+                                metadata={"from": "settling", "to": "settled", "auto": True},
+                            )
+                        # We also need to emit it to the websocket
+                        await self._events.broadcast(
+                            request.room_id,
+                            "room.state_changed",
+                            {"from": "settling", "to": "settled", "auto": True},
+                        )
+
         return request
 
     async def _insert_status_event(
@@ -474,7 +514,9 @@ class SettlementService:
         stmt = select(SettlementRequest).where(SettlementRequest.room_id == room_id)
         if participant_id is not None:
             stmt = stmt.where(SettlementRequest.participant_id == participant_id)
-        result = await db.execute(stmt.order_by(SettlementRequest.created_at, SettlementRequest.id))
+        result = await db.execute(
+            stmt.order_by(SettlementRequest.created_at, SettlementRequest.id)
+        )
         return list(result.scalars().all())
 
     async def _has_requests(self, db: AsyncSession, room_id: UUID) -> bool:

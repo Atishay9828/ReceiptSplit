@@ -49,4 +49,3 @@ class OcrJobNotFound(DomainError):
             code="OCR_JOB_NOT_FOUND",
             message="OCR job not found.",
         )
-

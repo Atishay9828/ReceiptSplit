@@ -6,13 +6,13 @@
   --color-mint: #dff4ea;
   --color-coral: #e4624f;
   --color-amber: #f0b44c;
-  --color-cloud: #f6f8f7;
+  --color-cloud: #f3f5f2;
   --shadow-soft: 0 12px 28px rgba(24, 32, 31, 0.09);
 }
 
 :root {
   color-scheme: light;
-  background: #f6f8f7;
+  background: #f3f5f2;
 }
 
 * {
@@ -27,9 +27,9 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(223, 244, 234, 0.9), rgba(246, 248, 247, 0) 320px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(246, 248, 247, 0) 260px),
-    #f6f8f7;
+    radial-gradient(circle at top left, rgba(230, 237, 227, 0.8), rgba(243, 245, 242, 0) 360px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(243, 245, 242, 0) 280px),
+    #f3f5f2;
   color: #18201f;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

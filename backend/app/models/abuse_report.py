@@ -26,7 +26,9 @@ class AbuseReport(Base):
     reporter_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    reporter_role: Mapped[str] = mapped_column(String(30), nullable=False, server_default="unknown")
+    reporter_role: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="unknown"
+    )
     reason: Mapped[str] = mapped_column(String(40), nullable=False)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -58,6 +58,7 @@ class RepositoryRegistry(TypedDict):
     receipt_edit: PostgresReceiptEditRepository
     split_session: PostgresSplitSessionRepository
 
+
 # ── Singleton repositories ───────────────────────────────────────────────────
 
 
@@ -120,8 +121,11 @@ def get_room_service() -> RoomService:
 
 @lru_cache(maxsize=1)
 def get_participant_service() -> ParticipantService:
+    r = _repos()
     return ParticipantService(
-        participant_repo=_repos()["participant"],
+        participant_repo=r["participant"],
+        assignment_repo=r["assignment"],
+        room_repo=r["room"],
         event_publisher=get_event_publisher(),
         audit_service=get_audit_service(),
     )

@@ -67,4 +67,3 @@ class OpenPaymentResponse(BaseModel):
     qr_payload: str
     copy_vpa: str
     disclaimer: str
-

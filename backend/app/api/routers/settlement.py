@@ -85,7 +85,10 @@ async def configure_payer(
             payee_name=payload.payee_name,
         )
     except SettlementNotReadyError as exc:
-        if exc.message != "Payer details cannot be changed after settlement requests are prepared.":
+        if (
+            exc.message
+            != "Payer details cannot be changed after settlement requests are prepared."
+        ):
             raise
         await audit.record(
             db,

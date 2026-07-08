@@ -141,7 +141,9 @@ class ReceiptOcrService:
         return job, parsed
 
     async def get_job(self, db: AsyncSession, room_id: UUID, job_id: UUID) -> OcrJob:
-        result = await db.execute(select(OcrJob).where(OcrJob.id == job_id, OcrJob.room_id == room_id))
+        result = await db.execute(
+            select(OcrJob).where(OcrJob.id == job_id, OcrJob.room_id == room_id)
+        )
         job = result.scalars().first()
         if job is None:
             raise OcrJobNotFound()
@@ -182,7 +184,9 @@ class ReceiptOcrService:
     ) -> ParsedReceipt:
         parsed = await self.get_parsed(db, room_id, parsed_receipt_id)
         if parsed.status == "confirmed":
-            raise DomainError(code="OCR_DRAFT_CONFIRMED", message="OCR draft is already confirmed.")
+            raise DomainError(
+                code="OCR_DRAFT_CONFIRMED", message="OCR draft is already confirmed."
+            )
         parsed.merchant_name = draft.merchant_name
         parsed.subtotal_paise = draft.subtotal_paise
         parsed.tax_paise = draft.tax_paise
@@ -214,7 +218,9 @@ class ReceiptOcrService:
         if parsed.status == "confirmed":
             return parsed, [], [], True, []
         if not parsed.items:
-            raise DomainError(code="NO_ITEMS", message="Add at least one item before confirming OCR.")
+            raise DomainError(
+                code="NO_ITEMS", message="Add at least one item before confirming OCR."
+            )
 
         created_item_ids: list[UUID] = []
         created_adjustment_ids: list[UUID] = []

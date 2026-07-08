@@ -29,18 +29,21 @@ def test_parser_fixture_outputs(fixture_name: str) -> None:
         (FIXTURE_ROOT / "expected" / f"{fixture_name}.json").read_text(encoding="utf-8")
     )
 
-    assert parsed.model_dump(
-        include={
-            "merchant_name",
-            "subtotal_paise",
-            "tax_paise",
-            "discount_paise",
-            "total_paise",
-            "items",
-            "warnings",
-            "needs_review",
-        }
-    ) == expected
+    assert (
+        parsed.model_dump(
+            include={
+                "merchant_name",
+                "subtotal_paise",
+                "tax_paise",
+                "discount_paise",
+                "total_paise",
+                "items",
+                "warnings",
+                "needs_review",
+            }
+        )
+        == expected
+    )
 
 
 def test_parser_marks_mismatch_as_needs_review() -> None:

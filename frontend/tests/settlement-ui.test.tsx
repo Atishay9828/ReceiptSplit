@@ -89,9 +89,14 @@ describe("settlement UI", () => {
     const onOpenPayment = vi.fn().mockResolvedValue(opened);
     const onClaimPaid = vi.fn().mockResolvedValue(undefined);
 
+    const participantSettlement = {
+      ...settlement,
+      requests: [{ ...settlement.requests[0], status: "payment_opened" as const }]
+    };
+
     render(
       <ParticipantSettlementPanel
-        settlement={settlement}
+        settlement={participantSettlement}
         participantId="participant-2"
         onOpenPayment={onOpenPayment}
         onClaimPaid={onClaimPaid}
@@ -99,17 +104,17 @@ describe("settlement UI", () => {
     );
 
     expect(screen.getByText("Pay your share")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /open upi app/i }));
+    await userEvent.click(screen.getByRole("button", { name: /open upi/i }));
 
     await waitFor(() => expect(onOpenPayment).toHaveBeenCalledWith("request-1"));
-    expect(await screen.findByText("QR fallback")).toBeInTheDocument();
+    expect(await screen.findByText(/Scan with your phone's camera or UPI app/i)).toBeInTheDocument();
     expect(screen.getAllByText("receiptsplit.test@upi").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/ReceiptSplit does not verify bank transfer/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Check the recipient and amount in your UPI app before paying/i)).toBeInTheDocument();
     expect(screen.queryByText(/payment successful/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/verified paid/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /^i paid$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /mark payment as done/i }));
     await waitFor(() => expect(onClaimPaid).toHaveBeenCalledWith("request-1"));
   });
 
@@ -125,7 +130,7 @@ describe("settlement UI", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /open upi app/i }));
+    await userEvent.click(screen.getByRole("button", { name: /open upi/i }));
 
     expect(await screen.findByText(/Too many attempts. Please try again later/i)).toBeInTheDocument();
   });

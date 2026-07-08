@@ -25,7 +25,12 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "audit_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("action", sa.String(length=80), nullable=False),
         sa.Column("room_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("participant_id", postgresql.UUID(as_uuid=True), nullable=True),
@@ -34,8 +39,15 @@ def upgrade() -> None:
         sa.Column("actor_type", sa.String(length=30), server_default="unknown", nullable=False),
         sa.Column("ip_fingerprint", sa.String(length=32), nullable=True),
         sa.Column("user_agent", sa.String(length=200), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), server_default="{}", nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="{}",
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["actor_participant_id"], ["room_participants.id"]),
         sa.ForeignKeyConstraint(["actor_user_id"], ["users.id"]),
         sa.ForeignKeyConstraint(["participant_id"], ["room_participants.id"]),
@@ -47,14 +59,21 @@ def upgrade() -> None:
 
     op.create_table(
         "abuse_reports",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("room_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("reporter_participant_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("reporter_user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("reporter_role", sa.String(length=30), server_default="unknown", nullable=False),
         sa.Column("reason", sa.String(length=40), nullable=False),
         sa.Column("message", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.CheckConstraint(
             "reason IN ('spam','fraud_suspected','wrong_payee','harassment','other')",
             name="ck_abuse_reports_reason",
