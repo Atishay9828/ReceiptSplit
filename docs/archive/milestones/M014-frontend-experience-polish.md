@@ -1,6 +1,8 @@
 # M014 Frontend Experience & Pilot Polish
 
-Status: FULL PASS pending closeout commit
+Status: FULL PASS
+
+Closeout commit: `79f2041`
 
 ## Scope
 

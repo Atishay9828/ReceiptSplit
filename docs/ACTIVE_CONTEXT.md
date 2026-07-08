@@ -50,7 +50,7 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Create the M014 closeout commit, then keep the working tree clean.
+M014 closeout is recorded in commit `79f2041`; keep the working tree clean.
 
 ## M014 Current Implementation
 

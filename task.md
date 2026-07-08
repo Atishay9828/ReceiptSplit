@@ -8,7 +8,7 @@ default.
 
 ## Current Status
 
-- Last full pass: M014 Frontend Experience & Pilot Polish; closeout commit pending.
+- Last full pass: M014 Frontend Experience & Pilot Polish, commit `79f2041`.
 - Previous full pass: M013 Security Hardening & Abuse Controls, commits `44fede4` and `49b3c21`.
 - Current active milestone: M014 Frontend Experience & Pilot Polish.
 - Do not add payment verification, gateway code, wallet behavior, escrow, refunds, deployment, or
@@ -47,7 +47,7 @@ Recorded:
 
 Pending:
 
-- M014 closeout commit.
+- M014 closeout commit `79f2041`.
 
 ## Product Boundary
 
