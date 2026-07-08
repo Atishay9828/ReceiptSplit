@@ -380,10 +380,15 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
   return (
     <section id="receipt-upload" className="rounded-md bg-white p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">
-          <Camera size={18} className="mr-1.5 inline-block align-text-bottom" aria-hidden="true" />
-          Scan Receipt
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold">
+            <Camera size={18} className="mr-1.5 inline-block align-text-bottom" aria-hidden="true" />
+            Scan Receipt
+          </h2>
+          <p className="mt-1 text-sm text-[#63706b]">
+            OCR can make mistakes. Review item names and amounts before adding them.
+          </p>
+        </div>
         {stage !== "idle" && stage !== "confirmed" ? (
           <Button type="button" variant="ghost" onClick={handleReset}>
             <RotateCcw size={14} aria-hidden="true" />

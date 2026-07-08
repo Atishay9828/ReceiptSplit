@@ -7,8 +7,9 @@ architecture note. Archived milestone reports are under `docs/archive/milestones
 
 M010 adds a mobile-first Next.js frontend for the manual receipt-first ReceiptSplit flow. It
 supports anonymous creator capability sessions and accountless participant sessions. M011.1 adds OCR
-draft review. M012 adds coordinator-safe UPI settlement coordination. Payment verification, wallet,
-escrow, deployment, and production auth UI remain deferred.
+draft review. M012 adds coordinator-safe UPI settlement coordination. M014 adds pilot polish for the
+mobile-first room experience. Payment verification, wallet, escrow, deployment, and production auth
+UI remain deferred.
 
 ## App Structure
 
@@ -16,7 +17,7 @@ The frontend lives in `frontend/` and uses:
 
 - Next.js App Router.
 - TypeScript.
-- Tailwind CSS.
+- Tailwind CSS v4 with app tokens defined in `frontend/app/globals.css`.
 - Small shadcn/ui-style primitives under `frontend/components/ui/`.
 - Vitest and React Testing Library.
 
@@ -62,6 +63,28 @@ The frontend sends money only as integer paise fields.
 Stored values are room id, role, raw capability token, invite token for creators, participant id and
 nickname for participants, and last seen event sequence. Token hashes are never stored or displayed.
 
+## M014 Experience Layer
+
+M014 keeps the product scope unchanged and improves the experience layer:
+
+- `/create` now explains the flow quickly and uses a direct `Create split room` CTA.
+- `/join/[inviteToken]` is nickname-first with no account-needed copy.
+- Participant room starts with a large `You owe` summary and a status-specific next action.
+- Item claim cards show `Available`, `Claimed by you`, or `Claimed`.
+- Creator room has a simple lifecycle strip and a `Next step` card.
+- Settlement badges are tone-aware:
+  - `payment_opened`: blue/info
+  - `claimed_paid`: amber/pending
+  - `payer_confirmed`: green/final
+  - `disputed`: red/orange
+  - `due`: muted
+- Payment cards repeat the required safety copy:
+  `ReceiptSplit does not verify bank transfers. Check the recipient and amount in your UPI app before paying. Payer confirmation is manual.`
+- Abuse reporting is visible in the room footer without requiring phone/email.
+
+The Tailwind v4 pipeline uses `@import "tailwindcss";` and CSS `@theme` tokens. This is required
+for production browser styles to render correctly with the installed Tailwind/PostCSS stack.
+
 ## Creator Flow
 
 The creator creates a room from `/create`, optionally setting payer metadata. Because backend rooms
@@ -72,7 +95,7 @@ if supported by backend state.
 
 After locking, M012 shows settlement setup. The creator can save payout details, prepare settlement
 requests from locked participant totals, see each participant's status, confirm payment manually, or
-mark a payment disputed. The UI says `Confirm payment`, `Mark disputed`, `Settlement status`, and
+mark a payment disputed. The UI says `Confirm payment`, `Mark disputed`, `Settlement dashboard`, and
 `Payer confirmation`; it does not say `verified paid`.
 
 ## OCR Review Flow
@@ -86,14 +109,30 @@ participant claim and split-preview flow still controls settlement readiness.
 ## Participant Flow
 
 Participants join with nickname only through `/join/[inviteToken]`; no login is required. Their
-participant capability token is stored locally. The participant room shows participants, items,
-claim state, the participant total, split preview, and locked-state messaging. Claim conflicts are
-shown as visible errors and trigger a room refresh.
+participant capability token is stored locally. The participant room shows a large participant total
+first, then participants, item claims, split preview, payment state, and safety reporting. Claim
+conflicts are shown as visible errors and trigger a room refresh.
 
 After settlement requests exist, the participant room shows `Pay your share`, amount due, payer
 name, payer UPI ID, payment reference, status, `Open UPI app`, `Copy UPI ID`, QR fallback, and `I
-paid`. The UPI URI and QR payload come from the backend `open-payment` endpoint. The frontend does
+paid`. `claimed_paid` is visually pending, not final. The UPI URI and QR payload come from the backend `open-payment` endpoint. The frontend does
 not submit payable amount, payee VPA, payee name, or payment reference for settlement mutations.
+
+## Browser Evidence
+
+M014 production browser smoke used demo data only and fake VPA `receiptsplit.test@upi`. Screenshots
+are stored in `docs/reports/screenshots/M014/`:
+
+- create page
+- join page
+- participant claim flow
+- participant payment card
+- creator item dashboard
+- creator settlement dashboard
+- mobile participant room
+- mobile payment flow
+- abuse report UI
+- error/empty state
 
 ## Event Sync
 
@@ -163,4 +202,6 @@ It returns room metadata, participants, active items, active adjustments, and cu
 - Creator lock/unlock after OCR-created item claims was exercised in the final M011.1 browser smoke.
 - There is no payment verification, wallet, escrow, native app, analytics, or deployment work in
   M012.
-- M012 browser smoke screenshots are blocked until local Docker/Postgres access is available.
+- Browser smoke is manual/temporary Playwright automation rather than a committed E2E harness.
+- `npm audit` currently reports 2 moderate advisories through Next/PostCSS and no high/critical
+  advisories; no forced downgrade is applied.

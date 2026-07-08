@@ -9,9 +9,10 @@ import type { RoomCreateRequest, SplitMode } from "@/types/api";
 
 type CreateRoomFormProps = {
   onCreate: (payload: RoomCreateRequest) => Promise<void>;
+  submitLabel?: string;
 };
 
-export function CreateRoomForm({ onCreate }: CreateRoomFormProps) {
+export function CreateRoomForm({ onCreate, submitLabel = "Create room" }: CreateRoomFormProps) {
   const [splitMode, setSplitMode] = useState<SplitMode>("item_wise");
   const [payerName, setPayerName] = useState("");
   const [payerVpa, setPayerVpa] = useState("");
@@ -60,8 +61,8 @@ export function CreateRoomForm({ onCreate }: CreateRoomFormProps) {
         onChange={(event) => setPayerVpa(event.target.value)}
       />
       {error ? <p className="text-sm font-medium text-coral">{error}</p> : null}
-      <Button type="submit" disabled={submitting}>
-        Create room
+      <Button type="submit" size="lg" disabled={submitting}>
+        {submitting ? "Creating..." : submitLabel}
       </Button>
     </form>
   );

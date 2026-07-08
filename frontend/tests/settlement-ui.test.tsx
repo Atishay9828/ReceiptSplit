@@ -76,7 +76,7 @@ describe("settlement UI", () => {
       />
     );
 
-    expect(screen.getByText("Settlement status")).toBeInTheDocument();
+    expect(screen.getByText("Settlement dashboard")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
     expect(screen.getByText("marked paid")).toBeInTheDocument();
     expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("settlement UI", () => {
     expect(await screen.findByText("QR fallback")).toBeInTheDocument();
     expect(screen.getAllByText("receiptsplit.test@upi").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/ReceiptSplit does not verify bank transfer/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Check the UPI app recipient and amount before paying/i)).toBeInTheDocument();
+    expect(screen.getByText(/Check the recipient and amount in your UPI app before paying/i)).toBeInTheDocument();
     expect(screen.queryByText(/payment successful/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/verified paid/i)).not.toBeInTheDocument();
 

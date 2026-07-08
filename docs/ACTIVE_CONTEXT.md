@@ -37,46 +37,41 @@ context.
 
 ## Current Milestone Status
 
-- Last full pass before M013: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
-- Current active milestone: M013 Security Hardening & Abuse Controls.
-- M013 state: FULL PASS after validation and local DB smoke; closeout commit pending.
-- M013 adds lightweight rate limits, durable security audit logs, abuse reports, payer detail
-  change blocking after settlement prepare, suspicious activity audit flags, and noindex/security
-  headers for sensitive room routes.
+- Last full pass before M014: M013 Security Hardening & Abuse Controls, commits `44fede4` and
+  `49b3c21`.
+- Current active milestone: M014 Frontend Experience & Pilot Polish.
+- M014 state: FULL PASS after frontend validation, backend CORS regression proof, production
+  browser smoke, and screenshots. Closeout commit pending.
+- M014 polishes create/join, participant room, creator room, OCR review copy, settlement/payment
+  UI, abuse reporting, loading/error states, mobile layout, status colors, and Tailwind v4 styling.
+- M014 also fixes CORS `PUT` preflight for browser settlement payer-detail save.
 
 See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Create the M013 closeout commit, then keep the working tree clean.
+Create the M014 closeout commit, then keep the working tree clean.
 
-## M012 Current Implementation
-
-Backend:
-
-- settlement domain and status transitions
-- migration `backend/migrations/versions/004_m012_settlement_mvp.py`
-- `settlement_requests` and `settlement_status_events` models
-- `SettlementService`
-- `SettlementLinkBuilder`
-- settlement API schemas and routes
+## M014 Current Implementation
 
 Frontend:
 
-- creator settlement setup and dashboard
-- participant pay-your-share card
-- open-payment, claim-paid, confirm, and dispute actions
-- server-generated UPI URI/QR payload usage
+- polished `/create` and `/join/[inviteToken]` first-impression flows
+- participant "You owe" summary, item claim cards, safe payment card, and mobile-first layout
+- creator next-step card, item/OCR area polish, split preview, and settlement dashboard
+- tone-aware settlement badges: `claimed_paid` amber/pending, `payer_confirmed` green/final
+- visible but calm abuse-report UI
+- Tailwind v4 CSS import plus local design tokens for app colors and shadows
+
+Backend:
+
+- CORS now allows `PUT` preflight so browser settlement payer-detail save works.
 
 Docs:
 
-- active architecture: `docs/architecture/settlement.md`
-- archived closeout evidence: `docs/archive/milestones/M012-upi-settlement.md`
-- screenshot evidence note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
-
-## M012 Blockers
-
-- None carried into M013 per user confirmation on 2026-07-08.
+- active architecture: `docs/architecture/frontend.md`
+- archived closeout evidence: `docs/archive/milestones/M014-frontend-experience-polish.md`
+- screenshots: `docs/reports/screenshots/M014/`
 
 ## Validation Baselines
 
@@ -95,19 +90,17 @@ Docs:
   the approval reviewer.
 - Browser E2E harness is deferred.
 
-M013 focused checks passing so far:
+M014 closeout checks:
 
-- `.\.venv\Scripts\python.exe -m pytest tests\api\test_m013_security.py -q`
-- `.\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py tests\api\test_rooms.py tests\api\test_participants.py -q`
-- `npm.cmd test -- settlement-ui.test.tsx api.test.ts security-headers.test.ts`
-- Full backend pytest passed: `.\.venv\Scripts\python.exe -m pytest tests\ -q`
-- Backend Ruff passed: `.\.venv\Scripts\python.exe -m ruff check .`
-- Focused M013 mypy passed for changed backend/API/security/test files.
-- Frontend lint, typecheck, tests, and build passed.
-- `npm.cmd audit --json` returned 2 moderate advisories, 0 high, 0 critical:
-  `GHSA-qx2v-qp2m-jg93` via Next/PostCSS. No `npm audit fix --force` was run.
-- Local Postgres smoke passed through create room, join, lock, settlement prepare, open payment,
-  claim paid, payer confirm, and abuse report.
+- `npm.cmd run lint`
+- `npm.cmd run typecheck`
+- `npm.cmd test` -> 11 files, 51 tests passed
+- `npm.cmd run build`
+- `npm.cmd audit --json` -> 2 moderate, 0 high, 0 critical; no force fix
+- `.\.venv\Scripts\python.exe -m pytest tests\ -q` -> full backend suite passed with 3 skipped
+- `.\.venv\Scripts\python.exe -m ruff check .`
+- Production browser smoke passed through create, join, claim, lock, save payer details, prepare
+  settlement, open payment, copy fallback, claim paid, payer confirm, and abuse report.
 
 ## Non-Negotiables For Future Agents
 

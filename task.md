@@ -8,51 +8,46 @@ default.
 
 ## Current Status
 
-- Last full pass: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
-- Current active milestone: M013 Security Hardening & Abuse Controls.
-- M013 state: FULL PASS after validation and local DB smoke; closeout commit pending.
+- Last full pass: M014 Frontend Experience & Pilot Polish; closeout commit pending.
+- Previous full pass: M013 Security Hardening & Abuse Controls, commits `44fede4` and `49b3c21`.
+- Current active milestone: M014 Frontend Experience & Pilot Polish.
 - Do not add payment verification, gateway code, wallet behavior, escrow, refunds, deployment, or
-  M014 scope.
+  new product scope.
 
-## M013 Delivered In This Working Tree
+## M014 Delivered In This Working Tree
 
-- `audit_logs` and `abuse_reports` models plus migration.
-- Lightweight in-process rate limits for sensitive room, join, OCR, settlement, payer-detail, and
-  abuse-report actions.
-- Durable audit rows for settlement/security-sensitive actions.
-- Payer detail changes blocked after settlement requests exist through both settlement payer and
-  legacy room PATCH paths.
-- Failed invite-token join logging with token fingerprints only.
-- Minimal abuse report API and room UI.
-- Repeated open-payment suspicious activity audit flag.
-- Noindex/security headers for join and room pages.
-- Settlement copy states that ReceiptSplit does not verify bank transfer and payer confirmation is
-  manual.
+- Polished create and join pages for fast first impression.
+- Added participant "You owe" summary, clearer claim cards, and safe payment action card.
+- Added creator next-step card, cleaner item/OCR area, and settlement dashboard wording.
+- Made `claimed_paid` pending/amber and `payer_confirmed` success/green.
+- Kept abuse reporting visible but low-friction.
+- Added loading/error/empty-state polish and reduced-motion CSS guard.
+- Fixed Tailwind v4 CSS import/design tokens so production styles render.
+- Added focused M014 frontend tests.
+- Fixed backend CORS `PUT` preflight for settlement payer-detail save and added regression test.
+- Captured production screenshots under `docs/reports/screenshots/M014/`.
 
 ## Validation State
 
-Passing so far:
-
-- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\api\test_m013_security.py -q`
-- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py tests\api\test_rooms.py tests\api\test_participants.py -q`
-- `cd frontend && npm.cmd test -- settlement-ui.test.tsx api.test.ts security-headers.test.ts`
-
 Passing:
 
-- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q`
-- `cd backend && .\.venv\Scripts\python.exe -m ruff check .`
-- focused M013 mypy over changed backend/API/security/test files
 - `cd frontend && npm.cmd run lint`
 - `cd frontend && npm.cmd run typecheck`
-- `cd frontend && npm.cmd test`
+- `cd frontend && npm.cmd test` -> 11 files, 51 tests passed
 - `cd frontend && npm.cmd run build`
-- `cd frontend && npm.cmd audit --json` recorded 2 moderate advisories, 0 high, 0 critical
-- local Postgres smoke passed through create, join, lock, settlement, payment-open, claim, confirm,
-  and abuse report
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q`
+- `cd backend && .\.venv\Scripts\python.exe -m ruff check .`
+- production browser smoke through create, join, claim, lock, payer details, settlement prepare,
+  payment open/copy fallback, marked paid, payer confirmed, and abuse report
+
+Recorded:
+
+- `cd frontend && npm.cmd audit --json` -> 2 moderate, 0 high, 0 critical; no force fix because the
+  suggested path downgrades Next.
 
 Pending:
 
-- M013 closeout commit
+- M014 closeout commit.
 
 ## Product Boundary
 

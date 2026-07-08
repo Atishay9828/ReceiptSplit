@@ -1,8 +1,19 @@
 "use client";
 
-import { Check, Copy, Lock, RotateCcw, Share2, Unlock } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Loader2,
+  Lock,
+  ReceiptText,
+  RotateCcw,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Unlock
+} from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 
 import { ClaimButton } from "@/components/claim-button";
@@ -33,6 +44,7 @@ import {
 import type {
   AbuseReportInput,
   AdjustmentType,
+  ClaimPayload,
   Item,
   OpenPaymentResponse,
   PayerDetailsInput,
@@ -142,13 +154,22 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   }
 
   if (!summary) {
-    return <main className="mx-auto max-w-3xl px-4 py-6 text-ink">Loading room...</main>;
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+          <div className="flex items-center gap-3 text-sm font-medium text-[#63706b]">
+            <Loader2 size={18} className="animate-spin text-leaf" aria-hidden="true" />
+            Loading room...
+          </div>
+        </section>
+      </main>
+    );
   }
 
   const readiness = getSplitPreviewReadiness(summary);
 
   return (
-    <main className="mx-auto grid max-w-3xl gap-4 px-4 py-5 pb-12 text-ink">
+    <main className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-5 pb-20 text-ink sm:px-6">
       <RoomHeader summary={summary} connected={connected} />
       {mode === "creator" && session.role === "creator" ? (
         <CreatorTools
@@ -181,21 +202,113 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 
 function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: boolean }) {
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
-      <div className="flex items-start justify-between gap-3">
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#63706b]">Room</p>
-          <h1 className="mt-1 text-2xl font-bold">{summary.room.payer_name || "ReceiptSplit"}</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-leaf">ReceiptSplit room</p>
+          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{summary.room.payer_name || "ReceiptSplit"}</h1>
           <p className="mt-1 text-sm text-[#63706b]">
             {summary.room.split_mode === "item_wise" ? "Item-wise" : "Equal"} · {summary.room.status}
           </p>
         </div>
-        <span className="rounded-full bg-cloud px-3 py-1 text-xs font-semibold">
+        <span className="rounded-full bg-cloud px-3 py-1 text-xs font-semibold text-[#52625b]">
           {connected ? "Live" : "Syncing"}
         </span>
       </div>
+      <LifecycleIndicator status={summary.room.status} />
     </section>
   );
+}
+
+function LifecycleIndicator({ status }: { status: RoomSummary["room"]["status"] }) {
+  const steps = [
+    { key: "draft", label: "Draft" },
+    { key: "active", label: "Claiming" },
+    { key: "settling", label: "Locked" },
+    { key: "settled", label: "Settled" }
+  ];
+  const activeIndex = Math.max(
+    0,
+    steps.findIndex((step) => step.key === status)
+  );
+
+  return (
+    <div className="mt-4 grid grid-cols-4 gap-2 text-[11px] font-semibold text-[#63706b]" aria-label="Room lifecycle">
+      {steps.map((step, index) => (
+        <div
+          key={step.key}
+          className={
+            index <= activeIndex
+              ? "rounded-full bg-mint px-2 py-1 text-center text-leaf"
+              : "rounded-full bg-cloud px-2 py-1 text-center"
+          }
+        >
+          {step.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function CreatorNextActionCard({
+  roomStatus,
+  canLock
+}: {
+  roomStatus: RoomSummary["room"]["status"];
+  canLock: boolean;
+}) {
+  const copy = getCreatorNextAction(roomStatus, canLock);
+
+  return (
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-mint text-leaf">
+          <Sparkles size={20} aria-hidden="true" />
+        </span>
+        <div>
+          <h2 className="text-lg font-bold">Next step</h2>
+          <p className="mt-1 text-xl font-bold">{copy.title}</p>
+          <p className="mt-1 text-sm leading-6 text-[#63706b]">{copy.description}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function getCreatorNextAction(roomStatus: RoomSummary["room"]["status"], canLock: boolean) {
+  if (roomStatus === "draft") {
+    return {
+      title: "Open claiming",
+      description: "Share the link when you are ready. Friends can join without installing an app."
+    };
+  }
+  if (roomStatus === "active") {
+    return canLock
+      ? {
+          title: "Lock bill",
+          description: "Friends can stop changing claims once everything looks right."
+        }
+      : {
+          title: "Wait for claims",
+          description: "Some items still need claims before you can lock the bill."
+        };
+  }
+  if (roomStatus === "settling") {
+    return {
+      title: "Confirm payments",
+      description: "Participants pay you directly, then you manually confirm or dispute each request."
+    };
+  }
+  if (roomStatus === "settled") {
+    return {
+      title: "View summary",
+      description: "All payments that needed payer confirmation are complete."
+    };
+  }
+  return {
+    title: "Review room",
+    description: "Check room status and participant activity before taking another action."
+  };
 }
 
 function CreatorTools({
@@ -239,6 +352,7 @@ function CreatorTools({
   return (
     <>
       {actionError ? <ErrorState message={actionError} onRetry={() => setActionError(null)} /> : null}
+      <CreatorNextActionCard roomStatus={summary.room.status} canLock={lockReady} />
       <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
       <Participants participants={summary.participants} />
       {summary.room.status === "draft" ? (
@@ -257,7 +371,7 @@ function CreatorTools({
           Open claiming
         </Button>
       ) : null}
-      <section className="rounded-md bg-white p-4 shadow-soft">
+      <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
         <h2 className="text-lg font-bold">Items</h2>
         {!locked ? (
           <div className="mt-3 grid gap-4">
@@ -355,6 +469,14 @@ function ParticipantTools({
   const myTotal = preview?.participant_totals.find(
     (total) => total.participant_id === session.participantId
   );
+  const mySettlement =
+    settlement?.requests.find((entry) => entry.participant_id === session.participantId) ?? null;
+  const totalPaise = mySettlement?.amount_paise ?? myTotal?.total_paise ?? 0;
+  const participantStatus = getParticipantTotalStatus({
+    locked,
+    settlementStatus: mySettlement?.status,
+    readiness
+  });
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);
@@ -370,14 +492,22 @@ function ParticipantTools({
   return (
     <>
       {actionError ? <ErrorState message={actionError} onRetry={() => setActionError(null)} /> : null}
+      <ParticipantTotalCard
+        amountPaise={totalPaise}
+        status={participantStatus}
+        participantName={session.nickname}
+      />
       <Participants participants={summary.participants} />
-      <section className="rounded-md bg-white p-4 shadow-soft">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">My Total</h2>
-          <strong>{formatPaise(myTotal?.total_paise ?? 0)}</strong>
-        </div>
-      </section>
-      <section className="rounded-md bg-white p-4 shadow-soft">
+      <ParticipantClaimList
+        summary={summary}
+        participantId={session.participantId}
+        locked={locked}
+        onClaim={(itemId, payload) =>
+          run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
+        }
+        onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
+      />
+      <section aria-hidden="true" className="hidden">
         <h2 className="text-lg font-bold">Claims</h2>
         <div className="mt-3 grid gap-3">
           {summary.items.map((item) => {
@@ -458,6 +588,197 @@ function ParticipantTools({
   );
 }
 
+type ParticipantTotalStatus =
+  | "claim_items"
+  | "ready_to_pay"
+  | "payment_opened"
+  | "claimed_paid"
+  | "payer_confirmed"
+  | "disputed";
+
+export function ParticipantTotalCard({
+  amountPaise,
+  status,
+  participantName
+}: {
+  amountPaise: number;
+  status: ParticipantTotalStatus;
+  participantName?: string;
+}) {
+  const copy = getParticipantTotalCopy(status);
+
+  return (
+    <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-[#63706b]">{participantName ? `${participantName}, you owe` : "You owe"}</p>
+          <p className="mt-2 text-4xl font-bold tracking-normal sm:text-5xl">{formatPaise(amountPaise)}</p>
+        </div>
+        <StatusBadge tone={copy.tone}>{copy.label}</StatusBadge>
+      </div>
+      <div className="mt-4 rounded-md bg-cloud p-3 text-sm leading-6 text-[#52625b]">
+        <p className="font-semibold text-ink">{copy.title}</p>
+        <p>{copy.description}</p>
+      </div>
+    </section>
+  );
+}
+
+function getParticipantTotalCopy(status: ParticipantTotalStatus) {
+  switch (status) {
+    case "claim_items":
+      return {
+        label: "Claim your items",
+        title: "Claim what you had.",
+        description: "Tap the food or drinks you shared. Your total updates when the split is ready.",
+        tone: "info" as const
+      };
+    case "ready_to_pay":
+      return {
+        label: "Ready to pay",
+        title: "Pay your share directly to the payer.",
+        description: "Use the payment card below when the creator prepares settlement.",
+        tone: "info" as const
+      };
+    case "payment_opened":
+      return {
+        label: "Payment opened",
+        title: "Complete payment in your UPI app.",
+        description: "Return here and tap I paid after checking recipient and amount.",
+        tone: "info" as const
+      };
+    case "claimed_paid":
+      return {
+        label: "Marked paid",
+        title: "Waiting for payer confirmation.",
+        description: "The payer still needs to manually confirm this request.",
+        tone: "pending" as const
+      };
+    case "payer_confirmed":
+      return {
+        label: "Payer confirmed",
+        title: "Payer confirmed this payment.",
+        description: "No bank verification is implied by ReceiptSplit.",
+        tone: "success" as const
+      };
+    case "disputed":
+      return {
+        label: "Disputed",
+        title: "Check with the payer.",
+        description: "The payer marked this as disputed. Reopen payment if you need to try again.",
+        tone: "danger" as const
+      };
+  }
+}
+
+function getParticipantTotalStatus({
+  locked,
+  settlementStatus,
+  readiness
+}: {
+  locked: boolean;
+  settlementStatus?: SettlementStatus;
+  readiness: SplitPreviewReadiness;
+}): ParticipantTotalStatus {
+  if (settlementStatus) {
+    return settlementStatus === "due" ? "ready_to_pay" : settlementStatus;
+  }
+  if (locked || readiness.ready) {
+    return "ready_to_pay";
+  }
+  return "claim_items";
+}
+
+export function ParticipantClaimList({
+  summary,
+  participantId,
+  locked,
+  onClaim,
+  onUnclaim
+}: {
+  summary: RoomSummary;
+  participantId: string;
+  locked: boolean;
+  onClaim: (itemId: string, payload: ClaimPayload) => Promise<void> | void;
+  onUnclaim: (itemId: string) => Promise<void> | void;
+}) {
+  return (
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">Claim your items</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Tap what you had. No awkward maths.</p>
+        </div>
+        <ReceiptText size={22} className="text-leaf" aria-hidden="true" />
+      </div>
+      <div className="mt-4 grid gap-3">
+        {summary.items.length === 0 ? (
+          <EmptyState
+            title="No items yet."
+            description="Wait for the creator to upload a receipt or add items manually."
+          />
+        ) : null}
+        {summary.items.map((item) => {
+          const itemAssignments = summary.assignments.filter(
+            (assignment) => assignment.line_item_id === item.id
+          );
+          const myClaim = itemAssignments.find((assignment) => assignment.participant_id === participantId);
+          const claimed = itemAssignments.reduce((sum, assignment) => sum + assignment.claimed_qty, 0);
+          const available = Math.max(item.quantity - claimed, 0);
+          const status = myClaim ? "claimed_by_you" : available > 0 ? "available" : "claimed";
+
+          return (
+            <div key={item.id} className="rounded-md border border-[#dbe5df] bg-cloud/50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-bold">{item.name}</h3>
+                  <p className="mt-1 text-sm text-[#63706b]">
+                    {formatPaise(item.total_paise)} - {available} of {item.quantity} open
+                  </p>
+                </div>
+                <ItemClaimStatusBadge status={status} />
+              </div>
+              <div className="mt-3">
+                {myClaim ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={locked}
+                    aria-label={`Unclaim ${item.name}`}
+                    onClick={() => onUnclaim(item.id)}
+                  >
+                    Unclaim
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={locked || available < 1 || summary.room.split_mode !== "item_wise"}
+                    aria-label={`Claim ${item.name}`}
+                    onClick={() => onClaim(item.id, { item_version: item.version, claimed_qty: 1 })}
+                  >
+                    Claim
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ItemClaimStatusBadge({ status }: { status: "available" | "claimed_by_you" | "claimed" }) {
+  if (status === "claimed_by_you") {
+    return <StatusBadge tone="info">Claimed by you</StatusBadge>;
+  }
+  if (status === "claimed") {
+    return <StatusBadge tone="muted">Claimed</StatusBadge>;
+  }
+  return <StatusBadge tone="success">Available</StatusBadge>;
+}
+
 export function CreatorSettlementPanel({
   settlement,
   participantsById,
@@ -502,16 +823,14 @@ export function CreatorSettlementPanel({
   const configured = Boolean(settlement?.payer_details_configured);
 
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold">Settlement status</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Payer confirmation is manual.</p>
+          <h2 className="text-lg font-bold">Settlement dashboard</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Payer confirmation is manual. ReceiptSplit does not verify bank transfers.</p>
         </div>
         {settlement?.aggregates.payer_confirmed_count === requests.length && requests.length > 0 ? (
-          <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold">
-            All payments payer-confirmed
-          </span>
+          <StatusBadge tone="success">All payer confirmed</StatusBadge>
         ) : null}
       </div>
 
@@ -546,7 +865,7 @@ export function CreatorSettlementPanel({
       {requests.length > 0 ? (
         <div className="mt-4 grid gap-3">
           {requests.map((request) => (
-            <div key={request.id} className="rounded-md border border-[#dbe5df] p-3">
+            <div key={request.id} className="rounded-md border border-[#dbe5df] bg-cloud/40 p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold">
@@ -611,7 +930,7 @@ export function ParticipantSettlementPanel({
 
   if (!request) {
     return (
-      <section className="rounded-md bg-white p-4 shadow-soft">
+      <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
         <h2 className="text-lg font-bold">Pay your share</h2>
         <p className="mt-2 text-sm text-[#63706b]">Waiting for payer to prepare settlement.</p>
       </section>
@@ -634,18 +953,18 @@ export function ParticipantSettlementPanel({
   }
 
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Pay your share</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Pay directly to payer.</p>
+          <p className="mt-1 text-sm text-[#63706b]">Pay directly to the payer. No wallet, no middle step.</p>
         </div>
         <SettlementStatusBadge status={request.status} />
       </div>
-      <div className="mt-4 grid gap-2 rounded-md bg-cloud p-3 text-sm">
-        <div className="flex items-center justify-between">
+      <div className="mt-4 grid gap-3 rounded-md bg-cloud p-4 text-sm">
+        <div className="grid gap-1">
           <span>Amount due</span>
-          <strong>{formatPaise(request.amount_paise)}</strong>
+          <strong className="text-4xl font-bold text-ink">{formatPaise(request.amount_paise)}</strong>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span>Payer</span>
@@ -662,21 +981,19 @@ export function ParticipantSettlementPanel({
       </div>
 
       <div className="mt-3 grid gap-1 text-sm">
-        <p className="font-medium">{participantSettlementCopy(request.status)}</p>
-        <p className="text-[#63706b]">ReceiptSplit does not verify bank transfer.</p>
-        <p className="text-[#63706b]">Check the UPI app recipient and amount before paying.</p>
-        <p className="text-[#63706b]">Payer confirmation is manual.</p>
+        <p className="font-medium">{settlementStatusLabel(request.status)}. {participantSettlementCopy(request.status)}</p>
+        <SafetyNotice />
       </div>
       {actionError ? <p className="mt-3 text-sm font-medium text-coral">{actionError}</p> : null}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <Button type="button" disabled={busy} onClick={openPayment}>
+        <Button type="button" size="lg" disabled={busy} onClick={openPayment}>
           Open UPI app
         </Button>
         <Button
           type="button"
           variant="secondary"
-          onClick={() => navigator.clipboard.writeText(request.payee_vpa)}
+          onClick={() => navigator.clipboard?.writeText(request.payee_vpa)}
         >
           <Copy size={16} aria-hidden="true" />
           Copy UPI ID
@@ -739,11 +1056,11 @@ export function AbuseReportPanel({
   }
 
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Safety</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Report spam or suspicious payment details.</p>
+          <p className="mt-1 text-sm text-[#63706b]">Report suspicious or abusive split.</p>
         </div>
         <Button type="button" variant="secondary" onClick={() => setOpen((value) => !value)}>
           Report abuse
@@ -814,7 +1131,7 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
         ) : null}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <Button type="button" variant="secondary" onClick={() => navigator.clipboard.writeText(link)}>
+        <Button type="button" variant="secondary" onClick={() => navigator.clipboard?.writeText(link)}>
           <Copy size={16} aria-hidden="true" />
           Copy
         </Button>
@@ -1092,12 +1409,66 @@ export function SplitPreviewCard({
   );
 }
 
-function SettlementStatusBadge({ status }: { status: SettlementStatus }) {
+type StatusTone = "muted" | "info" | "pending" | "success" | "danger";
+
+function StatusBadge({ tone, children }: { tone: StatusTone; children: ReactNode }) {
+  const toneClass = {
+    muted: "bg-cloud text-[#52625b]",
+    info: "bg-[#e8f1ff] text-[#2563eb]",
+    pending: "bg-amber/20 text-[#8a5b00]",
+    success: "bg-mint text-leaf",
+    danger: "bg-[#fff0ea] text-coral"
+  }[tone];
+
   return (
-    <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold">
-      {settlementStatusLabel(status)}
+    <span
+      data-tone={tone}
+      className={`inline-flex min-h-8 items-center rounded-full px-3 py-1 text-xs font-bold ${toneClass}`}
+    >
+      {children}
     </span>
   );
+}
+
+function SafetyNotice() {
+  return (
+    <div className="mt-2 flex items-start gap-2 rounded-md border border-[#dbe5df] bg-cloud p-3 text-sm leading-6 text-[#52625b]">
+      <ShieldCheck size={18} className="mt-0.5 shrink-0 text-leaf" aria-hidden="true" />
+      <div>
+        <p>ReceiptSplit does not verify bank transfers.</p>
+        <p>Check the recipient and amount in your UPI app before paying.</p>
+        <p>Payer confirmation is manual.</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-[#ccd8d1] bg-cloud p-4 text-sm">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 text-[#63706b]">{description}</p>
+    </div>
+  );
+}
+
+export function SettlementStatusBadge({ status }: { status: SettlementStatus }) {
+  return <StatusBadge tone={settlementStatusTone(status)}>{settlementStatusLabel(status)}</StatusBadge>;
+}
+
+function settlementStatusTone(status: SettlementStatus): StatusTone {
+  switch (status) {
+    case "due":
+      return "muted";
+    case "payment_opened":
+      return "info";
+    case "claimed_paid":
+      return "pending";
+    case "payer_confirmed":
+      return "success";
+    case "disputed":
+      return "danger";
+  }
 }
 
 function settlementStatusLabel(status: SettlementStatus): string {
@@ -1118,15 +1489,15 @@ function settlementStatusLabel(status: SettlementStatus): string {
 function participantSettlementCopy(status: SettlementStatus): string {
   switch (status) {
     case "due":
-      return "Open your UPI app, pay directly to the payer, then mark I paid.";
+      return "Pay your share directly to the payer.";
     case "payment_opened":
-      return "Check the UPI app amount and recipient before paying.";
+      return "Complete payment in your UPI app, then return and tap I paid.";
     case "claimed_paid":
       return "Waiting for payer confirmation.";
     case "payer_confirmed":
-      return "Payer confirmed.";
+      return "Payer confirmed this payment.";
     case "disputed":
-      return "Disputed by payer. You can reopen payment or mark paid again.";
+      return "Payer marked this payment as disputed. Check with them and try again if needed.";
   }
 }
 

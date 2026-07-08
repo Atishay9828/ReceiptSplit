@@ -3,7 +3,7 @@
 ## Current Status Summary
 
 - Current active milestone: M014 Frontend Experience & Pilot Polish.
-- Last full pass: M013 Security Hardening & Abuse Controls, commits `44fede4` and `49b3c21`.
+- Last full pass: M014 Frontend Experience & Pilot Polish; closeout commit pending.
 - Current blocker: none recorded.
 - Default context: read `docs/ACTIVE_CONTEXT.md`, this file, `task.md`, and current git status/diff.
 
@@ -28,6 +28,7 @@
 | M011.1 OCR Frontend Review UI | FULL PASS | `e0d6dc4`, `2985a40` | screenshots under `docs/reports/screenshots/M011.1/` |
 | M012 UPI Settlement MVP | FULL PASS | `8c39279`, `05456c0` | DB/API, backend, frontend validation, and browser evidence accepted before M013 per user confirmation on 2026-07-08 |
 | M013 Security Hardening & Abuse Controls | FULL PASS | `44fede4` | rate limits, audit logs, abuse reports, noindex/security headers; `docs/architecture/security.md`; `docs/archive/milestones/M013-security-hardening.md` |
+| M014 Frontend Experience & Pilot Polish | FULL PASS | pending closeout commit | mobile-first polish, participant total/action clarity, creator next-step flow, settlement status colors, Tailwind v4 fix, production browser smoke; `docs/reports/screenshots/M014/`; `docs/archive/milestones/M014-frontend-experience-polish.md` |
 
 ## Deferred Baselines
 
@@ -35,7 +36,11 @@
   checkpoint.
 - M013 `npm audit --json` recorded 2 moderate advisories, 0 high, 0 critical. The fix path suggests
   an unsafe Next downgrade, so no forced audit fix was run.
-- Browser E2E harness remains deferred.
+- M014 `npm audit --json` remains 2 moderate advisories, 0 high, 0 critical for
+  `GHSA-qx2v-qp2m-jg93` via Next/PostCSS. The suggested fix is an unsafe Next downgrade, so no
+  forced audit fix was run.
+- Browser E2E harness remains deferred, but M014 production smoke was executed with temporary
+  Playwright/Edge automation.
 
 ## Archive Location
 
