@@ -37,27 +37,18 @@ context.
 
 ## Current Milestone Status
 
-- Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
-- Current active milestone: M012 UPI Settlement MVP.
-- M012 state: CONDITIONAL PASS only.
-- M012 implementation exists, DB-backed API tests now pass, and all requested browser screenshot
-  evidence is captured.
-- M012 closeout commit: `8c39279`.
-- M012 remains CONDITIONAL PASS because `npm.cmd audit --json` is unverified: the sandboxed retry
-  failed at the npm registry endpoint, and the escalated retry was rejected because it would send
-  dependency metadata to the public npm registry.
+- Last full pass before M013: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
+- Current active milestone: M013 Security Hardening & Abuse Controls.
+- M013 state: FULL PASS after validation and local DB smoke; closeout commit pending.
+- M013 adds lightweight rate limits, durable security audit logs, abuse reports, payer detail
+  change blocking after settlement prepare, suspicious activity audit flags, and noindex/security
+  headers for sensitive room routes.
 
 See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Close out the remaining M012 gates only when policy/user approval allows registry metadata
-submission:
-
-1. rerun `npm.cmd audit --json`
-2. update M012 from CONDITIONAL PASS to FULL PASS only if audit evidence is captured
-
-Do not start M013 or payment-gateway work while M012 is conditional.
+Create the M013 closeout commit, then keep the working tree clean.
 
 ## M012 Current Implementation
 
@@ -85,10 +76,7 @@ Docs:
 
 ## M012 Blockers
 
-- `npm.cmd audit --json` remains unverified. The sandboxed retry failed at the npm registry
-  endpoint, and the escalated retry was rejected because it sends dependency metadata to the public
-  npm registry.
-- Prior Git index-lock issues are not present in this closeout run.
+- None carried into M013 per user confirmation on 2026-07-08.
 
 ## Validation Baselines
 
@@ -106,6 +94,20 @@ Docs:
 - `npm audit` remains unverified in this run because registry metadata submission was rejected by
   the approval reviewer.
 - Browser E2E harness is deferred.
+
+M013 focused checks passing so far:
+
+- `.\.venv\Scripts\python.exe -m pytest tests\api\test_m013_security.py -q`
+- `.\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py tests\api\test_rooms.py tests\api\test_participants.py -q`
+- `npm.cmd test -- settlement-ui.test.tsx api.test.ts security-headers.test.ts`
+- Full backend pytest passed: `.\.venv\Scripts\python.exe -m pytest tests\ -q`
+- Backend Ruff passed: `.\.venv\Scripts\python.exe -m ruff check .`
+- Focused M013 mypy passed for changed backend/API/security/test files.
+- Frontend lint, typecheck, tests, and build passed.
+- `npm.cmd audit --json` returned 2 moderate advisories, 0 high, 0 critical:
+  `GHSA-qx2v-qp2m-jg93` via Next/PostCSS. No `npm audit fix --force` was run.
+- Local Postgres smoke passed through create room, join, lock, settlement prepare, open payment,
+  claim paid, payer confirm, and abuse report.
 
 ## Non-Negotiables For Future Agents
 
@@ -167,3 +169,4 @@ npm.cmd test -- settlement-ui.test.tsx api.test.ts
 - Frontend architecture: `docs/architecture/frontend.md`
 - OCR architecture: `docs/architecture/ocr.md`
 - Settlement architecture: `docs/architecture/settlement.md`
+- Security architecture: `docs/architecture/security.md`

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 
 from app.api.errors import ERROR_RESPONSES
 from app.api.schemas.ocr import (
@@ -17,13 +17,15 @@ from app.api.schemas.ocr import (
 from app.auth.dependencies import AuthorizedRoomActor, require_room_owner_or_creator
 from app.database import get_db
 from app.ocr.contracts import ParsedReceiptDraft
-from app.services.registry import get_ocr_service
+from app.security.rate_limit import RateLimitRule, client_host, enforce_rate_limit
+from app.services.registry import get_audit_service, get_ocr_service
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.models.parsed_receipt import ParsedReceipt
     from app.ocr.service import ReceiptOcrService
+    from app.services.audit_service import AuditService
 
 
 router = APIRouter(prefix="/api/rooms/{room_id}", tags=["ocr"], responses=ERROR_RESPONSES)
@@ -37,11 +39,19 @@ router = APIRouter(prefix="/api/rooms/{room_id}", tags=["ocr"], responses=ERROR_
 )
 async def upload_receipt_image(
     room_id: UUID,
+    request: Request,
     file: UploadFile = File(...),
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: ReceiptOcrService = Depends(get_ocr_service),
+    audit: AuditService = Depends(get_audit_service),
 ) -> ReceiptUploadResponse:
+    enforce_rate_limit(
+        request,
+        action="ocr.upload",
+        key_parts=[str(room_id), str(actor.actor_id), client_host(request)],
+        rule=RateLimitRule(limit=20, window_seconds=3600),
+    )
     content = await file.read()
     job, parsed = await service.upload_and_process(
         db,
@@ -49,6 +59,16 @@ async def upload_receipt_image(
         actor_id=actor.actor_id,
         content=content,
         content_type=file.content_type or "application/octet-stream",
+    )
+    await audit.record(
+        db,
+        action="receipt.uploaded",
+        room_id=room_id,
+        actor_participant_id=actor.participant.participant_id if actor.participant else None,
+        actor_user_id=actor.user.id if actor.user else None,
+        actor_type="creator",
+        metadata={"content_type": file.content_type or "application/octet-stream"},
+        request=request,
     )
     return ReceiptUploadResponse(
         receipt_id=job.receipt_id,
@@ -143,12 +163,24 @@ async def update_parsed_receipt(
 async def confirm_parsed_receipt(
     room_id: UUID,
     parsed_receipt_id: UUID,
+    request: Request,
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: ReceiptOcrService = Depends(get_ocr_service),
+    audit: AuditService = Depends(get_audit_service),
 ) -> ParsedReceiptConfirmResponse:
     parsed, item_ids, adjustment_ids, already_confirmed, events = await service.confirm_parsed(
         db, room_id, parsed_receipt_id, actor.actor_id
+    )
+    await audit.record(
+        db,
+        action="ocr.confirmed",
+        room_id=room_id,
+        actor_participant_id=actor.participant.participant_id if actor.participant else None,
+        actor_user_id=actor.user.id if actor.user else None,
+        actor_type="creator",
+        metadata={"parsed_receipt_id": str(parsed_receipt_id), "already_confirmed": already_confirmed},
+        request=request,
     )
     return ParsedReceiptConfirmResponse(
         parsed_receipt_id=parsed.id,

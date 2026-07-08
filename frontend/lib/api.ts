@@ -1,6 +1,8 @@
 import type {
   Adjustment,
   AdjustmentPayload,
+  AbuseReportInput,
+  AbuseReportResponse,
   ApiError,
   ApiErrorShape,
   Assignment,
@@ -248,6 +250,18 @@ export class ReceiptSplitApi {
       `/api/rooms/${roomId}/settlement/requests/${requestId}/dispute`,
       { method: "POST", token, body: payload }
     );
+  }
+
+  reportAbuse(
+    roomId: string,
+    token: string,
+    payload: AbuseReportInput
+  ): Promise<AbuseReportResponse> {
+    return this.request<AbuseReportResponse>(`/api/rooms/${roomId}/abuse-reports`, {
+      method: "POST",
+      token,
+      body: payload
+    });
   }
 
   // --- OCR ---

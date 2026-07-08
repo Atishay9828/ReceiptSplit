@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import JSONResponse
 
 from app.api.errors import ERROR_RESPONSES
 from app.api.schemas.settlement import (
@@ -20,7 +21,10 @@ from app.auth.dependencies import (
     require_room_owner_or_creator,
 )
 from app.database import get_db
-from app.services.registry import get_room_service, get_settlement_service
+from app.domain.settlement import SettlementNotReadyError
+from app.security.rate_limit import RateLimitRule, client_host, enforce_rate_limit
+from app.security.safe import fingerprint
+from app.services.registry import get_audit_service, get_room_service, get_settlement_service
 from app.services.settlement_service import SettlementActor, SettlementService
 
 if TYPE_CHECKING:
@@ -30,6 +34,7 @@ if TYPE_CHECKING:
     from app.auth.models import AuthContext, RequestAuthContext
     from app.models.room import Room
     from app.models.settlement_request import SettlementRequest
+    from app.services.audit_service import AuditService
     from app.services.room_service import RoomService
 
 
@@ -59,17 +64,42 @@ async def get_settlement(
 async def configure_payer(
     room_id: UUID,
     payload: PayerDetailsRequest,
+    request: Request,
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
+    audit: AuditService = Depends(get_audit_service),
 ) -> SettlementSummaryResponse:
-    room = await service.configure_payer_details(
-        db,
-        room_id=room_id,
-        actor=SettlementActor(participant=actor.participant, user=actor.user),
-        payee_vpa=payload.payee_vpa,
-        payee_name=payload.payee_name,
+    enforce_rate_limit(
+        request,
+        action="settlement.payer_details_update",
+        key_parts=[str(room_id), str(actor.actor_id), client_host(request)],
+        rule=RateLimitRule(limit=5, window_seconds=3600),
     )
+    try:
+        room = await service.configure_payer_details(
+            db,
+            room_id=room_id,
+            actor=SettlementActor(participant=actor.participant, user=actor.user),
+            payee_vpa=payload.payee_vpa,
+            payee_name=payload.payee_name,
+        )
+    except SettlementNotReadyError as exc:
+        if exc.message != "Payer details cannot be changed after settlement requests are prepared.":
+            raise
+        await audit.record(
+            db,
+            action="settlement.payer_details_change_blocked",
+            room_id=room_id,
+            actor_participant_id=actor.participant.participant_id if actor.participant else None,
+            actor_user_id=actor.user.id if actor.user else None,
+            actor_type="creator",
+            metadata={
+                "attempted_payee_vpa_fingerprint": fingerprint(payload.payee_vpa),
+            },
+            request=request,
+        )
+        return JSONResponse(status_code=422, content={"error": exc.to_dict()})  # type: ignore[return-value]
     requests = await service.get_settlement_summary(
         db,
         room_id=room_id,
@@ -108,10 +138,17 @@ async def prepare_settlement(
 async def open_payment(
     room_id: UUID,
     request_id: UUID,
+    http_request: Request,
     ctx: AuthContext = Depends(require_room_access),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
 ) -> OpenPaymentResponse:
+    enforce_rate_limit(
+        http_request,
+        action="settlement.open_payment",
+        key_parts=[str(request_id), str(ctx.participant_id), client_host(http_request)],
+        rule=RateLimitRule(limit=10, window_seconds=600),
+    )
     result = await service.open_payment(
         db,
         room_id=room_id,
@@ -141,17 +178,24 @@ async def open_payment(
 async def claim_paid(
     room_id: UUID,
     request_id: UUID,
+    http_request: Request,
     ctx: AuthContext = Depends(require_room_access),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
 ) -> SettlementRequestResponse:
-    request = await service.claim_paid(
+    enforce_rate_limit(
+        http_request,
+        action="settlement.claim_paid",
+        key_parts=[str(request_id), str(ctx.participant_id)],
+        rule=RateLimitRule(limit=10, window_seconds=3600),
+    )
+    settlement_request = await service.claim_paid(
         db,
         room_id=room_id,
         request_id=request_id,
         actor=SettlementActor(participant=ctx),
     )
-    return _request_response(request)
+    return _request_response(settlement_request)
 
 
 @router.post(
@@ -162,17 +206,24 @@ async def claim_paid(
 async def confirm_paid(
     room_id: UUID,
     request_id: UUID,
+    http_request: Request,
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
 ) -> SettlementRequestResponse:
-    request = await service.confirm_paid(
+    enforce_rate_limit(
+        http_request,
+        action="settlement.confirm",
+        key_parts=[str(room_id), str(actor.actor_id)],
+        rule=RateLimitRule(limit=60, window_seconds=3600),
+    )
+    settlement_request = await service.confirm_paid(
         db,
         room_id=room_id,
         request_id=request_id,
         actor=SettlementActor(participant=actor.participant, user=actor.user),
     )
-    return _request_response(request)
+    return _request_response(settlement_request)
 
 
 @router.post(
@@ -183,19 +234,26 @@ async def confirm_paid(
 async def dispute_payment(
     room_id: UUID,
     request_id: UUID,
+    http_request: Request,
     payload: DisputeSettlementRequest | None = None,
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
 ) -> SettlementRequestResponse:
-    request = await service.dispute_payment(
+    enforce_rate_limit(
+        http_request,
+        action="settlement.dispute",
+        key_parts=[str(room_id), str(actor.actor_id)],
+        rule=RateLimitRule(limit=60, window_seconds=3600),
+    )
+    settlement_request = await service.dispute_payment(
         db,
         room_id=room_id,
         request_id=request_id,
         actor=SettlementActor(participant=actor.participant, user=actor.user),
         reason=payload.reason if payload is not None else None,
     )
-    return _request_response(request)
+    return _request_response(settlement_request)
 
 
 def _summary(room: Room, requests: list[SettlementRequest]) -> SettlementSummaryResponse:

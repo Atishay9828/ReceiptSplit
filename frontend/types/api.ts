@@ -188,6 +188,26 @@ export type DisputeInput = {
   reason?: string | null;
 };
 
+export type AbuseReportReason =
+  | "spam"
+  | "fraud_suspected"
+  | "wrong_payee"
+  | "harassment"
+  | "other";
+
+export type AbuseReportInput = {
+  reason: AbuseReportReason;
+  message?: string | null;
+};
+
+export type AbuseReportResponse = {
+  id: string;
+  room_id: string;
+  reason: AbuseReportReason;
+  message: string | null;
+  created_at: string;
+};
+
 export type OpenPaymentResponse = {
   settlement_request_id: string;
   status: SettlementStatus;

@@ -66,4 +66,29 @@ describe("API error parser", () => {
       expect.objectContaining({ method: "POST", body: JSON.stringify({ reason: "Could not match payment" }) })
     );
   });
+
+  it("submits abuse reports without putting tokens in the request body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "report-1", reason: "wrong_payee", message: "Check VPA" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ReceiptSplitApi("http://api.test");
+
+    await client.reportAbuse("room-1", "rs_pt_secret", {
+      reason: "wrong_payee",
+      message: "Check VPA"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/api/rooms/room-1/abuse-reports",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer rs_pt_secret" }),
+        body: JSON.stringify({ reason: "wrong_payee", message: "Check VPA" })
+      })
+    );
+  });
 });

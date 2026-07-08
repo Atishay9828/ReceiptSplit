@@ -52,6 +52,7 @@ def domain_error_status(exc: DomainError) -> int:
         "SPLIT_SESSION_NOT_FOUND": 404,
         "NOT_AUTHORIZED": 403,
         "INVALID_TOKEN": 403,
+        "RATE_LIMITED": 429,
         "SETTLEMENT_FORBIDDEN": 403,
         "ROOM_FULL": 409,
         "ROOM_ALREADY_LOCKED": 409,

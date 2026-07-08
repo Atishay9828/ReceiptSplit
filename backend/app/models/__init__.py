@@ -4,6 +4,8 @@ ReceiptSplit — SQLAlchemy Models
 All models are exported here for easy access by Alembic and other modules.
 """
 
+from app.models.abuse_report import AbuseReport
+from app.models.audit_log import AuditLog
 from app.models.line_item import LineItem
 from app.models.line_item_assignment import LineItemAssignment
 from app.models.ocr_job import OcrJob
@@ -25,6 +27,8 @@ from app.models.split_session import SplitSession
 from app.models.user import User
 
 __all__ = [
+    "AbuseReport",
+    "AuditLog",
     "LineItem",
     "LineItemAssignment",
     "OcrJob",

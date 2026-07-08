@@ -201,6 +201,14 @@ class InvalidToken(DomainError):
         )
 
 
+class RateLimitExceeded(DomainError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="RATE_LIMITED",
+            message="Too many attempts. Please try again later.",
+        )
+
+
 # ── 404 Not Found ─────────────────────────────────────────────────────────────
 
 

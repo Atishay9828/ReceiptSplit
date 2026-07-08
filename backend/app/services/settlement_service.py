@@ -21,6 +21,7 @@ from app.models.participant_total import ParticipantTotal
 from app.models.room_participant import RoomParticipant
 from app.models.settlement_request import SettlementRequest
 from app.models.settlement_status_event import SettlementStatusEvent
+from app.security.safe import sanitize_text
 from app.shared.errors import RoomNotFound
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from app.models.split_session import SplitSession
     from app.repositories.interfaces.room import RoomRepository
     from app.repositories.interfaces.split_session import SplitSessionRepository
+    from app.services.audit_service import AuditService
     from app.services.event_publisher import EventPublisher
 
 
@@ -81,11 +83,13 @@ class SettlementService:
         room_repo: RoomRepository,
         session_repo: SplitSessionRepository,
         event_publisher: EventPublisher,
+        audit_service: AuditService | None = None,
         link_builder: SettlementLinkBuilder | None = None,
     ) -> None:
         self._room_repo = room_repo
         self._session_repo = session_repo
         self._events = event_publisher
+        self._audit = audit_service
         self._links = link_builder or SettlementLinkBuilder()
 
     async def configure_payer_details(
@@ -108,7 +112,7 @@ class SettlementService:
 
             if await self._has_requests(db, room_id) and room.payer_vpa != normalized_vpa:
                 raise SettlementNotReadyError(
-                    "Payer UPI ID cannot be changed after settlement requests are prepared."
+                    "Payer details cannot be changed after settlement requests are prepared."
                 )
 
             room.payer_vpa = normalized_vpa
@@ -123,6 +127,16 @@ class SettlementService:
                 actor.actor_id,
                 {"payer_details_configured": True},
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action="settlement.payer_details_set",
+                    room_id=room_id,
+                    actor_participant_id=actor.actor_participant_id,
+                    actor_user_id=actor.actor_user_id,
+                    actor_type="creator",
+                    metadata={"payee_vpa_fingerprint": self._fingerprint(normalized_vpa)},
+                )
         return room
 
     async def prepare_settlement_requests(
@@ -187,6 +201,16 @@ class SettlementService:
                 actor.actor_id,
                 {"created_count": len(created), "request_count": len(existing) + len(created)},
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action="settlement.requests_prepared",
+                    room_id=room_id,
+                    actor_participant_id=actor.actor_participant_id,
+                    actor_user_id=actor.actor_user_id,
+                    actor_type="creator",
+                    metadata={"created_count": len(created), "request_count": len(existing) + len(created)},
+                )
 
         return await self._list_requests(db, room_id)
 
@@ -202,6 +226,9 @@ class SettlementService:
         if actor.participant is None or actor.participant.room_id != room_id:
             raise SettlementForbiddenError()
         return await self._list_requests(db, room_id, participant_id=actor.participant.participant_id)
+
+    async def has_settlement_requests(self, db: AsyncSession, room_id: UUID) -> bool:
+        return await self._has_requests(db, room_id)
 
     async def open_payment(
         self,
@@ -222,6 +249,43 @@ class SettlementService:
                 event_type="settlement.payment_opened",
                 timestamp_field="opened_at",
             )
+        elif self._audit is not None:
+            await self._audit.record(
+                db,
+                action="settlement.payment_opened",
+                room_id=room_id,
+                participant_id=request.participant_id,
+                actor_participant_id=actor.actor_participant_id,
+                actor_user_id=actor.actor_user_id,
+                actor_type="participant",
+                metadata={
+                    "settlement_request_id": str(request.id),
+                    "status": request.status,
+                },
+            )
+
+        if self._audit is not None:
+            count = await self._audit.count_recent_by_metadata(
+                db,
+                action="settlement.payment_opened",
+                key="settlement_request_id",
+                value=str(request.id),
+            )
+            if count >= 3:
+                await self._audit.record(
+                    db,
+                    action="suspicious.flagged",
+                    room_id=room_id,
+                    participant_id=request.participant_id,
+                    actor_participant_id=actor.actor_participant_id,
+                    actor_user_id=actor.actor_user_id,
+                    actor_type="participant",
+                    metadata={
+                        "flag": "repeated_payment_opened",
+                        "settlement_request_id": str(request.id),
+                        "count": count,
+                    },
+                )
         link = self._links.build(
             payee_vpa=request.payee_vpa,
             payee_name=request.payee_name,
@@ -287,7 +351,7 @@ class SettlementService:
             new_status=SettlementStatus.DISPUTED,
             event_type="settlement.disputed",
             timestamp_field="disputed_at",
-            reason=reason,
+            reason=sanitize_text(reason, max_length=300),
         )
 
     async def _transition(
@@ -329,6 +393,22 @@ class SettlementService:
                     "new_status": new_status.value,
                 },
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action=event_type,
+                    room_id=request.room_id,
+                    participant_id=request.participant_id,
+                    actor_participant_id=actor.actor_participant_id,
+                    actor_user_id=actor.actor_user_id,
+                    actor_type="creator" if actor.is_creator else "participant",
+                    metadata={
+                        "settlement_request_id": str(request.id),
+                        "old_status": old_status.value,
+                        "new_status": new_status.value,
+                        "reason_present": bool(reason),
+                    },
+                )
         return request
 
     async def _insert_status_event(
@@ -428,3 +508,10 @@ class SettlementService:
     @staticmethod
     def _reference(room_id: UUID, participant_id: UUID) -> str:
         return f"RS-{room_id.hex[:8].upper()}-{participant_id.hex[:8].upper()}"
+
+    @staticmethod
+    def _fingerprint(value: str) -> str:
+        from app.security.safe import fingerprint
+
+        result = fingerprint(value)
+        return result or ""

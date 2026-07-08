@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from app.repositories.interfaces.participant import ParticipantRepository
     from app.repositories.interfaces.receipt import ReceiptRepository
     from app.repositories.interfaces.room import RoomRepository
+    from app.services.audit_service import AuditService
     from app.services.event_publisher import EventPublisher
 
 if True:
@@ -51,11 +52,13 @@ class RoomService:
         receipt_repo: ReceiptRepository,
         participant_repo: ParticipantRepository,
         event_publisher: EventPublisher,
+        audit_service: AuditService | None = None,
     ) -> None:
         self._room_repo = room_repo
         self._receipt_repo = receipt_repo
         self._participant_repo = participant_repo
         self._events = event_publisher
+        self._audit = audit_service
 
     async def create_room(
         self,
@@ -117,6 +120,15 @@ class RoomService:
                 actor_id=participant.id,
                 payload={"split_mode": split_mode},
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action="room.created",
+                    room_id=room.id,
+                    actor_participant_id=participant.id,
+                    actor_type="creator",
+                    metadata={"split_mode": split_mode},
+                )
             await db.refresh(room)
 
         await self._events.broadcast(room.id, "room.created", {"split_mode": split_mode}, seq)

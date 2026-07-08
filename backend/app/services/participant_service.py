@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from app.models.room_participant import RoomParticipant
     from app.repositories.interfaces.participant import ParticipantRepository
+    from app.services.audit_service import AuditService
     from app.services.event_publisher import EventPublisher
 
 
@@ -36,9 +37,11 @@ class ParticipantService:
         self,
         participant_repo: ParticipantRepository,
         event_publisher: EventPublisher,
+        audit_service: AuditService | None = None,
     ) -> None:
         self._participant_repo = participant_repo
         self._events = event_publisher
+        self._audit = audit_service
 
     async def join_room(
         self,
@@ -86,6 +89,16 @@ class ParticipantService:
                 actor_id=participant.id,
                 payload={"nickname": nickname, "color": color},
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action="participant.joined",
+                    room_id=room_id,
+                    participant_id=participant.id,
+                    actor_participant_id=participant.id,
+                    actor_type="participant",
+                    metadata={"color": color},
+                )
 
         await self._events.broadcast(
             room_id,

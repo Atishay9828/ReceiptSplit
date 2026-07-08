@@ -2,10 +2,9 @@
 
 ## Current Status Summary
 
-- Current active milestone: M012 UPI Settlement MVP.
-- Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
-- Current blocker: M012 needs an allowed `npm audit` retry before it can be upgraded from
-  CONDITIONAL PASS to FULL PASS.
+- Current active milestone: M013 Security Hardening & Abuse Controls.
+- Last full pass: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
+- Current blocker: M013 closeout commit is pending in this checkout.
 - Default context: read `docs/ACTIVE_CONTEXT.md`, this file, `task.md`, and current git status/diff.
 
 ## Milestones
@@ -27,15 +26,15 @@
 | M010.1 Preview Readiness Cleanup | PASS | `82cc32c` | `docs/archive/milestones/M010.1-preview-readiness-cleanup.md`; screenshot note under `docs/reports/screenshots/M010/` |
 | M011 Backend OCR MVP | PASS history, backend implemented | `7216e0f` | `docs/archive/milestones/M011-ocr-mvp.md`; M011.1 upgraded the flow to full browser evidence |
 | M011.1 OCR Frontend Review UI | FULL PASS | `e0d6dc4`, `2985a40` | screenshots under `docs/reports/screenshots/M011.1/` |
-| M012 UPI Settlement MVP | CONDITIONAL PASS | `8c39279` | DB/API, backend, and frontend validation passed; browser evidence captured through payer-confirmed and disputed under `docs/reports/screenshots/M012/`; npm audit blocked by registry metadata policy |
+| M012 UPI Settlement MVP | FULL PASS | `8c39279`, `05456c0` | DB/API, backend, frontend validation, and browser evidence accepted before M013 per user confirmation on 2026-07-08 |
+| M013 Security Hardening & Abuse Controls | FULL PASS | `2a721ef` | rate limits, audit logs, abuse reports, noindex/security headers; `docs/architecture/security.md`; `docs/archive/milestones/M013-security-hardening.md` |
 
 ## Deferred Baselines
 
 - Full backend mypy baseline remains known-red at about 382/383 errors in 30/31 files depending
   checkpoint.
-- `npm audit` remains unverified for M012: sandboxed `npm.cmd audit --json` failed at the npm
-  registry endpoint, and escalation was rejected because it would send dependency metadata to the
-  public npm registry.
+- M013 `npm audit --json` recorded 2 moderate advisories, 0 high, 0 critical. The fix path suggests
+  an unsafe Next downgrade, so no forced audit fix was run.
 - Browser E2E harness remains deferred.
 
 ## Archive Location

@@ -31,6 +31,7 @@ import {
   type ParticipantSession
 } from "@/lib/storage";
 import type {
+  AbuseReportInput,
   AdjustmentType,
   Item,
   OpenPaymentResponse,
@@ -320,6 +321,11 @@ function CreatorTools({
           }
         />
       ) : null}
+      <AbuseReportPanel
+        onReport={async (payload) => {
+          await api.reportAbuse(summary.room.id, session.token, payload);
+        }}
+      />
     </>
   );
 }
@@ -443,6 +449,11 @@ function ParticipantTools({
           }
         />
       ) : null}
+      <AbuseReportPanel
+        onReport={async (payload) => {
+          await api.reportAbuse(summary.room.id, session.token, payload);
+        }}
+      />
     </>
   );
 }
@@ -589,6 +600,7 @@ export function ParticipantSettlementPanel({
   const [openedPayment, setOpenedPayment] = useState<OpenPaymentResponse | null>(null);
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!openedPayment?.qr_payload) {
@@ -611,8 +623,11 @@ export function ParticipantSettlementPanel({
       return;
     }
     setBusy(true);
+    setActionError(null);
     try {
       setOpenedPayment(await onOpenPayment(request.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Too many attempts. Please try again later.");
     } finally {
       setBusy(false);
     }
@@ -646,7 +661,13 @@ export function ParticipantSettlementPanel({
         </div>
       </div>
 
-      <p className="mt-3 text-sm font-medium">{participantSettlementCopy(request.status)}</p>
+      <div className="mt-3 grid gap-1 text-sm">
+        <p className="font-medium">{participantSettlementCopy(request.status)}</p>
+        <p className="text-[#63706b]">ReceiptSplit does not verify bank transfer.</p>
+        <p className="text-[#63706b]">Check the UPI app recipient and amount before paying.</p>
+        <p className="text-[#63706b]">Payer confirmation is manual.</p>
+      </div>
+      {actionError ? <p className="mt-3 text-sm font-medium text-coral">{actionError}</p> : null}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button type="button" disabled={busy} onClick={openPayment}>
@@ -687,6 +708,77 @@ export function ParticipantSettlementPanel({
           <p className="break-all text-sm text-[#63706b]">{openedPayment.copy_vpa}</p>
           <p className="text-xs text-[#63706b]">{openedPayment.disclaimer}</p>
         </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function AbuseReportPanel({
+  onReport
+}: {
+  onReport: (payload: AbuseReportInput) => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<AbuseReportInput["reason"]>("spam");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setStatus("submitting");
+    try {
+      await onReport({ reason, message: message.trim() || null });
+      setMessage("");
+      setStatus("success");
+    } catch (err) {
+      setStatus("idle");
+      setError(err instanceof Error ? err.message : "Could not submit report");
+    }
+  }
+
+  return (
+    <section className="rounded-md bg-white p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">Safety</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Report spam or suspicious payment details.</p>
+        </div>
+        <Button type="button" variant="secondary" onClick={() => setOpen((value) => !value)}>
+          Report abuse
+        </Button>
+      </div>
+      {open ? (
+        <form className="mt-4 grid gap-3" onSubmit={submit}>
+          <Select
+            label="Reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value as AbuseReportInput["reason"])}
+          >
+            <option value="spam">Spam</option>
+            <option value="fraud_suspected">Fraud suspected</option>
+            <option value="wrong_payee">Wrong payee</option>
+            <option value="harassment">Harassment</option>
+            <option value="other">Other</option>
+          </Select>
+          <label className="grid gap-1 text-sm font-medium">
+            Message
+            <textarea
+              className="min-h-24 rounded-md border border-[#dbe5df] px-3 py-2 text-sm outline-none focus:border-leaf"
+              maxLength={500}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+            />
+          </label>
+          {error ? <p className="text-sm font-medium text-coral">{error}</p> : null}
+          {status === "success" ? (
+            <p className="text-sm font-medium text-leaf">Report received.</p>
+          ) : null}
+          <Button type="submit" disabled={status === "submitting"}>
+            Submit report
+          </Button>
+        </form>
       ) : null}
     </section>
   );

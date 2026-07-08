@@ -109,3 +109,27 @@ Settlement writes durable room events inside the request transaction:
 `settlement_status_events` records the status-history audit trail. Room events drive existing
 SSE/refetch behavior; status events preserve settlement history. No raw tokens, UPI app response
 payloads, bank data, or gateway identifiers are stored.
+
+## M013 Security Hardening
+
+Settlement mutation endpoints now have lightweight in-process rate limits. The limiter is
+MVP-appropriate and not distributed-safe; Redis or another shared limiter is deferred.
+
+Security-sensitive settlement actions write durable `audit_logs` rows:
+
+- `settlement.payer_details_set`
+- `settlement.payer_details_change_blocked`
+- `settlement.requests_prepared`
+- `settlement.payment_opened`
+- `settlement.claimed_paid`
+- `settlement.payer_confirmed`
+- `settlement.disputed`
+- `suspicious.flagged`
+
+Payer details can be set before settlement requests are prepared. Once settlement requests exist,
+payer details changes are blocked by default through both the settlement payer endpoint and the
+legacy room PATCH path. The blocked attempt is audited with a VPA fingerprint, not the raw attempted
+VPA.
+
+Repeated open-payment activity records a `suspicious.flagged` audit entry. M013 does not auto-block
+based on suspicious flags; enforcement remains limited to explicit rate limits.

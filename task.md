@@ -8,50 +8,51 @@ default.
 
 ## Current Status
 
-- Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
-- Current active milestone: M012 UPI Settlement MVP.
-- M012 state: CONDITIONAL PASS only.
-- M012 product code exists in the working tree, DB/API validation passes, and browser screenshot
-  evidence is captured, but audit evidence is not complete.
-- Do not start M013, gateway work, payment verification, wallet, escrow, refunds, or deployment.
+- Last full pass: M012 UPI Settlement MVP, commits `8c39279` and `05456c0`.
+- Current active milestone: M013 Security Hardening & Abuse Controls.
+- M013 state: FULL PASS after validation and local DB smoke; closeout commit pending.
+- Do not add payment verification, gateway code, wallet behavior, escrow, refunds, deployment, or
+  M014 scope.
 
-## M012 Delivered So Far
+## M013 Delivered In This Working Tree
 
-- Backend settlement domain, status transitions, service, schemas, routes, and models.
-- Migration `backend/migrations/versions/004_m012_settlement_mvp.py`.
-- Server-side `SettlementLinkBuilder` for UPI URI and QR payload strings.
-- Creator settlement setup/dashboard and participant payment flow.
-- Settlement architecture doc: `docs/architecture/settlement.md`.
-- Conditional closeout evidence: `docs/archive/milestones/M012-upi-settlement.md`.
+- `audit_logs` and `abuse_reports` models plus migration.
+- Lightweight in-process rate limits for sensitive room, join, OCR, settlement, payer-detail, and
+  abuse-report actions.
+- Durable audit rows for settlement/security-sensitive actions.
+- Payer detail changes blocked after settlement requests exist through both settlement payer and
+  legacy room PATCH paths.
+- Failed invite-token join logging with token fingerprints only.
+- Minimal abuse report API and room UI.
+- Repeated open-payment suspicious activity audit flag.
+- Noindex/security headers for join and room pages.
+- Settlement copy states that ReceiptSplit does not verify bank transfer and payer confirmation is
+  manual.
 
-## M012 Validation State
+## Validation State
 
-Passed in the latest closeout run:
+Passing so far:
 
-- settlement link builder unit test
-- DB-backed settlement API tests
-- full backend pytest with longer timeout
-- full backend Ruff
-- focused M012 mypy
-- frontend lint
-- frontend typecheck
-- full frontend tests
-- frontend build
-- `git diff --check`
-- browser smoke through payer-confirmed and disputed with demo VPA `receiptsplit.test@upi`
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\api\test_m013_security.py -q`
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py tests\api\test_rooms.py tests\api\test_participants.py -q`
+- `cd frontend && npm.cmd test -- settlement-ui.test.tsx api.test.ts security-headers.test.ts`
 
-Blocked or pending:
+Passing:
 
-- `npm.cmd audit --json` approval decision and registry access
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q`
+- `cd backend && .\.venv\Scripts\python.exe -m ruff check .`
+- focused M013 mypy over changed backend/API/security/test files
+- `cd frontend && npm.cmd run lint`
+- `cd frontend && npm.cmd run typecheck`
+- `cd frontend && npm.cmd test`
+- `cd frontend && npm.cmd run build`
+- `cd frontend && npm.cmd audit --json` recorded 2 moderate advisories, 0 high, 0 critical
+- local Postgres smoke passed through create, join, lock, settlement, payment-open, claim, confirm,
+  and abuse report
 
-Screenshot evidence note:
+Pending:
 
-- `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
-
-Commit blocker:
-
-- `git add` escalation is currently blocked by the approval-system usage limit, not by a current
-  `.git/index.lock`.
+- M013 closeout commit
 
 ## Product Boundary
 

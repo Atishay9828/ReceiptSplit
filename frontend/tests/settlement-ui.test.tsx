@@ -2,7 +2,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { CreatorSettlementPanel, ParticipantSettlementPanel } from "@/components/room-client";
+import {
+  AbuseReportPanel,
+  CreatorSettlementPanel,
+  ParticipantSettlementPanel
+} from "@/components/room-client";
 import type { OpenPaymentResponse, SettlementSummary } from "@/types/api";
 
 const settlement: SettlementSummary = {
@@ -100,9 +104,48 @@ describe("settlement UI", () => {
     await waitFor(() => expect(onOpenPayment).toHaveBeenCalledWith("request-1"));
     expect(await screen.findByText("QR fallback")).toBeInTheDocument();
     expect(screen.getAllByText("receiptsplit.test@upi").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/ReceiptSplit does not verify bank transfer/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Check the UPI app recipient and amount before paying/i)).toBeInTheDocument();
     expect(screen.queryByText(/payment successful/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/verified paid/i)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /^i paid$/i }));
     await waitFor(() => expect(onClaimPaid).toHaveBeenCalledWith("request-1"));
+  });
+
+  it("shows safe rate-limit copy when opening payment is throttled", async () => {
+    const onOpenPayment = vi.fn().mockRejectedValue(new Error("Too many attempts. Please try again later."));
+
+    render(
+      <ParticipantSettlementPanel
+        settlement={settlement}
+        participantId="participant-2"
+        onOpenPayment={onOpenPayment}
+        onClaimPaid={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /open upi app/i }));
+
+    expect(await screen.findByText(/Too many attempts. Please try again later/i)).toBeInTheDocument();
+  });
+
+  it("submits abuse reports and shows success state", async () => {
+    const onReport = vi.fn().mockResolvedValue(undefined);
+
+    render(<AbuseReportPanel onReport={onReport} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /report abuse/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/reason/i), "wrong_payee");
+    await userEvent.type(screen.getByLabelText(/message/i), "The UPI ID looks wrong");
+    await userEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+    await waitFor(() =>
+      expect(onReport).toHaveBeenCalledWith({
+        reason: "wrong_payee",
+        message: "The UPI ID looks wrong"
+      })
+    );
+    expect(await screen.findByText(/Report received/i)).toBeInTheDocument();
   });
 });
