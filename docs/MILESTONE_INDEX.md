@@ -27,7 +27,7 @@
 | M011 Backend OCR MVP | PASS history, backend implemented | `7216e0f` | `docs/archive/milestones/M011-ocr-mvp.md`; M011.1 upgraded the flow to full browser evidence |
 | M011.1 OCR Frontend Review UI | FULL PASS | `e0d6dc4`, `2985a40` | screenshots under `docs/reports/screenshots/M011.1/` |
 | M012 UPI Settlement MVP | FULL PASS | `8c39279`, `05456c0` | DB/API, backend, frontend validation, and browser evidence accepted before M013 per user confirmation on 2026-07-08 |
-| M013 Security Hardening & Abuse Controls | FULL PASS | `2a721ef` | rate limits, audit logs, abuse reports, noindex/security headers; `docs/architecture/security.md`; `docs/archive/milestones/M013-security-hardening.md` |
+| M013 Security Hardening & Abuse Controls | FULL PASS | `44fede4` | rate limits, audit logs, abuse reports, noindex/security headers; `docs/architecture/security.md`; `docs/archive/milestones/M013-security-hardening.md` |
 
 ## Deferred Baselines
 
