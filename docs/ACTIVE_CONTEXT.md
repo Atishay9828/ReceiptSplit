@@ -40,23 +40,21 @@ context.
 - Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
 - Current active milestone: M012 UPI Settlement MVP.
 - M012 state: CONDITIONAL PASS only.
-- M012 implementation exists, but closeout is blocked and uncommitted.
-- Git is expected to remain dirty until M012 product code, validation, screenshots, and commit are
-  completed.
+- M012 implementation exists, DB-backed API tests now pass, and all requested browser screenshot
+  evidence is captured.
+- M012 remains CONDITIONAL PASS because `npm.cmd audit --json` is unverified: the sandboxed retry
+  failed at the npm registry endpoint, and the escalated retry was rejected because it would send
+  dependency metadata to the public npm registry.
 
 See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Close out M012 when environment access is available:
+Close out the remaining M012 gates only when policy/user approval allows registry metadata
+submission:
 
-1. resolve Git/index lock and dirty state
-2. run DB-backed settlement API tests
-3. run backend and frontend validation
-4. run browser smoke
-5. capture M012 screenshots
-6. commit M012
-7. confirm clean git status
+1. rerun `npm.cmd audit --json`
+2. update M012 from CONDITIONAL PASS to FULL PASS only if audit evidence is captured
 
 Do not start M013 or payment-gateway work while M012 is conditional.
 
@@ -82,28 +80,30 @@ Docs:
 
 - active architecture: `docs/architecture/settlement.md`
 - archived closeout evidence: `docs/archive/milestones/M012-upi-settlement.md`
-- blocked screenshot note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
+- screenshot evidence note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
 
 ## M012 Blockers
 
-- DB-backed settlement API integration tests are not completed.
-- Full backend pytest timed out in the prior run with DB-backed errors before completion.
-- Browser smoke has not run.
-- Screenshots have not been captured.
-- `npm.cmd audit --json` is blocked by registry access.
-- M012 commit has not been created.
-- Prior Git staging hit `.git/index.lock` permission denied.
+- `npm.cmd audit --json` remains unverified. The sandboxed retry failed at the npm registry
+  endpoint, and the escalated retry was rejected because it sends dependency metadata to the public
+  npm registry.
+- Prior Git index-lock issues are not present in this closeout run.
 
 ## Validation Baselines
 
 - M011.1 backend pytest passed with local Docker/Postgres and three skipped tests.
 - M011.1 frontend lint, typecheck, tests, and build passed.
-- M012 focused backend unit tests, Ruff, focused mypy, frontend lint, typecheck, tests, build, and
-  `git diff --check` passed in the prior focused run.
-- M012 DB-backed API test is blocked by Docker/Testcontainers named-pipe access denied.
+- M012 DB-backed API tests passed: `.\.venv\Scripts\python.exe -m pytest tests\api\test_settlement.py -q`.
+- Full backend pytest passed when rerun with a longer timeout after isolated API/non-API passes.
+- Backend Ruff passed.
+- Focused M012 mypy passed for 12 settlement-touched backend files.
+- Frontend lint, typecheck, tests, and build passed.
+- `git diff --check` passed with only CRLF normalization warnings.
+- Browser smoke passed through payer-confirmed and disputed states with screenshots under
+  `docs/reports/screenshots/M012/`.
 - Full backend mypy remains known-red at about 382/383 errors in 30/31 files depending checkpoint.
-- `npm audit` has a known moderate Next/PostCSS advisory chain (`GHSA-qx2v-qp2m-jg93`) or registry
-  access blocker depending environment.
+- `npm audit` remains unverified in this run because registry metadata submission was rejected by
+  the approval reviewer.
 - Browser E2E harness is deferred.
 
 ## Non-Negotiables For Future Agents
@@ -162,7 +162,7 @@ npm.cmd test -- settlement-ui.test.tsx api.test.ts
 - Milestone index: `docs/MILESTONE_INDEX.md`
 - Archived milestone reports: `docs/archive/milestones/`
 - M011.1 screenshots: `docs/reports/screenshots/M011.1/`
-- M012 blocked screenshot note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
+- M012 screenshot evidence note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
 - Frontend architecture: `docs/architecture/frontend.md`
 - OCR architecture: `docs/architecture/ocr.md`
 - Settlement architecture: `docs/architecture/settlement.md`

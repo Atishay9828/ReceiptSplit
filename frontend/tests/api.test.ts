@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { parseApiError } from "@/lib/api";
+import { ReceiptSplitApi, parseApiError } from "@/lib/api";
 
 describe("API error parser", () => {
   it("parses backend domain error shape", async () => {
@@ -24,5 +24,46 @@ describe("API error parser", () => {
     expect(error.status).toBe(403);
     expect(error.code).toBe("HTTP_403");
     expect(error.message).toBe("Forbidden");
+  });
+
+  it("uses settlement endpoints without sending client-controlled amount", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ReceiptSplitApi("http://api.test");
+
+    await client.openPayment("room-1", "request-1", "token");
+    await client.claimPaid("room-1", "request-1", "token");
+    await client.confirmSettlement("room-1", "request-1", "token");
+    await client.disputeSettlement("room-1", "request-1", "token", {
+      reason: "Could not match payment"
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://api.test/api/rooms/room-1/settlement/requests/request-1/open-payment",
+      expect.objectContaining({ method: "POST", body: undefined })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://api.test/api/rooms/room-1/settlement/requests/request-1/claim-paid",
+      expect.objectContaining({ method: "POST", body: undefined })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://api.test/api/rooms/room-1/settlement/requests/request-1/confirm",
+      expect.objectContaining({ method: "POST", body: undefined })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      "http://api.test/api/rooms/room-1/settlement/requests/request-1/dispute",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ reason: "Could not match payment" }) })
+    );
   });
 });

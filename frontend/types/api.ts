@@ -134,6 +134,74 @@ export type SplitPreview = {
   participant_totals: ParticipantTotal[];
 };
 
+export type SettlementStatus =
+  | "due"
+  | "payment_opened"
+  | "claimed_paid"
+  | "payer_confirmed"
+  | "disputed";
+
+export type SettlementRequestSummary = {
+  id: string;
+  room_id: string;
+  participant_id: string;
+  amount_paise: number;
+  amount_display: string;
+  currency: "INR";
+  payee_vpa: string;
+  payee_name: string;
+  payment_reference: string;
+  status: SettlementStatus;
+  created_at: string;
+  updated_at: string;
+  opened_at: string | null;
+  claimed_paid_at: string | null;
+  payer_confirmed_at: string | null;
+  disputed_at: string | null;
+};
+
+export type SettlementAggregates = {
+  due_count: number;
+  payment_opened_count: number;
+  claimed_paid_count: number;
+  payer_confirmed_count: number;
+  disputed_count: number;
+  total_due_paise: number;
+  total_confirmed_paise: number;
+};
+
+export type SettlementSummary = {
+  room_id: string;
+  payer_details_configured: boolean;
+  payee_vpa: string | null;
+  payee_name: string | null;
+  requests: SettlementRequestSummary[];
+  aggregates: SettlementAggregates;
+};
+
+export type PayerDetailsInput = {
+  payee_vpa: string;
+  payee_name: string;
+};
+
+export type DisputeInput = {
+  reason?: string | null;
+};
+
+export type OpenPaymentResponse = {
+  settlement_request_id: string;
+  status: SettlementStatus;
+  amount_paise: number;
+  amount_display: string;
+  payee_vpa: string;
+  payee_name: string;
+  payment_reference: string;
+  upi_uri: string;
+  qr_payload: string;
+  copy_vpa: string;
+  disclaimer: string;
+};
+
 export type RoomEvent = {
   id?: string;
   room_id?: string;

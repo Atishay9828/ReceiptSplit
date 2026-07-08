@@ -30,7 +30,16 @@ import {
   type CreatorSession,
   type ParticipantSession
 } from "@/lib/storage";
-import type { AdjustmentType, Item, RoomSummary, SplitPreview } from "@/types/api";
+import type {
+  AdjustmentType,
+  Item,
+  OpenPaymentResponse,
+  PayerDetailsInput,
+  RoomSummary,
+  SettlementStatus,
+  SettlementSummary,
+  SplitPreview
+} from "@/types/api";
 
 type RoomClientProps = {
   roomId: string;
@@ -43,6 +52,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   );
   const [summary, setSummary] = useState<RoomSummary | null>(null);
   const [preview, setPreview] = useState<SplitPreview | null>(null);
+  const [settlement, setSettlement] = useState<SettlementSummary | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -58,6 +68,11 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
       }
       const nextSummary = await api.getSummary(roomId, activeToken);
       setSummary(nextSummary);
+      try {
+        setSettlement(await api.getSettlement(roomId, activeToken));
+      } catch {
+        setSettlement(null);
+      }
 
       const suppressedKey = options.forcePreview ? null : suppressedPreviewKeyRef.current;
       if (!shouldRequestSplitPreview(nextSummary, suppressedKey)) {
@@ -139,6 +154,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
           session={session}
           summary={summary}
           preview={preview}
+          settlement={settlement}
           previewError={previewError}
           readiness={readiness}
           locked={locked}
@@ -150,6 +166,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
           session={session as ParticipantSession}
           summary={summary}
           preview={preview}
+          settlement={settlement}
           previewError={previewError}
           readiness={readiness}
           locked={locked}
@@ -184,6 +201,7 @@ function CreatorTools({
   session,
   summary,
   preview,
+  settlement,
   previewError,
   readiness,
   locked,
@@ -193,6 +211,7 @@ function CreatorTools({
   session: CreatorSession;
   summary: RoomSummary;
   preview: SplitPreview | null;
+  settlement: SettlementSummary | null;
   previewError: string | null;
   readiness: SplitPreviewReadiness;
   locked: boolean;
@@ -201,6 +220,10 @@ function CreatorTools({
 }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const lockReady = canLockSplit({ locked, preview, readiness });
+  const participantsById = useMemo(
+    () => new Map(summary.participants.map((participant) => [participant.id, participant.nickname])),
+    [summary.participants]
+  );
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);
@@ -277,9 +300,25 @@ function CreatorTools({
         onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
       />
       {locked ? (
-        <p className="rounded-md bg-mint p-3 text-sm font-medium">
-          Room is locked. Settlement tools are coming later.
-        </p>
+        <CreatorSettlementPanel
+          settlement={settlement}
+          participantsById={participantsById}
+          locked={locked}
+          onSavePayer={(payload) =>
+            run(() => api.savePayerDetails(summary.room.id, session.token, payload))
+          }
+          onPrepare={() => run(() => api.prepareSettlement(summary.room.id, session.token))}
+          onConfirm={(requestId) =>
+            run(() => api.confirmSettlement(summary.room.id, requestId, session.token))
+          }
+          onDispute={(requestId, reason) =>
+            run(() =>
+              api.disputeSettlement(summary.room.id, requestId, session.token, {
+                reason: reason || null
+              })
+            )
+          }
+        />
       ) : null}
     </>
   );
@@ -289,6 +328,7 @@ function ParticipantTools({
   session,
   summary,
   preview,
+  settlement,
   previewError,
   readiness,
   locked,
@@ -298,6 +338,7 @@ function ParticipantTools({
   session: ParticipantSession;
   summary: RoomSummary;
   preview: SplitPreview | null;
+  settlement: SettlementSummary | null;
   previewError: string | null;
   readiness: SplitPreviewReadiness;
   locked: boolean;
@@ -383,11 +424,271 @@ function ParticipantTools({
         onRetry={onPreviewRetry}
       />
       {locked ? (
-        <p className="rounded-md bg-mint p-3 text-sm font-medium">
-          Room is locked. Settlement tools are coming later.
-        </p>
+        <ParticipantSettlementPanel
+          settlement={settlement}
+          participantId={session.participantId}
+          onOpenPayment={(requestId) =>
+            api.openPayment(summary.room.id, requestId, session.token).then(async (result) => {
+              await onRefresh();
+              try {
+                window.open(result.upi_uri, "_self");
+              } catch {
+                // UPI navigation is best-effort; QR and copy fallback remain available.
+              }
+              return result;
+            })
+          }
+          onClaimPaid={(requestId) =>
+            run(() => api.claimPaid(summary.room.id, requestId, session.token))
+          }
+        />
       ) : null}
     </>
+  );
+}
+
+export function CreatorSettlementPanel({
+  settlement,
+  participantsById,
+  locked,
+  onSavePayer,
+  onPrepare,
+  onConfirm,
+  onDispute
+}: {
+  settlement: SettlementSummary | null;
+  participantsById: Map<string, string>;
+  locked: boolean;
+  onSavePayer: (payload: PayerDetailsInput) => Promise<void> | void;
+  onPrepare: () => Promise<void> | void;
+  onConfirm: (requestId: string) => Promise<void> | void;
+  onDispute: (requestId: string, reason?: string) => Promise<void> | void;
+}) {
+  const [payeeName, setPayeeName] = useState(() => settlement?.payee_name ?? "");
+  const [payeeVpa, setPayeeVpa] = useState(() => settlement?.payee_vpa ?? "");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submitPayer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSavePayer({ payee_name: payeeName.trim(), payee_vpa: payeeVpa.trim() });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!locked) {
+    return (
+      <section className="rounded-md bg-white p-4 shadow-soft">
+        <h2 className="text-lg font-bold">Settlement status</h2>
+        <p className="mt-2 text-sm text-[#63706b]">Lock the bill before preparing settlement.</p>
+      </section>
+    );
+  }
+
+  const requests = settlement?.requests ?? [];
+  const configured = Boolean(settlement?.payer_details_configured);
+
+  return (
+    <section className="rounded-md bg-white p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">Settlement status</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Payer confirmation is manual.</p>
+        </div>
+        {settlement?.aggregates.payer_confirmed_count === requests.length && requests.length > 0 ? (
+          <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold">
+            All payments payer-confirmed
+          </span>
+        ) : null}
+      </div>
+
+      {!configured ? (
+        <form className="mt-4 grid gap-3" onSubmit={submitPayer}>
+          <Input
+            label="Payer display name"
+            value={payeeName}
+            onChange={(event) => setPayeeName(event.target.value)}
+          />
+          <Input
+            label="UPI ID"
+            value={payeeVpa}
+            onChange={(event) => setPayeeVpa(event.target.value)}
+          />
+          <Button type="submit" disabled={submitting || !payeeName.trim() || !payeeVpa.trim()}>
+            Save payout details
+          </Button>
+        </form>
+      ) : null}
+
+      {configured && requests.length === 0 ? (
+        <div className="mt-4 grid gap-3 rounded-md bg-cloud p-3 text-sm">
+          <p className="font-semibold">{settlement?.payee_name}</p>
+          <p className="break-all text-[#63706b]">{settlement?.payee_vpa}</p>
+          <Button type="button" onClick={onPrepare}>
+            Prepare settlement
+          </Button>
+        </div>
+      ) : null}
+
+      {requests.length > 0 ? (
+        <div className="mt-4 grid gap-3">
+          {requests.map((request) => (
+            <div key={request.id} className="rounded-md border border-[#dbe5df] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold">
+                    {participantsById.get(request.participant_id) ?? "Participant"}
+                  </h3>
+                  <p className="text-sm text-[#63706b]">
+                    {formatPaise(request.amount_paise)} · {settlementStatusLabel(request.status)}
+                  </p>
+                  <p className="break-all text-xs text-[#63706b]">{request.payment_reference}</p>
+                </div>
+                <SettlementStatusBadge status={request.status} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!["claimed_paid", "disputed"].includes(request.status)}
+                  onClick={() => onConfirm(request.id)}
+                >
+                  Confirm payment
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={!["due", "payment_opened", "claimed_paid"].includes(request.status)}
+                  onClick={() => onDispute(request.id)}
+                >
+                  Mark disputed
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function ParticipantSettlementPanel({
+  settlement,
+  participantId,
+  onOpenPayment,
+  onClaimPaid
+}: {
+  settlement: SettlementSummary | null;
+  participantId: string;
+  onOpenPayment: (requestId: string) => Promise<OpenPaymentResponse>;
+  onClaimPaid: (requestId: string) => Promise<void> | void;
+}) {
+  const request = settlement?.requests.find((entry) => entry.participant_id === participantId) ?? null;
+  const [openedPayment, setOpenedPayment] = useState<OpenPaymentResponse | null>(null);
+  const [qr, setQr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!openedPayment?.qr_payload) {
+      return;
+    }
+    void QRCode.toDataURL(openedPayment.qr_payload, { margin: 1, width: 180 }).then(setQr);
+  }, [openedPayment?.qr_payload]);
+
+  if (!request) {
+    return (
+      <section className="rounded-md bg-white p-4 shadow-soft">
+        <h2 className="text-lg font-bold">Pay your share</h2>
+        <p className="mt-2 text-sm text-[#63706b]">Waiting for payer to prepare settlement.</p>
+      </section>
+    );
+  }
+
+  async function openPayment() {
+    if (!request) {
+      return;
+    }
+    setBusy(true);
+    try {
+      setOpenedPayment(await onOpenPayment(request.id));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-md bg-white p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">Pay your share</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Pay directly to payer.</p>
+        </div>
+        <SettlementStatusBadge status={request.status} />
+      </div>
+      <div className="mt-4 grid gap-2 rounded-md bg-cloud p-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span>Amount due</span>
+          <strong>{formatPaise(request.amount_paise)}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>Payer</span>
+          <strong className="text-right">{request.payee_name}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>UPI ID</span>
+          <strong className="break-all text-right">{request.payee_vpa}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>Reference</span>
+          <strong className="break-all text-right">{request.payment_reference}</strong>
+        </div>
+      </div>
+
+      <p className="mt-3 text-sm font-medium">{participantSettlementCopy(request.status)}</p>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button type="button" disabled={busy} onClick={openPayment}>
+          Open UPI app
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => navigator.clipboard.writeText(request.payee_vpa)}
+        >
+          <Copy size={16} aria-hidden="true" />
+          Copy UPI ID
+        </Button>
+        <Button
+          type="button"
+          className="col-span-2"
+          variant="secondary"
+          disabled={request.status === "payer_confirmed"}
+          onClick={() => onClaimPaid(request.id)}
+        >
+          I paid
+        </Button>
+      </div>
+
+      {openedPayment ? (
+        <div className="mt-4 grid gap-3 rounded-md border border-[#dbe5df] p-3">
+          <h3 className="font-semibold">QR fallback</h3>
+          {qr ? (
+            <Image
+              className="h-36 w-36 rounded-md border border-[#dbe5df]"
+              src={qr}
+              alt="UPI payment QR"
+              width={144}
+              height={144}
+              unoptimized
+            />
+          ) : null}
+          <p className="break-all text-sm text-[#63706b]">{openedPayment.copy_vpa}</p>
+          <p className="text-xs text-[#63706b]">{openedPayment.disclaimer}</p>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -697,6 +998,44 @@ export function SplitPreviewCard({
       </div>
     </section>
   );
+}
+
+function SettlementStatusBadge({ status }: { status: SettlementStatus }) {
+  return (
+    <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold">
+      {settlementStatusLabel(status)}
+    </span>
+  );
+}
+
+function settlementStatusLabel(status: SettlementStatus): string {
+  switch (status) {
+    case "due":
+      return "due";
+    case "payment_opened":
+      return "payment opened";
+    case "claimed_paid":
+      return "marked paid";
+    case "payer_confirmed":
+      return "payer confirmed";
+    case "disputed":
+      return "disputed";
+  }
+}
+
+function participantSettlementCopy(status: SettlementStatus): string {
+  switch (status) {
+    case "due":
+      return "Open your UPI app, pay directly to the payer, then mark I paid.";
+    case "payment_opened":
+      return "Check the UPI app amount and recipient before paying.";
+    case "claimed_paid":
+      return "Waiting for payer confirmation.";
+    case "payer_confirmed":
+      return "Payer confirmed.";
+    case "disputed":
+      return "Disputed by payer. You can reopen payment or mark paid again.";
+  }
 }
 
 function isPreviewValidationError(err: unknown): boolean {

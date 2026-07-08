@@ -5,18 +5,23 @@ import type {
   ApiErrorShape,
   Assignment,
   ClaimPayload,
+  DisputeInput,
   Item,
   ItemPayload,
   JoinRoomResponse,
   OcrJobResponse,
+  OpenPaymentResponse,
   ParsedReceiptConfirmResponse,
   ParsedReceiptDraftResponse,
   ParsedReceiptUpdateRequest,
+  PayerDetailsInput,
   ReceiptUploadResponse,
   Room,
   RoomCreateRequest,
   RoomCreateResponse,
   RoomSummary,
+  SettlementRequestSummary,
+  SettlementSummary,
   SplitPreview
 } from "@/types/api";
 
@@ -43,7 +48,7 @@ export async function parseApiError(response: Response): Promise<ApiError> {
 
 type RequestOptions = {
   token?: string;
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number>;
 };
@@ -179,6 +184,70 @@ export class ReceiptSplitApi {
       token,
       body: { version }
     });
+  }
+
+  getSettlement(roomId: string, token: string): Promise<SettlementSummary> {
+    return this.request<SettlementSummary>(`/api/rooms/${roomId}/settlement`, { token });
+  }
+
+  savePayerDetails(
+    roomId: string,
+    token: string,
+    payload: PayerDetailsInput
+  ): Promise<SettlementSummary> {
+    return this.request<SettlementSummary>(`/api/rooms/${roomId}/settlement/payer`, {
+      method: "PUT",
+      token,
+      body: payload
+    });
+  }
+
+  prepareSettlement(roomId: string, token: string): Promise<SettlementSummary> {
+    return this.request<SettlementSummary>(`/api/rooms/${roomId}/settlement/prepare`, {
+      method: "POST",
+      token
+    });
+  }
+
+  openPayment(
+    roomId: string,
+    requestId: string,
+    token: string
+  ): Promise<OpenPaymentResponse> {
+    return this.request<OpenPaymentResponse>(
+      `/api/rooms/${roomId}/settlement/requests/${requestId}/open-payment`,
+      { method: "POST", token }
+    );
+  }
+
+  claimPaid(roomId: string, requestId: string, token: string): Promise<SettlementRequestSummary> {
+    return this.request<SettlementRequestSummary>(
+      `/api/rooms/${roomId}/settlement/requests/${requestId}/claim-paid`,
+      { method: "POST", token }
+    );
+  }
+
+  confirmSettlement(
+    roomId: string,
+    requestId: string,
+    token: string
+  ): Promise<SettlementRequestSummary> {
+    return this.request<SettlementRequestSummary>(
+      `/api/rooms/${roomId}/settlement/requests/${requestId}/confirm`,
+      { method: "POST", token }
+    );
+  }
+
+  disputeSettlement(
+    roomId: string,
+    requestId: string,
+    token: string,
+    payload: DisputeInput
+  ): Promise<SettlementRequestSummary> {
+    return this.request<SettlementRequestSummary>(
+      `/api/rooms/${roomId}/settlement/requests/${requestId}/dispute`,
+      { method: "POST", token, body: payload }
+    );
   }
 
   // --- OCR ---

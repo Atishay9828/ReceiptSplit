@@ -9,9 +9,9 @@
 CONDITIONAL PASS.
 
 The implemented code covers coordinator-safe UPI settlement APIs, frontend room flows, server-side
-UPI URI generation, manual status transitions, durable status events, and focused automated tests.
-Local API integration tests and browser smoke are blocked by Docker/Testcontainers access in this
-environment, so this is not a full pass.
+UPI URI generation, manual status transitions, durable status events, DB-backed API tests, and
+browser evidence through payer-confirmed and disputed states. This is not a full pass because the
+npm audit result remains blocked by public-registry metadata submission policy.
 
 ## Scope
 
@@ -157,16 +157,39 @@ Frontend does not submit trusted payable amount, payee VPA, payee name, or payme
 
 ## Smoke Result
 
-Browser smoke was not completed in this run.
+Browser smoke was completed through the payer-confirmed path on 2026-07-07 and the disputed path on
+2026-07-08 using local demo data and the fake VPA `receiptsplit.test@upi`.
 
-Blocker:
+Verified:
 
-- API tests and local browser smoke need Docker/Postgres access.
-- Testcontainers failed with Windows named-pipe access denied.
-- Escalation was rejected by the environment usage gate.
+- fresh room created
+- two demo items added
+- room opened for claiming
+- participant joined and claimed items
+- creator preview showed Bob Demo owing `₹160.00`
+- creator locked the room
+- creator prepared settlement
+- participant saw Pay your share card
+- participant opened UPI flow and QR fallback rendered from a server payload
+- status changed to `payment opened`
+- participant marked `I paid`
+- status changed to `marked paid`
+- creator saw `marked paid`
+- creator manually confirmed payment
+- participant saw `payer confirmed`
+- a second local smoke room reached `disputed`
+- creator saw the `disputed` settlement status
 
-Screenshot note:
+Screenshot evidence:
 
+- `docs/reports/screenshots/M012/creator-payer-setup.png`
+- `docs/reports/screenshots/M012/settlement-prepared.png`
+- `docs/reports/screenshots/M012/participant-pay-card.png`
+- `docs/reports/screenshots/M012/payment-opened-upi-link.png`
+- `docs/reports/screenshots/M012/participant-claimed-paid.png`
+- `docs/reports/screenshots/M012/creator-confirm-payment.png`
+- `docs/reports/screenshots/M012/payer-confirmed.png`
+- `docs/reports/screenshots/M012/disputed-payment.png`
 - `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
 
 ## Validation
@@ -191,7 +214,7 @@ cd D:\ReceiptSplit
 git diff --check
 ```
 
-Blocked:
+Passed in the latest closeout run:
 
 ```powershell
 cd D:\ReceiptSplit\backend
@@ -199,19 +222,12 @@ cd D:\ReceiptSplit\backend
 .\.venv\Scripts\python.exe -m pytest tests\ -q
 ```
 
-Blocked reason:
+Notes:
 
-```text
-docker.errors.DockerException: Error while fetching server API version:
-(5, 'CreateFile', 'Access is denied.')
-```
-
-The escalation retry was rejected by the environment usage gate.
-
-Full backend pytest:
-
-- Timed out after 120 seconds with DB-backed errors before completion.
-- The focused settlement API test already showed the exact Docker/Testcontainers blocker above.
+- Full backend pytest initially timed out at 5 minutes, then passed when rerun with a 12-minute
+  timeout after isolated API and non-API suite passes.
+- The dev compose port `54329` is inside the Windows excluded port range `54310-54409`; the local
+  browser smoke used a temporary Postgres container on `127.0.0.1:55432`.
 
 Full backend mypy:
 
@@ -224,15 +240,15 @@ This remains the known strict baseline. Focused M012 mypy passed.
 npm audit:
 
 ```text
-request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed
+sandboxed npm.cmd audit --json failed at the npm registry endpoint; escalated retry was rejected
+because it sends dependency metadata to the public npm registry
 ```
 
-Registry access is blocked in this environment. No `npm audit fix --force` was run.
+No `npm audit fix --force` was run.
 
 Pending final validation:
 
-- Browser smoke.
-- Commit.
+- npm audit evidence, if policy/user approval allows registry metadata submission.
 
 ## Security / Abuse Checks
 
@@ -246,16 +262,16 @@ Implemented and covered by focused tests or code review:
 - No raw token fields in settlement responses.
 - No verified-paid language introduced in focused frontend tests.
 
-Still requiring DB/API verification:
+Verified by DB-backed API tests in the latest run:
 
-- Cross-room token rejection on settlement endpoints.
-- End-to-end API status transition persistence.
-- Room event persistence for settlement mutations.
+- Cross-room participant token rejection on settlement open-payment.
+- End-to-end API status transitions for open, claim, confirm, and dispute.
+- Settlement response does not expose raw creator or participant tokens.
 
 ## Deferred Risks
 
 - Full backend mypy baseline remains known-red.
-- npm audit has known moderate Next/PostCSS advisories.
+- npm audit remains unverified because registry metadata submission was rejected.
 - Browser E2E harness remains deferred.
 - QR fallback uses existing `qrcode` frontend dependency and server-generated payload, but mobile UPI
   handoff still needs manual device/browser smoke.

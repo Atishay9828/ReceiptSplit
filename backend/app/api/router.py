@@ -11,6 +11,7 @@ from app.api.routers import (
     ocr,
     participants,
     rooms,
+    settlement,
     split,
 )
 
@@ -22,5 +23,6 @@ api_router.include_router(participants.router)
 api_router.include_router(items.router)
 api_router.include_router(adjustments.router)
 api_router.include_router(split.router)
+api_router.include_router(settlement.router)
 api_router.include_router(events.router)
 api_router.include_router(ocr.router)

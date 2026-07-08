@@ -1,4 +1,4 @@
-# M012 Screenshots Blocked
+# M012 Screenshot Evidence
 
 Expected screenshot paths:
 
@@ -13,13 +13,28 @@ Expected screenshot paths:
 
 Status:
 
-Screenshots were not captured in this run.
+Screenshot evidence was captured on 2026-07-07 and 2026-07-08 using local demo data and the fake VPA
+`receiptsplit.test@upi`.
 
-Blocker:
+Captured:
 
-- The backend API integration tests and local browser smoke require local Postgres/Docker access.
-- The sandboxed Testcontainers run failed with Windows named-pipe access denied.
-- The escalation retry was rejected by the environment usage gate.
+- `creator-payer-setup.png`
+- `settlement-prepared.png`
+- `participant-pay-card.png`
+- `payment-opened-upi-link.png`
+- `participant-claimed-paid.png`
+- `creator-confirm-payment.png`
+- `payer-confirmed.png`
+- `disputed-payment.png`
+
+Notes:
+
+- The disputed screenshot was captured on 2026-07-08 with a temporary local Postgres container on
+  `127.0.0.1:55432`, backend on `127.0.0.1:8000`, frontend on `localhost:3000`, and local headless
+  Chrome.
+- `npm.cmd audit --json` remains unverified: the sandboxed retry failed at the npm registry
+  endpoint, and the escalated retry was rejected because it sends dependency metadata to the public
+  npm registry.
 
 Demo VPA to use when smoke is rerun:
 

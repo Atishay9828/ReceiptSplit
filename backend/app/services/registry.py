@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import TypedDict
 
 from app.config import settings
 from app.ocr.parser import IndianRestaurantReceiptParser
@@ -36,17 +37,30 @@ from app.services.event_publisher import EventPublisher
 from app.services.item_service import ItemService
 from app.services.participant_service import ParticipantService
 from app.services.room_service import RoomService
+from app.services.settlement_service import SettlementService
 from app.services.split_service import (
     SplitLockCoordinator,
     SplitPreviewService,
     SplitService,
 )
 
+
+class RepositoryRegistry(TypedDict):
+    room: PostgresRoomRepository
+    receipt: PostgresReceiptRepository
+    participant: PostgresParticipantRepository
+    item: PostgresItemRepository
+    adjustment: PostgresAdjustmentRepository
+    assignment: PostgresAssignmentRepository
+    event: PostgresEventRepository
+    receipt_edit: PostgresReceiptEditRepository
+    split_session: PostgresSplitSessionRepository
+
 # ── Singleton repositories ───────────────────────────────────────────────────
 
 
 @lru_cache(maxsize=1)
-def _repos() -> dict:
+def _repos() -> RepositoryRegistry:
     return {
         "room": PostgresRoomRepository(),
         "receipt": PostgresReceiptRepository(),
@@ -74,7 +88,7 @@ def get_event_publisher() -> EventPublisher:
 @lru_cache(maxsize=1)
 def get_event_repo() -> PostgresEventRepository:
     """Return the singleton event repository (for the replay endpoint)."""
-    return _repos()["event"]  # type: ignore[return-value]
+    return _repos()["event"]
 
 
 # ── Service factories ────────────────────────────────────────────────────────
@@ -146,6 +160,16 @@ def get_split_service() -> SplitService:
         session_repo=r["split_session"],
     )
     return SplitService(lock_coordinator=coordinator, preview=preview)
+
+
+@lru_cache(maxsize=1)
+def get_settlement_service() -> SettlementService:
+    r = _repos()
+    return SettlementService(
+        room_repo=r["room"],
+        session_repo=r["split_session"],
+        event_publisher=get_event_publisher(),
+    )
 
 
 @lru_cache(maxsize=1)

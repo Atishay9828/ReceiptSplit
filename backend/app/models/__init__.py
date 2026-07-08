@@ -18,6 +18,8 @@ from app.models.room_event import RoomEvent
 from app.models.room_invite import RoomInvite
 from app.models.room_participant import RoomParticipant
 from app.models.room_sequence import RoomSequence
+from app.models.settlement_request import SettlementRequest
+from app.models.settlement_status_event import SettlementStatusEvent
 from app.models.split_adjustment import SplitAdjustment
 from app.models.split_session import SplitSession
 from app.models.user import User
@@ -37,6 +39,8 @@ __all__ = [
     "RoomInvite",
     "RoomParticipant",
     "RoomSequence",
+    "SettlementRequest",
+    "SettlementStatusEvent",
     "SplitAdjustment",
     "SplitSession",
     "User",

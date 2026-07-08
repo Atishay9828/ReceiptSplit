@@ -11,7 +11,8 @@ default.
 - Last full pass: M011.1 OCR Frontend Review UI, commit `2985a40`.
 - Current active milestone: M012 UPI Settlement MVP.
 - M012 state: CONDITIONAL PASS only.
-- M012 product code exists in the working tree but closeout is not complete.
+- M012 product code exists in the working tree, DB/API validation passes, and browser screenshot
+  evidence is captured, but audit evidence is not complete.
 - Do not start M013, gateway work, payment verification, wallet, escrow, refunds, or deployment.
 
 ## M012 Delivered So Far
@@ -25,31 +26,32 @@ default.
 
 ## M012 Validation State
 
-Passed in the focused prior run:
+Passed in the latest closeout run:
 
 - settlement link builder unit test
-- focused backend Ruff
+- DB-backed settlement API tests
+- full backend pytest with longer timeout
 - full backend Ruff
 - focused M012 mypy
 - frontend lint
 - frontend typecheck
-- focused settlement frontend tests
 - full frontend tests
 - frontend build
 - `git diff --check`
+- browser smoke through payer-confirmed and disputed with demo VPA `receiptsplit.test@upi`
 
 Blocked or pending:
 
-- DB-backed settlement API integration tests
-- full backend pytest completion
-- browser smoke
-- M012 screenshots
-- `npm.cmd audit --json`
-- M012 commit
+- `npm.cmd audit --json` approval decision and registry access
 
-Blocked screenshot note:
+Screenshot evidence note:
 
 - `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
+
+Commit blocker:
+
+- `git add` escalation is currently blocked by the approval-system usage limit, not by a current
+  `.git/index.lock`.
 
 ## Product Boundary
 
