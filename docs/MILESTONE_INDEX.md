@@ -27,7 +27,7 @@
 | M010.1 Preview Readiness Cleanup | PASS | `82cc32c` | `docs/archive/milestones/M010.1-preview-readiness-cleanup.md`; screenshot note under `docs/reports/screenshots/M010/` |
 | M011 Backend OCR MVP | PASS history, backend implemented | `7216e0f` | `docs/archive/milestones/M011-ocr-mvp.md`; M011.1 upgraded the flow to full browser evidence |
 | M011.1 OCR Frontend Review UI | FULL PASS | `e0d6dc4`, `2985a40` | screenshots under `docs/reports/screenshots/M011.1/` |
-| M012 UPI Settlement MVP | CONDITIONAL PASS | pending closeout commit | DB/API, backend, and frontend validation passed; browser evidence captured through payer-confirmed and disputed under `docs/reports/screenshots/M012/`; npm audit blocked by registry metadata policy |
+| M012 UPI Settlement MVP | CONDITIONAL PASS | `8c39279` | DB/API, backend, and frontend validation passed; browser evidence captured through payer-confirmed and disputed under `docs/reports/screenshots/M012/`; npm audit blocked by registry metadata policy |
 
 ## Deferred Baselines
 

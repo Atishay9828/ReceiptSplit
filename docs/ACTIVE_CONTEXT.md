@@ -42,6 +42,7 @@ context.
 - M012 state: CONDITIONAL PASS only.
 - M012 implementation exists, DB-backed API tests now pass, and all requested browser screenshot
   evidence is captured.
+- M012 closeout commit: `8c39279`.
 - M012 remains CONDITIONAL PASS because `npm.cmd audit --json` is unverified: the sandboxed retry
   failed at the npm registry endpoint, and the escalated retry was rejected because it would send
   dependency metadata to the public npm registry.
