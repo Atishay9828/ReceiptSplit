@@ -8,9 +8,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants = {
-  primary: "bg-leaf text-white hover:bg-[#286c4d]",
-  secondary: "bg-mint text-ink hover:bg-[#ccebdc]",
-  danger: "bg-coral text-white hover:bg-[#cf5141]",
+  primary: "bg-leaf text-[var(--rs-primary-foreground)] hover:bg-[var(--rs-primary-hover)]",
+  secondary: "border border-border bg-surface-elevated text-ink hover:bg-[var(--rs-secondary-hover)]",
+  danger: "bg-coral text-white hover:bg-[var(--rs-danger-hover)]",
   ghost: "bg-transparent text-ink hover:bg-cloud"
 };
 

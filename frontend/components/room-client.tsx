@@ -1133,7 +1133,7 @@ export function ParticipantSettlementPanel({
                 {isMobile ? "Scan or tap Open UPI app" : "Scan with your phone's camera or UPI app"}
               </p>
               <Image
-                className="h-48 w-48 rounded-md border border-[#dbe5df] bg-white p-1"
+                className="h-48 w-48 rounded-md border border-border bg-qr p-1"
                 src={qr}
                 alt="UPI payment QR code"
                 width={192}
@@ -1266,7 +1266,7 @@ export function AbuseReportPanel({
           <label className="grid gap-1 text-sm font-medium">
             Message
             <textarea
-              className="min-h-24 rounded-md border border-[#dbe5df] px-3 py-2 text-sm outline-none focus:border-leaf"
+              className="min-h-24 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-ink outline-none focus:border-leaf focus:ring-4 focus:ring-leaf/20"
               maxLength={500}
               value={message}
               onChange={(event) => setMessage(event.target.value)}
@@ -1305,7 +1305,7 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
         </div>
         {qr ? (
           <Image
-            className="h-24 w-24 rounded-md border border-[#dbe5df]"
+            className="h-24 w-24 rounded-md border border-border bg-qr p-1"
             src={qr}
             alt="Invite QR"
             width={96}
@@ -1742,11 +1742,11 @@ type StatusTone = "muted" | "info" | "pending" | "success" | "danger";
 
 function StatusBadge({ tone, children }: { tone: StatusTone; children: ReactNode }) {
   const toneClass = {
-    muted: "bg-cloud text-[#52625b]",
-    info: "bg-[#e8f1ff] text-[#2563eb]",
-    pending: "bg-amber/20 text-[#8a5b00]",
-    success: "bg-mint text-leaf",
-    danger: "bg-[#fff0ea] text-coral"
+    muted: "bg-cloud text-muted",
+    info: "bg-info-soft text-info",
+    pending: "bg-warning-soft text-amber",
+    success: "bg-success-soft text-leaf",
+    danger: "bg-danger-soft text-coral"
   }[tone];
 
   return (

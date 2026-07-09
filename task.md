@@ -8,24 +8,25 @@ default.
 
 ## Current Status
 
-- Last full pass: M014 Frontend Experience & Pilot Polish, commit `79f2041`.
-- Previous full pass: M013 Security Hardening & Abuse Controls, commits `44fede4` and `49b3c21`.
-- Current active milestone: M014 Frontend Experience & Pilot Polish.
+- Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
+- Current active milestone: M015 Dark Mode + Pilot Readiness QA.
+- M015 is a conditional pass until audit approval, Docker/Testcontainers backend proof, and
+  real-device UPI checks are completed.
 - Do not add payment verification, gateway code, wallet behavior, escrow, refunds, deployment, or
   new product scope.
 
-## M014 Delivered In This Working Tree
+## M015 Delivered In This Working Tree
 
-- Polished create and join pages for fast first impression.
-- Added participant "You owe" summary, clearer claim cards, and safe payment action card.
-- Added creator next-step card, cleaner item/OCR area, and settlement dashboard wording.
-- Made `claimed_paid` pending/amber and `payer_confirmed` success/green.
-- Kept abuse reporting visible but low-friction.
-- Added loading/error/empty-state polish and reduced-motion CSS guard.
-- Fixed Tailwind v4 CSS import/design tokens so production styles render.
-- Added focused M014 frontend tests.
-- Fixed backend CORS `PUT` preflight for settlement payer-detail save and added regression test.
-- Captured production screenshots under `docs/reports/screenshots/M014/`.
+- Added CSS-variable-backed light/dark tokens and made dark mode the primary tested UI.
+- Added accessible theme toggle with localStorage persistence and first-load system preference.
+- Polished create, join, creator room, participant room, OCR, item claiming, removal, safety, and
+  settlement/payment card surfaces for dark mode.
+- Kept QR payment fallbacks readable inside light QR containers.
+- Preserved `claimed_paid` as pending/amber and `payer_confirmed` as success/green.
+- Added M015 tests for theme toggle, dark-mode shell usability, QR fallback visibility,
+  payer-confirmed action hiding, and unsafe-copy absence.
+- Added pilot docs under `docs/pilot/`.
+- Captured mocked local browser screenshots under `docs/reports/screenshots/M015/`.
 
 ## Validation State
 
@@ -33,21 +34,24 @@ Passing:
 
 - `cd frontend && npm.cmd run lint`
 - `cd frontend && npm.cmd run typecheck`
-- `cd frontend && npm.cmd test` -> 11 files, 51 tests passed
+- `cd frontend && npm.cmd test` -> 12 files, 56 tests passed
 - `cd frontend && npm.cmd run build`
-- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q`
 - `cd backend && .\.venv\Scripts\python.exe -m ruff check .`
-- production browser smoke through create, join, claim, lock, payer details, settlement prepare,
-  payment open/copy fallback, marked paid, payer confirmed, and abuse report
+- mocked local browser UI smoke through dark create/join/creator/participant/payment/settled/mobile
+  states
 
 Recorded:
 
-- `cd frontend && npm.cmd audit --json` -> 2 moderate, 0 high, 0 critical; no force fix because the
-  suggested path downgrades Next.
+- unsafe payment copy search matched only tests/docs forbidden examples
 
 Pending:
 
-- M014 closeout commit `79f2041`.
+- `cd frontend && npm.cmd audit --json` -> blocked by approval reviewer due dependency metadata
+  egress to npm
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q` -> blocked by
+  Docker/Testcontainers named-pipe access
+- real Android/iPhone UPI behavior
+- M015 closeout commit
 
 ## Product Boundary
 

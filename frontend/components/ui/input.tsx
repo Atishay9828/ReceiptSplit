@@ -15,12 +15,12 @@ export function Input({ className, label, hint, id, ...props }: InputProps) {
       <input
         id={inputId}
         className={cn(
-          "min-h-11 rounded-md border border-[#ccd8d1] bg-white px-3 py-2 text-base font-normal outline-none ring-leaf/20 transition focus:border-leaf focus:ring-4 disabled:cursor-not-allowed disabled:bg-cloud",
+          "min-h-11 rounded-md border border-border-strong bg-surface-elevated px-3 py-2 text-base font-normal text-ink outline-none ring-leaf/20 transition placeholder:text-soft focus:border-leaf focus:ring-4 disabled:cursor-not-allowed disabled:bg-cloud disabled:text-soft",
           className
         )}
         {...props}
       />
-      {hint ? <span className="text-xs font-normal text-[#63706b]">{hint}</span> : null}
+      {hint ? <span className="text-xs font-normal text-muted">{hint}</span> : null}
     </label>
   );
 }

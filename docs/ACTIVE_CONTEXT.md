@@ -37,17 +37,20 @@ context.
 
 ## Current Milestone Status
 
-- Last full pass before M014.1: M014 Frontend Experience & Pilot Polish, commit `79f2041`.
-- Current active milestone: M014.1 Real-World UX Bug Bash & Payment Flow Repair.
-- M014.1 state: FULL PASS after frontend validation, backend tests, and browser smoke tests. Closeout commit pending.
-- M014.1 repairs quantity claiming, payment status visibility (QR codes and state), settlement state-machine, room settled transitions, and participant removal.
-- M014 fixed CORS `PUT` preflight for browser settlement payer-detail save.
+- Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
+- Current active milestone: M015 Dark Mode + Pilot Readiness QA.
+- M015 state: CONDITIONAL PASS pending audit approval, Docker/Testcontainers backend proof, and
+  real-device UPI checks.
+- M015 adds a persisted light/dark theme system, dark-mode UI polish across create/join/room/payment
+  screens, pilot QA docs, and mocked local browser screenshot evidence.
+- M014.1 repaired quantity claiming, payment status visibility, settlement state-machine, room
+  settled transitions, and participant removal.
 
 See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-M014 closeout is recorded in commit `79f2041`; keep the working tree clean.
+M015 closeout is conditional until blocked audit/backend/real-device checks are completed.
 
 ## M014.1 Current Implementation
 
@@ -96,6 +99,20 @@ M014.1 closeout checks:
 - `.\.venv\Scripts\python.exe -m pytest tests\ -q` -> full backend suite passed with 3 skipped
 - `.\.venv\Scripts\python.exe -m ruff check .` -> passed
 - Production browser smoke passed through create, join, claim, quantity change, lock, save payer details, prepare settlement, open payment, claim paid, payer confirm, and room transition to settled.
+
+M015 closeout checks:
+
+- `npm.cmd run lint` -> passed
+- `npm.cmd run typecheck` -> passed
+- `npm.cmd test` -> 12 files, 56 tests passed
+- `npm.cmd run build` -> passed
+- `npm.cmd audit --json` -> blocked by approval reviewer because audit sends dependency metadata
+  to npm
+- `.\.venv\Scripts\python.exe -m pytest tests\ -q` -> blocked by Docker/Testcontainers named-pipe
+  access
+- `.\.venv\Scripts\python.exe -m ruff check .` -> passed
+- Unsafe payment copy search matched only tests/docs forbidden examples
+- Mocked browser UI smoke with system Edge captured screenshots under `docs/reports/screenshots/M015/`
 
 ## Non-Negotiables For Future Agents
 
@@ -155,6 +172,7 @@ npm.cmd test -- settlement-ui.test.tsx api.test.ts
 - M011.1 screenshots: `docs/reports/screenshots/M011.1/`
 - M012 screenshot evidence note: `docs/reports/screenshots/M012/M012-screenshots-blocked.md`
 - Frontend architecture: `docs/architecture/frontend.md`
+- M015 pilot docs: `docs/pilot/`
 - OCR architecture: `docs/architecture/ocr.md`
 - Settlement architecture: `docs/architecture/settlement.md`
 - Security architecture: `docs/architecture/security.md`

@@ -133,3 +133,15 @@ VPA.
 
 Repeated open-payment activity records a `suspicious.flagged` audit entry. M013 does not auto-block
 based on suspicious flags; enforcement remains limited to explicit rate limits.
+
+## M015 Pilot QA Notes
+
+M015 changes frontend presentation only; settlement backend behavior is unchanged.
+
+UPI intent behavior remains browser/device dependent. Android may show an app chooser or open a
+default UPI app. Desktop may do nothing or show an unsupported protocol prompt. iOS behavior varies
+by browser and installed apps. QR and copy fallback paths must remain visible in all cases.
+
+Real-device UPI checks are tracked in `docs/pilot/UPI_INTENT_QA.md`. Do not convert local browser
+or mocked UI evidence into claims that bank transfer, UPI app opening, or payment completion is
+verified by ReceiptSplit.

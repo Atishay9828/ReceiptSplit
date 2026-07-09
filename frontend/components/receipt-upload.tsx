@@ -378,14 +378,14 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
   // --- Render ---
 
   return (
-    <section id="receipt-upload" className="rounded-md bg-white p-4 shadow-soft">
+    <section id="receipt-upload" className="rounded-md border border-border bg-surface p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">
             <Camera size={18} className="mr-1.5 inline-block align-text-bottom" aria-hidden="true" />
             Scan Receipt
           </h2>
-          <p className="mt-1 text-sm text-[#63706b]">
+          <p className="mt-1 text-sm text-muted">
             OCR can make mistakes. Review item names and amounts before adding them.
           </p>
         </div>
@@ -399,7 +399,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
       {/* Error banner */}
       {(error || fileError) && (
-        <div className="mt-3 rounded-md bg-coral/10 px-3 py-2 text-sm font-medium text-coral">
+        <div className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm font-medium text-coral">
           {fileError ?? error}
         </div>
       )}
@@ -408,7 +408,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
       {stage === "idle" && (
         <div className="mt-3 grid gap-3">
           <label
-            className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-[#ccd8d1] bg-cloud p-4 text-sm text-[#63706b] transition hover:border-leaf hover:bg-mint/40"
+            className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border-strong bg-cloud p-4 text-sm text-muted transition hover:border-leaf hover:bg-mint/40"
             htmlFor="receipt-file-input"
           >
             <Upload size={24} aria-hidden="true" />
@@ -434,7 +434,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
       {/* Uploading */}
       {stage === "uploading" && (
-        <div className="mt-4 flex items-center gap-3 text-sm text-[#63706b]">
+        <div className="mt-4 flex items-center gap-3 text-sm text-muted">
           <Loader2 size={18} className="animate-spin" aria-hidden="true" />
           Uploading receipt image…
         </div>
@@ -442,7 +442,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
       {/* Processing */}
       {stage === "processing" && (
-        <div className="mt-4 flex items-center gap-3 text-sm text-[#63706b]">
+        <div className="mt-4 flex items-center gap-3 text-sm text-muted">
           <Loader2 size={18} className="animate-spin" aria-hidden="true" />
           Processing OCR… This may take a few seconds.
         </div>
@@ -463,13 +463,13 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
         <div className="mt-3 grid gap-3" data-testid="ocr-draft-review">
           {/* Warnings */}
           {needsReview && (
-            <div className="flex items-center gap-2 rounded-md bg-amber/15 px-3 py-2 text-sm font-medium text-amber-800">
+            <div className="flex items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm font-medium text-amber">
               <AlertTriangle size={16} aria-hidden="true" />
               Needs review — check items below
             </div>
           )}
           {draftWarnings.length > 0 && (
-            <ul className="rounded-md bg-amber/10 px-3 py-2 text-xs text-[#63706b]">
+            <ul className="rounded-md bg-warning-soft px-3 py-2 text-xs text-muted">
               {draftWarnings.map((warning, index) => (
                 <li key={index}>⚠ {warning}</li>
               ))}
@@ -486,7 +486,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
           {/* Items */}
           <div className="grid gap-2">
-            <p className="text-sm font-semibold text-[#63706b]">Items ({lines.length})</p>
+            <p className="text-sm font-semibold text-muted">Items ({lines.length})</p>
             {lines.map((line, index) => (
               <div key={line.key} className="grid grid-cols-[1fr_60px_90px_36px] items-end gap-2">
                 <Input
@@ -526,13 +526,13 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
           {/* Summary */}
           {serverDraft.total_paise != null && (
             <div className="flex items-center justify-between rounded-md bg-cloud px-3 py-2 text-sm">
-              <span className="text-[#63706b]">OCR total</span>
+              <span className="text-muted">OCR total</span>
               <strong>{formatPaise(serverDraft.total_paise)}</strong>
             </div>
           )}
 
           {/* Confidence */}
-          <div className="flex items-center justify-between text-xs text-[#63706b]">
+          <div className="flex items-center justify-between text-xs text-muted">
             <span>Confidence: {(serverDraft.confidence * 100).toFixed(0)}%</span>
             <span>Parser: {serverDraft.parser_version}</span>
           </div>
@@ -540,7 +540,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
           {/* Raw text debug (collapsed, explicit action) */}
           <details open={showRawText} className="text-xs">
             <summary
-              className="flex cursor-pointer items-center gap-1 text-[#63706b] select-none"
+              className="flex cursor-pointer items-center gap-1 text-muted select-none"
               onClick={(e) => {
                 e.preventDefault();
                 void handleLoadRawText();
@@ -550,7 +550,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
               {loadingRawText ? "Loading raw OCR text…" : "Raw OCR text (debug)"}
             </summary>
             {showRawText && rawText !== null && (
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-cloud p-2 text-[10px] text-[#63706b]">
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-cloud p-2 text-[10px] text-muted">
                 {rawText}
               </pre>
             )}
@@ -572,7 +572,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
       {/* Confirming */}
       {stage === "confirming" && (
-        <div className="mt-4 flex items-center gap-3 text-sm text-[#63706b]">
+        <div className="mt-4 flex items-center gap-3 text-sm text-muted">
           <Loader2 size={18} className="animate-spin" aria-hidden="true" />
           Confirming receipt items…
         </div>

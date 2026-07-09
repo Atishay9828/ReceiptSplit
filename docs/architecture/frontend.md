@@ -8,8 +8,8 @@ architecture note. Archived milestone reports are under `docs/archive/milestones
 M010 adds a mobile-first Next.js frontend for the manual receipt-first ReceiptSplit flow. It
 supports anonymous creator capability sessions and accountless participant sessions. M011.1 adds OCR
 draft review. M012 adds coordinator-safe UPI settlement coordination. M014 adds pilot polish for the
-mobile-first room experience. Payment verification, wallet, escrow, deployment, and production auth
-UI remain deferred.
+mobile-first room experience. M015 adds a dark-mode-first theme system and pilot readiness docs.
+Payment verification, wallet, escrow, deployment, and production auth UI remain deferred.
 
 ## App Structure
 
@@ -18,6 +18,7 @@ The frontend lives in `frontend/` and uses:
 - Next.js App Router.
 - TypeScript.
 - Tailwind CSS v4 with app tokens defined in `frontend/app/globals.css`.
+- CSS-variable-backed light/dark theme tokens.
 - Small shadcn/ui-style primitives under `frontend/components/ui/`.
 - Vitest and React Testing Library.
 
@@ -85,6 +86,42 @@ M014 keeps the product scope unchanged and improves the experience layer:
 The Tailwind v4 pipeline uses `@import "tailwindcss";` and CSS `@theme` tokens. This is required
 for production browser styles to render correctly with the installed Tailwind/PostCSS stack.
 
+## M015 Theme System
+
+M015 keeps Tailwind v4 but maps app colors to CSS variables in `frontend/app/globals.css`:
+
+- background
+- surface
+- elevated surface
+- border
+- primary mint/emerald
+- secondary teal/slate
+- warning amber
+- danger coral
+- success green
+- info cyan/blue
+- text primary, secondary, and muted
+
+The `.dark` class is applied to `document.documentElement`. First paint is handled by an inline
+layout script before the app content renders. User preference is stored in localStorage under
+`receiptsplit:theme`; first visit respects system preference. `frontend/components/theme-toggle.tsx`
+exposes the accessible icon button with `aria-label="Toggle theme"`.
+
+Dark mode is the primary tested experience, but light mode remains usable. Existing light-oriented
+Tailwind utilities are bridged through dark CSS overrides where a full class rewrite would create
+unnecessary churn. QR codes use the dedicated `bg-qr` token so the black/white QR payload remains
+readable inside dark payment cards.
+
+M015 status colors:
+
+- `due`: muted
+- `payment_opened`: info/cyan
+- `claimed_paid`: warning/amber
+- `payer_confirmed`: success/green
+- `disputed`: danger/coral
+
+`claimed_paid` must not look final.
+
 ## Creator Flow
 
 The creator creates a room from `/create`, optionally setting payer metadata. Because backend rooms
@@ -133,6 +170,11 @@ are stored in `docs/reports/screenshots/M014/`:
 - mobile payment flow
 - abuse report UI
 - error/empty state
+
+M015 mocked local browser UI evidence used fake demo data only and fake VPA
+`receiptsplit.test@upi`. Screenshots are stored in `docs/reports/screenshots/M015/`. This proves UI
+rendering and dark-mode states, not DB-backed end-to-end behavior. Real-device UPI behavior remains
+tracked in `docs/pilot/REAL_DEVICE_QA.md` and `docs/pilot/UPI_INTENT_QA.md`.
 
 ## Event Sync
 
@@ -204,4 +246,7 @@ It returns room metadata, participants, active items, active adjustments, and cu
   M012.
 - Browser smoke is manual/temporary Playwright automation rather than a committed E2E harness.
 - `npm audit` currently reports 2 moderate advisories through Next/PostCSS and no high/critical
-  advisories; no forced downgrade is applied.
+  advisories as of M014; no forced downgrade is applied. M015 could not refresh audit data because
+  the audit command's network escalation was rejected due dependency metadata egress to npm.
+- Full backend pytest for M015 is blocked by Docker/Testcontainers named-pipe access in this
+  environment.
