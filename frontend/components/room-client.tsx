@@ -60,9 +60,8 @@ type RoomClientProps = {
 };
 
 export function RoomClient({ roomId, mode }: RoomClientProps) {
-  const [session] = useState<CreatorSession | ParticipantSession | null>(() =>
-    mode === "creator" ? getCreatorSession(roomId) : getParticipantSession(roomId)
-  );
+  const [session, setSession] = useState<CreatorSession | ParticipantSession | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [summary, setSummary] = useState<RoomSummary | null>(null);
   const [preview, setPreview] = useState<SplitPreview | null>(null);
   const [settlement, setSettlement] = useState<SettlementSummary | null>(null);
@@ -73,6 +72,14 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 
   const token = session?.token;
   const locked = summary?.room.status === "settling" || summary?.room.status === "settled";
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setSession(mode === "creator" ? getCreatorSession(roomId) : getParticipantSession(roomId));
+      setSessionLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, [mode, roomId]);
 
   const refresh = useCallback(
     async (activeToken = token, options: { forcePreview?: boolean } = {}) => {
@@ -143,6 +150,19 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 
   if (error) {
     return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  }
+
+  if (!sessionLoaded) {
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+          <div className="flex items-center gap-3 text-sm font-medium text-[#63706b]">
+            <Loader2 size={18} className="animate-spin text-leaf" aria-hidden="true" />
+            Loading room...
+          </div>
+        </section>
+      </main>
+    );
   }
 
   if (!session) {
@@ -314,13 +334,38 @@ function getCreatorNextAction(
   if (roomStatus === "settled") {
     return {
       title: "All payments confirmed",
-      description: "This split is fully settled. Nothing left to do."
+      description: "Copy the final summary or start another split when you are ready."
     };
   }
   return {
     title: "Review room",
     description: "Check room status and participant activity before taking another action."
   };
+}
+
+type CreatorStep = "draft" | "claiming" | "locked" | "settling" | "settled";
+
+function getCreatorStep(summary: RoomSummary, settlement: SettlementSummary | null): CreatorStep {
+  if (summary.room.status === "settled") {
+    return "settled";
+  }
+  if (summary.room.status === "settling") {
+    return settlement?.requests.length ? "settling" : "locked";
+  }
+  if (summary.room.status === "active") {
+    return "claiming";
+  }
+  return "draft";
+}
+
+function participantDisplayName(
+  participant: RoomSummary["participants"][number],
+  payerName?: string | null
+) {
+  if (participant.role === "creator" && participant.nickname === "Creator" && payerName) {
+    return payerName;
+  }
+  return participant.nickname;
 }
 
 function CreatorTools({
@@ -348,12 +393,18 @@ function CreatorTools({
   const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const lockReady = canLockSplit({ locked, preview, readiness });
   const itemCount = summary.items.length;
-  // Find creator participant for self-claim
   const creatorParticipant = summary.participants.find((p) => p.role === "creator");
   const participantsById = useMemo(
-    () => new Map(summary.participants.map((participant) => [participant.id, participant.nickname])),
-    [summary.participants]
+    () =>
+      new Map(
+        summary.participants.map((participant) => [
+          participant.id,
+          participantDisplayName(participant, summary.room.payer_name)
+        ])
+      ),
+    [summary.participants, summary.room.payer_name]
   );
+  const creatorStep = getCreatorStep(summary, settlement);
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);
@@ -378,16 +429,23 @@ function CreatorTools({
         canLock={lockReady}
         itemCount={itemCount}
       />
-      <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
-      <Participants
-        participants={summary.participants}
-        mode="creator"
-        roomStatus={summary.room.status}
-        confirmRemoveId={removeConfirm}
-        onRequestRemove={(id) => setRemoveConfirm(id)}
-        onCancelRemove={() => setRemoveConfirm(null)}
-        onConfirmRemove={removeParticipant}
-      />
+      <RoomStepHeader step={creatorStep} />
+      {creatorStep === "claiming" ? (
+        <>
+          <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
+          <Participants
+            participants={summary.participants}
+            mode="creator"
+            roomStatus={summary.room.status}
+            payerName={summary.room.payer_name}
+            confirmRemoveId={removeConfirm}
+            onRequestRemove={(id) => setRemoveConfirm(id)}
+            onCancelRemove={() => setRemoveConfirm(null)}
+            onConfirmRemove={removeParticipant}
+          />
+        </>
+      ) : null}
+      {creatorStep === "draft" ? (
       <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
         <h2 className="text-lg font-bold">Items</h2>
         {!locked ? (
@@ -431,6 +489,7 @@ function CreatorTools({
           onRefresh={onRefresh}
         />
       </section>
+      ) : null}
       {/* Creator self-claim — available in active mode */}
       {summary.room.status === "active" && creatorParticipant ? (
         <CreatorClaimSection
@@ -442,7 +501,7 @@ function CreatorTools({
           onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
         />
       ) : null}
-      {!locked ? (
+      {creatorStep === "draft" ? (
         <AdjustmentForm
           roomId={summary.room.id}
           token={session.token}
@@ -450,21 +509,25 @@ function CreatorTools({
           onError={setActionError}
         />
       ) : null}
-      <SplitPreviewCard
-        preview={preview}
-        previewError={previewError}
-        readiness={readiness}
-        summary={summary}
-        onRetry={onPreviewRetry}
-      />
-      <CreatorLockControls
-        canLock={lockReady}
-        locked={locked}
-        readiness={readiness}
-        onLock={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
-        onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
-      />
-      {locked ? (
+      {creatorStep === "draft" || creatorStep === "claiming" || creatorStep === "locked" ? (
+        <SplitPreviewCard
+          preview={preview}
+          previewError={previewError}
+          readiness={readiness}
+          summary={summary}
+          onRetry={onPreviewRetry}
+        />
+      ) : null}
+      {creatorStep === "claiming" || creatorStep === "locked" ? (
+        <CreatorLockControls
+          canLock={lockReady}
+          locked={locked}
+          readiness={readiness}
+          onLock={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
+          onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
+        />
+      ) : null}
+      {creatorStep === "locked" || creatorStep === "settling" ? (
         <CreatorSettlementPanel
           settlement={settlement}
           participantsById={participantsById}
@@ -485,12 +548,162 @@ function CreatorTools({
           }
         />
       ) : null}
+      {creatorStep === "settled" ? (
+        <CreatorSettledView
+          summary={summary}
+          preview={preview}
+          settlement={settlement}
+          participantsById={participantsById}
+        />
+      ) : null}
       <AbuseReportPanel
         onReport={async (payload) => {
           await api.reportAbuse(summary.room.id, session.token, payload);
         }}
       />
     </>
+  );
+}
+
+export function RoomStepHeader({ step }: { step: CreatorStep }) {
+  const copy = {
+    draft: {
+      title: "Draft",
+      description: "Build the receipt, add adjustments, and preview the split before inviting friends."
+    },
+    claiming: {
+      title: "Claiming",
+      description: "Share the invite, let friends claim items, and lock once the bill is ready."
+    },
+    locked: {
+      title: "Locked",
+      description: "Review final totals, save payer details, then prepare manual settlement requests."
+    },
+    settling: {
+      title: "Settling",
+      description: "Track UPI opens, marked-paid requests, disputes, and manual payer confirmations."
+    },
+    settled: {
+      title: "Settled",
+      description: "Everyone's share has been manually confirmed by the payer."
+    }
+  }[step];
+
+  return (
+    <section className="rounded-md border border-border bg-surface p-4 shadow-soft sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase text-info">Current step</p>
+          <h2 className="mt-1 text-2xl font-bold">{copy.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">{copy.description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-bold">
+          {(["draft", "claiming", "locked", "settling", "settled"] as CreatorStep[]).map((entry) => (
+            <span
+              key={entry}
+              className={
+                entry === step
+                  ? "rounded-full bg-info-soft px-3 py-1 text-info"
+                  : "rounded-full bg-cloud px-3 py-1 text-muted"
+              }
+            >
+              {entry}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function CreatorSettledView({
+  summary,
+  preview,
+  settlement,
+  participantsById
+}: {
+  summary: RoomSummary;
+  preview: SplitPreview | null;
+  settlement: SettlementSummary | null;
+  participantsById: Map<string, string>;
+}) {
+  const requests = settlement?.requests ?? [];
+  const totalPaise =
+    preview?.grand_total_paise ?? requests.reduce((sum, request) => sum + request.amount_paise, 0);
+  const summaryText = [
+    "ReceiptSplit summary:",
+    `${summary.room.payer_name ?? "Split"} total: ${formatPaise(totalPaise)}`,
+    ...requests.map(
+      (request) =>
+        `${participantsById.get(request.participant_id) ?? "Participant"}: ${formatPaise(request.amount_paise)} - payer confirmed`
+    ),
+    "Status: payer confirmed",
+    "ReceiptSplit does not verify bank transfers."
+  ].join("\n");
+
+  return (
+    <section className="rounded-md border border-border bg-surface p-5 shadow-soft sm:p-6">
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <span className="inline-grid h-12 w-12 place-items-center rounded-md bg-success-soft text-[var(--rs-success)]">
+            <Check size={24} aria-hidden="true" />
+          </span>
+          <p className="mt-4 text-sm font-semibold uppercase text-[var(--rs-success)]">
+            All payments confirmed
+          </p>
+          <h2 className="mt-2 text-3xl font-bold">This split is cleared.</h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
+            The payer has manually confirmed everyone&apos;s share. ReceiptSplit does not verify
+            bank transfers.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <CompletionStat label="Total split amount" value={formatPaise(totalPaise)} />
+            <CompletionStat label="Participants settled" value={String(requests.length)} />
+            <CompletionStat label="Items split" value={String(summary.items.length)} />
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button type="button" onClick={() => navigator.clipboard?.writeText(summaryText)}>
+              <Copy size={16} aria-hidden="true" />
+              Copy summary
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => window.location.assign("/create")}>
+              Create another split
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-md border border-border bg-cloud p-4">
+          <h3 className="font-bold">Final participant summary</h3>
+          <div className="mt-3 grid gap-2">
+            {requests.length === 0 ? (
+              <p className="text-sm text-muted">No settlement requests were found for this room.</p>
+            ) : null}
+            {requests.map((request) => (
+              <div key={request.id} className="rounded-md bg-surface px-3 py-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold">
+                    {participantsById.get(request.participant_id) ?? "Participant"}
+                  </span>
+                  <strong>{formatPaise(request.amount_paise)}</strong>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-xs text-muted">
+                  <span>{request.payment_reference}</span>
+                  <span>payer confirmed</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CompletionStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-cloud p-3">
+      <p className="text-xs font-semibold uppercase text-muted">{label}</p>
+      <p className="mt-1 text-xl font-bold">{value}</p>
+    </div>
   );
 }
 
@@ -547,7 +760,12 @@ function ParticipantTools({
         status={participantStatus}
         participantName={session.nickname}
       />
-      <Participants participants={summary.participants} mode="participant" roomStatus={summary.room.status} />
+      <Participants
+        participants={summary.participants}
+        mode="participant"
+        roomStatus={summary.room.status}
+        payerName={summary.room.payer_name}
+      />
       <ParticipantClaimList
         summary={summary}
         participantId={session.participantId}
@@ -749,7 +967,7 @@ export function ParticipantClaimList({
                       {itemAssignments.length > 0 ? (
                         <> · {itemAssignments.map((a) => {
                           const others = summary.participants.find((p) => p.id === a.participant_id);
-                          return `${others?.nickname ?? "Someone"} ×${a.claimed_qty}`;
+                          return `${others ? participantDisplayName(others, summary.room.payer_name) : "Someone"} ×${a.claimed_qty}`;
                         }).join(", ")}</>
                       ) : null}
                     </p>
@@ -957,7 +1175,7 @@ export function CreatorSettlementPanel({
               due: "Waiting for participant to open payment.",
               payment_opened: "Participant opened the UPI link.",
               claimed_paid: "Participant marked paid — waiting for your confirmation.",
-              payer_confirmed: "Payment confirmed.",
+              payer_confirmed: "Payer confirmed manually.",
               disputed: "Marked disputed."
             }[request.status];
             return (
@@ -1089,7 +1307,7 @@ export function ParticipantSettlementPanel({
       <div className="mt-4 grid gap-3 rounded-md bg-cloud p-4 text-sm">
         <div className="grid gap-1">
           <span className="text-[#63706b]">{isConfirmed ? "Amount" : "Amount due"}</span>
-          <strong className={`text-4xl font-bold ${isConfirmed ? "text-leaf" : "text-ink"}`}>
+          <strong className={`text-4xl font-bold ${isConfirmed ? "text-[var(--rs-success)]" : "text-ink"}`}>
             {formatPaise(request.amount_paise)}
           </strong>
         </div>
@@ -1110,7 +1328,7 @@ export function ParticipantSettlementPanel({
       {/* Confirmed final state */}
       {isConfirmed ? (
         <div className="mt-4 rounded-md border border-[#c3e6d4] bg-mint/40 p-4 text-center">
-          <p className="font-bold text-leaf">Payer confirmed this payment.</p>
+          <p className="font-bold text-[var(--rs-success)]">Payer confirmed this payment.</p>
           <p className="mt-1 text-sm text-[#52625b]">You&apos;re all set.</p>
           <p className="mt-2 text-xs text-[#63706b]">ReceiptSplit does not verify bank transfers.</p>
         </div>
@@ -1332,10 +1550,11 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
   );
 }
 
-function Participants({
+export function Participants({
   participants,
   mode = "participant",
   roomStatus,
+  payerName,
   confirmRemoveId,
   onRequestRemove,
   onCancelRemove,
@@ -1344,6 +1563,7 @@ function Participants({
   participants: RoomSummary["participants"];
   mode?: "creator" | "participant";
   roomStatus?: RoomSummary["room"]["status"];
+  payerName?: string | null;
   confirmRemoveId?: string | null;
   onRequestRemove?: (id: string) => void;
   onCancelRemove?: () => void;
@@ -1357,15 +1577,20 @@ function Participants({
         {participants.map((participant) => {
           const isCreator = participant.role === "creator";
           const isBeingRemoved = confirmRemoveId === participant.id;
+          const displayName = participantDisplayName(participant, payerName);
           return (
             <div key={participant.id} className="flex items-center gap-1">
               <span
-                className="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold text-white"
-                style={{ backgroundColor: participant.color }}
+                className="flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3 py-1 text-sm font-semibold text-ink"
               >
-                {participant.nickname}
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: participant.color }}
+                  aria-hidden="true"
+                />
+                {displayName}
                 {isCreator ? (
-                  <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                  <span className="rounded-full bg-[var(--rs-accent-soft)] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[var(--rs-accent)]">
                     Creator
                   </span>
                 ) : null}
@@ -1377,7 +1602,7 @@ function Participants({
                       type="button"
                       className="rounded-full bg-coral px-2 py-0.5 text-xs font-bold text-white"
                       onClick={() => onConfirmRemove?.(participant.id)}
-                      aria-label={`Confirm remove ${participant.nickname}`}
+                    aria-label={`Confirm remove ${displayName}`}
                     >
                       Remove
                     </button>
@@ -1394,8 +1619,8 @@ function Participants({
                     type="button"
                     className="grid h-5 w-5 place-items-center rounded-full bg-[#ffd6d0] text-xs font-bold text-coral hover:bg-coral hover:text-white"
                     onClick={() => onRequestRemove?.(participant.id)}
-                    aria-label={`Remove ${participant.nickname}`}
-                    title={`Remove ${participant.nickname}`}
+                    aria-label={`Remove ${displayName}`}
+                    title={`Remove ${displayName}`}
                   >
                     ×
                   </button>
@@ -1589,7 +1814,7 @@ function ItemList({
   );
 }
 
-function AdjustmentForm({
+export function AdjustmentForm({
   roomId,
   token,
   onSaved,
@@ -1601,21 +1826,26 @@ function AdjustmentForm({
   onError: (message: string) => void;
 }) {
   const [type, setType] = useState<AdjustmentType>("tax");
+  const [valueMode, setValueMode] = useState<"amount" | "percentage">("amount");
   const [label, setLabel] = useState("");
-  const [amount, setAmount] = useState("");
+  const [value, setValue] = useState("");
+  const effectiveValueMode = type === "rounding" ? "amount" : valueMode;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const paise = parseRupeesToPaise(amount);
+      const isPercentage = effectiveValueMode === "percentage";
+      const paise = isPercentage ? 0 : parseRupeesToPaise(value);
+      const rateBasisPoints = isPercentage ? parsePercentageToBasisPoints(value) : undefined;
       await api.addAdjustment(roomId, token, {
         type,
         label: label.trim() || type,
-        amount_paise: type === "discount" ? -paise : paise,
-        allocation_method: "equal"
+        amount_paise: paise,
+        rate_basis_points: rateBasisPoints,
+        allocation_method: type === "delivery_fee" || type === "rounding" ? "equal" : "proportional"
       });
       setLabel("");
-      setAmount("");
+      setValue("");
       await onSaved();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Could not save adjustment");
@@ -1630,15 +1860,63 @@ function AdjustmentForm({
           <option value="tax">Tax</option>
           <option value="service_charge">Service charge</option>
           <option value="delivery_fee">Delivery fee</option>
+          <option value="packaging_fee">Packaging fee</option>
+          <option value="tip">Tip</option>
           <option value="discount">Discount</option>
-          <option value="adjustment">Custom</option>
+          <option value="coupon">Coupon</option>
+          <option value="offer">Offer</option>
+          <option value="rounding">Rounding</option>
+          <option value="adjustment">Custom adjustment</option>
+        </Select>
+        <Select
+          label="Mode"
+          value={effectiveValueMode}
+          onChange={(event) => setValueMode(event.target.value as "amount" | "percentage")}
+          disabled={type === "rounding"}
+        >
+          <option value="amount">Flat amount</option>
+          <option value="percentage">Percentage</option>
         </Select>
         <Input label="Label" value={label} onChange={(event) => setLabel(event.target.value)} />
-        <Input label="Amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+        <Input
+          label={effectiveValueMode === "percentage" ? "Percentage" : "Amount"}
+          inputMode="decimal"
+          value={value}
+          hint={adjustmentPreviewCopy(type, effectiveValueMode, value)}
+          onChange={(event) => setValue(event.target.value)}
+        />
         <Button type="submit">Add adjustment</Button>
       </form>
     </section>
   );
+}
+
+function parsePercentageToBasisPoints(input: string): number {
+  const trimmed = input.trim();
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(trimmed)) {
+    throw new Error("Percentage must be between 0.01 and 100.");
+  }
+  const [whole, fraction = ""] = trimmed.split(".");
+  const bps = Number.parseInt(whole, 10) * 100 + Number.parseInt(fraction.padEnd(2, "0"), 10);
+  if (bps <= 0 || bps > 10_000) {
+    throw new Error("Percentage must be between 0.01 and 100.");
+  }
+  return bps;
+}
+
+function adjustmentPreviewCopy(type: AdjustmentType, mode: "amount" | "percentage", value: string) {
+  const verb = ["discount", "coupon", "offer"].includes(type) ? "Subtracts" : "Adds";
+  if (type === "rounding") {
+    return "Rounding stays a flat signed amount and is applied last.";
+  }
+  if (!value.trim()) {
+    return mode === "percentage"
+      ? `${verb} a percentage from the item subtotal.`
+      : `${verb} a flat amount.`;
+  }
+  return mode === "percentage"
+    ? `${verb} ${value.trim()}% from the item subtotal.`
+    : `${verb} ${value.trim()} as a flat amount.`;
 }
 
 export function CreatorLockControls({
@@ -1719,7 +1997,11 @@ export function SplitPreviewCard({
               key={total.participant_id}
               className="flex items-center justify-between rounded-md bg-cloud px-3 py-2 text-sm"
             >
-              <span>{participantsById.get(total.participant_id)?.nickname ?? "Participant"}</span>
+              <span>
+                {participantsById.get(total.participant_id)
+                  ? participantDisplayName(participantsById.get(total.participant_id)!, summary.room.payer_name)
+                  : "Participant"}
+              </span>
               <strong>{formatPaise(total.total_paise)}</strong>
             </div>
           ))
@@ -1745,7 +2027,7 @@ function StatusBadge({ tone, children }: { tone: StatusTone; children: ReactNode
     muted: "bg-cloud text-muted",
     info: "bg-info-soft text-info",
     pending: "bg-warning-soft text-amber",
-    success: "bg-success-soft text-leaf",
+    success: "bg-success-soft text-[var(--rs-success)]",
     danger: "bg-danger-soft text-coral"
   }[tone];
 

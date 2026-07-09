@@ -48,7 +48,7 @@ class SplitAdjustment(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('tax','service_charge','delivery_fee','discount','adjustment')",
+            "type IN ('tax','service_charge','delivery_fee','packaging_fee','tip','discount','coupon','offer','adjustment','rounding')",
             name="ck_adj_type",
         ),
         CheckConstraint(

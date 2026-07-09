@@ -145,3 +145,13 @@ by browser and installed apps. QR and copy fallback paths must remain visible in
 Real-device UPI checks are tracked in `docs/pilot/UPI_INTENT_QA.md`. Do not convert local browser
 or mocked UI evidence into claims that bank transfer, UPI app opening, or payment completion is
 verified by ReceiptSplit.
+
+## M015.1 Completion UX
+
+Settled rooms render as a completion state instead of another settlement dashboard. The final creator
+view says `All payments confirmed` and explains that the payer manually confirmed each share. It
+shows final participant amounts, payment references, copy-summary support, and a
+create-another-split action.
+
+This remains settlement coordination only. The settled view must not use bank verification, gateway,
+webhook, payment-success, or verified-paid language.

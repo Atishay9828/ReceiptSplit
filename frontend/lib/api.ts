@@ -89,23 +89,12 @@ export class ReceiptSplitApi {
     const created = await this.request<RoomCreateResponse>("/api/rooms", {
       method: "POST",
       token,
-      body: { split_mode: payload.split_mode }
+      body: {
+        split_mode: payload.split_mode,
+        payer_name: payload.payer_name,
+        payer_vpa: payload.payer_vpa
+      }
     });
-
-    const roomUpdates: Partial<Pick<Room, "payer_name" | "payer_vpa">> = {};
-    if (payload.payer_name) {
-      roomUpdates.payer_name = payload.payer_name;
-    }
-    if (payload.payer_vpa) {
-      roomUpdates.payer_vpa = payload.payer_vpa;
-    }
-
-    if (Object.keys(roomUpdates).length > 0) {
-      created.room = await this.updateRoom(created.room.id, created.creator_token, {
-        version: created.room.version,
-        ...roomUpdates
-      });
-    }
 
     return created;
   }

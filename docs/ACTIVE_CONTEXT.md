@@ -38,11 +38,16 @@ context.
 ## Current Milestone Status
 
 - Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
-- Current active milestone: M015 Dark Mode + Pilot Readiness QA.
+- Current active milestone: M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion
+  UX Repair.
 - M015 state: CONDITIONAL PASS pending audit approval, Docker/Testcontainers backend proof, and
   real-device UPI checks.
 - M015 adds a persisted light/dark theme system, dark-mode UI polish across create/join/room/payment
   screens, pilot QA docs, and mocked local browser screenshot evidence.
+- M015.1 state: CONDITIONAL PASS. It repairs creator display identity, discount/percentage
+  adjustment math, step-based creator views, settled completion UX, and the dark navy/cyan/violet
+  theme identity. Remaining condition: `npm audit --json` reports 2 moderate Next/PostCSS
+  advisories; real-device UPI behavior is still external QA.
 - M014.1 repaired quantity claiming, payment status visibility, settlement state-machine, room
   settled transitions, and participant removal.
 
@@ -50,7 +55,8 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-M015 closeout is conditional until blocked audit/backend/real-device checks are completed.
+Close out M015.1 commit and preserve validation evidence. Real-device UPI checks remain external
+QA; dependency audit has a moderate Next/PostCSS advisory with no safe automatic fix path.
 
 ## M014.1 Current Implementation
 
@@ -113,6 +119,20 @@ M015 closeout checks:
 - `.\.venv\Scripts\python.exe -m ruff check .` -> passed
 - Unsafe payment copy search matched only tests/docs forbidden examples
 - Mocked browser UI smoke with system Edge captured screenshots under `docs/reports/screenshots/M015/`
+
+M015.1 focused checks:
+
+- Backend split calculator tests cover subtractive discounts and percentage tax/discount math.
+- Full backend pytest passed after unrestricted rerun, with three skipped tests and one Starlette
+  deprecation warning.
+- Backend Ruff passed.
+- Frontend lint, typecheck, tests, and build passed.
+- Frontend tests cover creator chip fallback, percentage adjustment UI, step headers, and settled
+  completion copy.
+- `npm audit --json` -> 2 moderate, 0 high, 0 critical for Next/PostCSS; no forced downgrade.
+- Mocked local production browser smoke captured 14 dark-mode screenshots under
+  `docs/reports/screenshots/M015.1/`.
+- User-facing forbidden payment-claim copy scan found no unsafe verification claims.
 
 ## Non-Negotiables For Future Agents
 

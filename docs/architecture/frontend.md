@@ -9,6 +9,8 @@ M010 adds a mobile-first Next.js frontend for the manual receipt-first ReceiptSp
 supports anonymous creator capability sessions and accountless participant sessions. M011.1 adds OCR
 draft review. M012 adds coordinator-safe UPI settlement coordination. M014 adds pilot polish for the
 mobile-first room experience. M015 adds a dark-mode-first theme system and pilot readiness docs.
+M015.1 repairs creator identity, adjustment math, step-based room views, settled completion UX, and
+the ReceiptSplit theme identity.
 Payment verification, wallet, escrow, deployment, and production auth UI remain deferred.
 
 ## App Structure
@@ -86,7 +88,7 @@ M014 keeps the product scope unchanged and improves the experience layer:
 The Tailwind v4 pipeline uses `@import "tailwindcss";` and CSS `@theme` tokens. This is required
 for production browser styles to render correctly with the installed Tailwind/PostCSS stack.
 
-## M015 Theme System
+## M015/M015.1 Theme System
 
 M015 keeps Tailwind v4 but maps app colors to CSS variables in `frontend/app/globals.css`:
 
@@ -94,8 +96,8 @@ M015 keeps Tailwind v4 but maps app colors to CSS variables in `frontend/app/glo
 - surface
 - elevated surface
 - border
-- primary mint/emerald
-- secondary teal/slate
+- primary cyan/blue
+- accent violet
 - warning amber
 - danger coral
 - success green
@@ -112,7 +114,11 @@ Tailwind utilities are bridged through dark CSS overrides where a full class rew
 unnecessary churn. QR codes use the dedicated `bg-qr` token so the black/white QR payload remains
 readable inside dark payment cards.
 
-M015 status colors:
+M015.1 moves the brand away from green. Green is reserved for success and payer-confirmed states;
+primary actions are cyan/blue, creator/accent treatments use violet, and surfaces use graphite,
+midnight navy, and slate.
+
+M015.1 status colors:
 
 - `due`: muted
 - `payment_opened`: info/cyan
@@ -126,9 +132,14 @@ M015 status colors:
 
 The creator creates a room from `/create`, optionally setting payer metadata. Because backend rooms
 start in `draft` and claims require `active`, the creator room exposes an explicit `Open claiming`
-action. The creator can add, edit, and delete manual receipt items, add supported adjustments, view
-participants, share an invite link/QR/WhatsApp link, preview the split, lock the split, and unlock
-if supported by backend state.
+action. M015.1 renders the creator room as distinct state views:
+
+- Draft: item/OCR input, adjustments, draft preview, and open-claiming CTA.
+- Claiming: invite link/QR, participants, creator self-claim, item claims, preview, and lock CTA.
+- Locked: final preview, unlock option, payer details, and prepare-settlement CTA.
+- Settling: settlement dashboard only.
+- Settled: completion screen, final totals, payer-confirmed participant list, copy summary, and
+  create-another-split CTA.
 
 After locking, M012 shows settlement setup. The creator can save payout details, prepare settlement
 requests from locked participant totals, see each participant's status, confirm payment manually, or
@@ -223,8 +234,8 @@ disabled until the visible preview is valid.
 - `100` becomes `10000`.
 - More than two decimal places, negative item amounts, and non-numeric values are rejected.
 
-Adjustment discounts are represented as negative paise in the adjustment form after parsing the
-absolute rupee amount.
+M015.1 adjustment inputs support flat amount and percentage modes. The frontend sends discount,
+coupon, and offer amounts as positive magnitudes; the backend owns subtractive semantics.
 
 ## Backend Read Model
 

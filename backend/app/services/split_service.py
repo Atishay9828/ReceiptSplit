@@ -17,6 +17,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.domain import room_state_machine
+from app.domain.adjustments import calculation_type, normalize_stored_amount
 from app.models.participant_total import ParticipantTotal
 from app.models.split_session import SplitSession
 from app.shared.errors import (
@@ -79,6 +80,7 @@ class SplitSessionBuilder:
                 "type": a.type,
                 "label": a.label,
                 "amount_paise": a.amount_paise,
+                "rate_basis_points": a.rate_basis_points,
                 "allocation_method": a.allocation_method,
                 "sort_order": a.sort_order,
             }
@@ -111,9 +113,10 @@ class SplitSessionBuilder:
 
         split_adjustments = [
             SplitAdjInput(
-                type=a.type,
-                amount_paise=a.amount_paise,
+                type=calculation_type(a.type),
+                amount_paise=normalize_stored_amount(a.type, a.amount_paise),
                 allocation=a.allocation_method,
+                rate_basis_points=a.rate_basis_points,
             )
             for a in adjustments
         ]

@@ -108,6 +108,88 @@ class TestEqualSplit:
         assert result.grand_total_paise == 8000
         assert sum(t.total_paise for t in result.participant_totals) == 8000
 
+    def test_equal_with_negative_discount_is_still_subtractive(self):
+        ps = _participants(2)
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=50000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="discount", amount_paise=-10000, allocation="proportional"),
+                ],
+                participants=ps,
+            )
+        )
+        assert result.grand_total_paise == 40000
+        assert sum(t.total_paise for t in result.participant_totals) == 40000
+
+    def test_equal_with_percentage_tax(self):
+        ps = _participants(2)
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=50000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(
+                        type="tax",
+                        amount_paise=0,
+                        allocation="proportional",
+                        rate_basis_points=500,
+                    ),
+                ],
+                participants=ps,
+            )
+        )
+        assert result.grand_total_paise == 52500
+
+    def test_equal_with_percentage_discount(self):
+        ps = _participants(2)
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=50000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(
+                        type="discount",
+                        amount_paise=0,
+                        allocation="proportional",
+                        rate_basis_points=1000,
+                    ),
+                ],
+                participants=ps,
+            )
+        )
+        assert result.grand_total_paise == 45000
+
+    def test_equal_with_percentage_tax_and_discount_uses_current_pipeline(self):
+        ps = _participants(2)
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=50000)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(
+                        type="tax",
+                        amount_paise=0,
+                        allocation="proportional",
+                        rate_basis_points=500,
+                    ),
+                    SplitAdjustment(
+                        type="discount",
+                        amount_paise=0,
+                        allocation="proportional",
+                        rate_basis_points=1000,
+                    ),
+                ],
+                participants=ps,
+            )
+        )
+        assert result.grand_total_paise == 47500
+
     def test_equal_with_all_adjustment_types(self):
         ps = _participants(3)
         result = SplitCalculator.calculate(

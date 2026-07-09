@@ -8,11 +8,12 @@ milestone history, read `docs/MILESTONE_INDEX.md`.
 1. Creator creates a room from `/create`.
 2. Frontend stores the creator capability token locally.
 3. Creator adds receipt items and supported adjustments.
-4. Creator opens claiming when ready.
-5. Participants join through `/join/[inviteToken]` with nickname only.
-6. Participants claim or unclaim item quantities.
-7. Creator previews and locks the split when preview readiness passes.
-8. Creator can unlock where backend state allows it.
+4. Creator adds flat or percentage adjustments. Discount/coupon/offer subtract; taxes and fees add.
+5. Creator opens claiming when ready.
+6. Participants join through `/join/[inviteToken]` with nickname only.
+7. Participants claim or unclaim item quantities.
+8. Creator previews and locks the split when preview readiness passes.
+9. Creator reviews locked totals, prepares settlement, and later sees a settled completion screen.
 
 ## OCR Review Flow
 

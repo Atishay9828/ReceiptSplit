@@ -68,12 +68,15 @@ class SplitAdjustment:
         type:       One of: tax, service_charge, delivery_fee, discount, adjustment
         amount_paise: The adjustment amount. Non-negative for all types except
                       'adjustment' which may be negative (OCR reconciliation).
+        rate_basis_points: Percentage value in basis points. If set, the
+                           calculator derives the paise amount from subtotal.
         allocation: How to distribute: 'proportional' or 'equal'.
     """
 
     type: str
     amount_paise: int
     allocation: str
+    rate_basis_points: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

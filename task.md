@@ -9,9 +9,11 @@ default.
 ## Current Status
 
 - Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
-- Current active milestone: M015 Dark Mode + Pilot Readiness QA.
+- Current active milestone: M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion UX Repair.
 - M015 is a conditional pass until audit approval, Docker/Testcontainers backend proof, and
   real-device UPI checks are completed.
+- M015.1 is a conditional pass for creator name consistency, adjustment math, percentage
+  adjustments, step-based creator views, settled completion UX, and theme identity.
 - Do not add payment verification, gateway code, wallet behavior, escrow, refunds, deployment, or
   new product scope.
 
@@ -52,6 +54,28 @@ Pending:
   Docker/Testcontainers named-pipe access
 - real Android/iPhone UPI behavior
 - M015 closeout commit
+
+M015.1 closeout checks:
+
+- `cd backend && .\.venv\Scripts\python.exe -m ruff check .` -> passed
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\split\test_split_calculator.py -q`
+  -> 34 passed
+- `cd backend && .\.venv\Scripts\python.exe -m pytest tests\ -q` -> full backend suite passed
+  with three skipped tests and one Starlette deprecation warning
+- `cd frontend && npm.cmd run lint` -> passed
+- `cd frontend && npm.cmd run typecheck` -> passed
+- `cd frontend && npm.cmd test -- --maxWorkers=1` -> 13 files, 61 tests passed
+- `cd frontend && npm.cmd run build` -> passed
+- `cd frontend && npm.cmd audit --json` -> 2 moderate, 0 high, 0 critical for Next/PostCSS; no
+  forced downgrade
+- `git diff --check` -> passed with CRLF normalization warnings
+- user-facing forbidden payment-claim scan -> clean
+- mocked local production browser smoke -> 14 dark-mode screenshots under
+  `docs/reports/screenshots/M015.1/`
+
+M015.1 pending:
+
+- real Android/iPhone UPI behavior
 
 ## Product Boundary
 

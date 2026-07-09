@@ -94,6 +94,42 @@ async def test_get_room_summary(api_client: Any) -> Any:
     assert body["assignments"] == [claim]
 
 
+async def test_create_room_with_payer_name_sets_creator_participant(api_client: Any) -> Any:
+    created = (
+        await api_client.post(
+            "/api/rooms",
+            json={"split_mode": "equal", "payer_name": "AJ", "payer_vpa": "receiptsplit.test@upi"},
+        )
+    ).json()
+
+    response = await api_client.get(
+        f"/api/rooms/{created['room']['id']}/summary",
+        headers=bearer(created["creator_token"]),
+    )
+
+    assert response.status_code == 200
+    creator = next(p for p in response.json()["participants"] if p["role"] == "creator")
+    assert creator["nickname"] == "AJ"
+
+
+async def test_update_payer_name_syncs_creator_participant(api_client: Any) -> Any:
+    created = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
+
+    response = await api_client.patch(
+        f"/api/rooms/{created['room']['id']}",
+        json={"version": created["room"]["version"], "payer_name": "AJ"},
+        headers=bearer(created["creator_token"]),
+    )
+    assert response.status_code == 200
+
+    summary = await api_client.get(
+        f"/api/rooms/{created['room']['id']}/summary",
+        headers=bearer(created["creator_token"]),
+    )
+    creator = next(p for p in summary.json()["participants"] if p["role"] == "creator")
+    assert creator["nickname"] == "AJ"
+
+
 async def test_update_room(api_client: Any) -> Any:
     created = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
 

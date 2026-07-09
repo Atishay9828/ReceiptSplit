@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
 from app.api.errors import ERROR_RESPONSES
+from app.api.schemas.participant import ParticipantResponse
 from app.api.schemas.room import (
     RoomCreateRequest,
     RoomCreateResponse,
@@ -75,7 +76,10 @@ async def create_room(
         rule=RateLimitRule(limit=10, window_seconds=3600),
     )
     room, creator_token, invite_token = await service.create_room(
-        db, split_mode=payload.split_mode
+        db,
+        split_mode=payload.split_mode,
+        payer_name=payload.payer_name,
+        payer_vpa=payload.payer_vpa,
     )
     if auth_ctx.user is not None:
         await attach_room_owner(room.id, auth_ctx.user, db)
@@ -123,9 +127,20 @@ async def get_room_summary(
     adjustments = await _adjustment_repo.list_by_room(db, room_id)
     assignments = await _assignment_repo.list_by_room(db, room_id)
 
+    participant_responses = []
+    for participant in participants:
+        response = ParticipantResponse.model_validate(participant)
+        if (
+            response.role == "creator"
+            and response.nickname == "Creator"
+            and room.payer_name
+        ):
+            response = response.model_copy(update={"nickname": room.payer_name})
+        participant_responses.append(response)
+
     return RoomSummaryResponse(
         room=RoomResponse.model_validate(room),
-        participants=list(participants),
+        participants=participant_responses,
         items=list(items),
         adjustments=list(adjustments),
         assignments=list(assignments),

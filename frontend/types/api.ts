@@ -1,6 +1,16 @@
 export type SplitMode = "equal" | "item_wise";
 export type RoomStatus = "draft" | "active" | "settling" | "settled" | "archived" | "expired";
-export type AdjustmentType = "tax" | "service_charge" | "delivery_fee" | "discount" | "adjustment";
+export type AdjustmentType =
+  | "tax"
+  | "service_charge"
+  | "delivery_fee"
+  | "packaging_fee"
+  | "tip"
+  | "discount"
+  | "coupon"
+  | "offer"
+  | "adjustment"
+  | "rounding";
 export type AllocationMethod = "proportional" | "equal";
 
 export type ApiErrorShape = {
@@ -114,6 +124,7 @@ export type AdjustmentPayload = {
   type: AdjustmentType;
   label: string;
   amount_paise: number;
+  rate_basis_points?: number;
   allocation_method: AllocationMethod;
 };
 

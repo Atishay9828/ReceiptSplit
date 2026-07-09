@@ -64,6 +64,8 @@ class RoomService:
         self,
         db: AsyncSession,
         split_mode: str = "equal",
+        payer_name: str | None = None,
+        payer_vpa: str | None = None,
         room_ttl_days: int = 30,
     ) -> tuple[Room, str, str]:
         """
@@ -78,6 +80,8 @@ class RoomService:
         room = Room(
             status="draft",
             split_mode=split_mode,
+            payer_name=payer_name,
+            payer_vpa=payer_vpa,
             expires_at=now + timedelta(days=room_ttl_days),
         )
         async with db.begin_nested():
@@ -104,7 +108,7 @@ class RoomService:
             participant = RoomParticipant(
                 room_id=room.id,
                 invite_id=invite.id,
-                nickname="Creator",
+                nickname=payer_name or "Creator",
                 color="#4F46E5",
                 role="creator",
                 token_hash=hash_token(raw_creator_token),
@@ -165,6 +169,13 @@ class RoomService:
             updated = await self._room_repo.update(db, room_id, expected_version, update_fields)
             if not updated:
                 raise VersionConflict()
+
+            if update_fields.get("payer_name"):
+                participants = await self._participant_repo.list_active(db, room_id)
+                for participant in participants:
+                    if participant.role == "creator":
+                        participant.nickname = str(update_fields["payer_name"])
+                        break
 
             seq = await self._events.append_in_tx(
                 db,

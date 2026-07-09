@@ -16,6 +16,8 @@ if True:
 
 class RoomCreateRequest(BaseModel):
     split_mode: str = Field(default="equal", pattern="^(equal|item_wise)$")
+    payer_vpa: str | None = Field(default=None, max_length=50)
+    payer_name: str | None = Field(default=None, max_length=100)
 
 
 class RoomUpdateRequest(BaseModel):
