@@ -5,8 +5,18 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ReceiptSplit",
-  description: "Manual receipt-first bill splitting"
+  title: {
+    default: "ReceiptSplit — one receipt, cleanly shared",
+    template: "%s | ReceiptSplit"
+  },
+  description:
+    "Scan a receipt, let friends claim their items, see exact totals, and settle directly with the payer through UPI.",
+  applicationName: "ReceiptSplit",
+  keywords: ["receipt splitting", "bill splitting", "UPI", "item-wise split"],
+  robots: {
+    index: true,
+    follow: true
+  }
 };
 
 export const viewport: Viewport = {
