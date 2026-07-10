@@ -1,5 +1,11 @@
 # ReceiptSplit Website Story Plan
 
+## Implemented Route
+
+The engineering story is implemented at `/build`. The existing `/` route remains the product-facing
+front door, with a prominent link into the deeper first-person build story. This keeps the working
+product flow concise while giving engineering reviewers the proof-led narrative below.
+
 ## Recommendation
 
 Build this as a product-first engineering story, not a milestone timeline and not a generic stack

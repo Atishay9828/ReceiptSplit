@@ -7,6 +7,7 @@ export type BuildJourneyStage = {
   outcome: string;
   decision: string;
   learned: string;
+  tradeoff?: string;
   evidence: string;
   tone: "cyan" | "violet" | "amber" | "rose";
 };
@@ -160,6 +161,12 @@ export function BuildJourney({
                   <span className={styles.label}>What changed in me</span>
                   <p>{stage.learned}</p>
                 </div>
+                {stage.tradeoff ? (
+                  <div className={styles.bodyItem}>
+                    <span className={styles.label}>Trade-off</span>
+                    <p>{stage.tradeoff}</p>
+                  </div>
+                ) : null}
                 <div className={styles.evidence}>
                   <span className={styles.label}>Build receipt</span>
                   <p>{stage.evidence}</p>

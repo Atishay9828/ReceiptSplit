@@ -63,7 +63,7 @@ export default function HomePage() {
 
         <nav className="home-nav" aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
-          <a href="#what-we-learned">Build notes</a>
+          <Link href="/build">Build story</Link>
           <Link className="home-nav-action" href="/create">
             Create a split
           </Link>
@@ -91,9 +91,9 @@ export default function HomePage() {
                 Create a split
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
-              <a className="home-text-action" href="#start">
-                I already have an invite
-              </a>
+              <Link className="home-text-action" href="/build">
+                See how I built it
+              </Link>
             </div>
 
             <ul className="home-trust-line" aria-label="Product facts">
@@ -150,6 +150,9 @@ export default function HomePage() {
               imperfect scan to the final manual confirmation. These are not skill badges. They are
               decisions you can see in the room.
             </p>
+            <Link className="home-text-action" href="/build">
+              Read all six decisions
+            </Link>
           </div>
 
           <div className="learning-ledger">

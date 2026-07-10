@@ -7,6 +7,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+!frontend/app/build/
+!frontend/app/build/**
 .eggs/
 .Python
 *.pyo
