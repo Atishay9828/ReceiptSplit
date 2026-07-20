@@ -102,10 +102,10 @@ The free deployment uses three services:
 - API: Render Free Web Service, defined by the repository-root `render.yaml`
 - Database: Supabase Postgres in Singapore
 
-The website is live at <https://receiptsplit-web.vercel.app>. Vercel tracks the repository's
-`feat/split-engine` default branch and automatically creates preview deployments for other
-branches. After the Blueprint is applied, Render also tracks the default branch and redeploys the
-API after each backend commit.
+The website is live at <https://receiptsplit-web.vercel.app> and the API is live at
+<https://receiptsplit-api.onrender.com>. Vercel tracks the repository's `feat/split-engine`
+default branch and automatically creates preview deployments for other branches. Render tracks
+backend changes on the same branch and redeploys the API automatically.
 
 ### Deploy the API on Render
 
@@ -113,7 +113,8 @@ API after each backend commit.
 2. Render reads `render.yaml`, selects the free plan, and asks for
    `RECEIPTSPLIT_DATABASE_URL`. Paste the Supabase session-pooler URL there; never commit it.
 3. Apply the Blueprint. The start command runs Alembic migrations before starting FastAPI.
-4. Copy the resulting `https://<service>.onrender.com` URL.
+4. Copy the resulting service URL. This repository currently uses
+   `https://receiptsplit-api.onrender.com`.
 
 The Blueprint configures these non-secret API settings:
 
@@ -138,7 +139,14 @@ redeploy the current production commit:
 NEXT_PUBLIC_API_BASE_URL=https://<service>.onrender.com
 ```
 
-Verify the API at `https://<service>.onrender.com/health`, then open the website and create a room.
+For the live deployment, use:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://receiptsplit-api.onrender.com
+```
+
+Verify the API at <https://receiptsplit-api.onrender.com/health>, then open the website and create
+a room.
 The current public MVP deliberately rejects account JWTs until a production OIDC verifier is
 configured; room and participant capability tokens continue to work. OCR uses the mock provider
 because free hosting has an ephemeral filesystem.

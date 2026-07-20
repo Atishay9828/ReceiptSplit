@@ -206,6 +206,11 @@ async def stream_room_events(
     replay_rows = await event_repo.list_after(db, room_id, after_sequence, limit=MAX_LIMIT)
     replay_events = [_event_to_response(r) for r in replay_rows]
 
+    # The request-scoped session otherwise remains inside get_db() for the entire
+    # lifetime of the StreamingResponse. End this read-only transaction now so a
+    # long-lived SSE client does not pin a database connection.
+    await db.rollback()
+
     async def event_generator() -> AsyncIterator[str]:
         # Subscribe to broker FIRST so we capture live events during replay.
         async with broker.subscribe(room_id) as live_stream:
