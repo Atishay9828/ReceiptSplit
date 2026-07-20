@@ -48,7 +48,7 @@ class TestRoundingPolicy:
         raw = {payer: 851, others[0]: 149}
         result = RoundingPolicy.apply(raw, 1000, payer)
         assert result[others[0]] == 100  # 149 -> 100
-        assert result[payer] == 900      # absorbs 49 paise remainder
+        assert result[payer] == 900  # absorbs 49 paise remainder
         assert sum(result.values()) == 1000
 
     def test_floor_151_to_100(self):
@@ -57,7 +57,7 @@ class TestRoundingPolicy:
         raw = {payer: 849, others[0]: 151}
         result = RoundingPolicy.apply(raw, 1000, payer)
         assert result[others[0]] == 100  # floor, not round up
-        assert result[payer] == 900      # absorbs 51 paise remainder
+        assert result[payer] == 900  # absorbs 51 paise remainder
         assert sum(result.values()) == 1000
 
     def test_midpoint_floors_to_0(self):
@@ -65,7 +65,7 @@ class TestRoundingPolicy:
         payer, others = _payer_and_others(1)
         raw = {payer: 950, others[0]: 50}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 0    # floor: 50 -> 0
+        assert result[others[0]] == 0  # floor: 50 -> 0
         assert result[payer] == 1000
         assert sum(result.values()) == 1000
 
@@ -125,7 +125,7 @@ class TestRoundingPolicy:
         raw = {payer: 7533, others[0]: 2467}
         result = RoundingPolicy.apply(raw, 10000, payer)
         assert result[others[0]] == 2400  # floor: 2467 -> 2400
-        assert result[payer] == 7600      # 10000 - 2400
+        assert result[payer] == 7600  # 10000 - 2400
         assert sum(result.values()) == 10000
 
     def test_19_non_payers(self):
@@ -163,9 +163,9 @@ class TestRoundingPolicy:
         payer, others = _payer_and_others(2)
         raw = {payer: 50, others[0]: 50, others[1]: 50}
         result = RoundingPolicy.apply(raw, 150, payer)
-        assert result[others[0]] == 0    # floor: 50 -> 0
-        assert result[others[1]] == 0    # floor: 50 -> 0
-        assert result[payer] == 150      # absorbs all
+        assert result[others[0]] == 0  # floor: 50 -> 0
+        assert result[others[1]] == 0  # floor: 50 -> 0
+        assert result[payer] == 150  # absorbs all
         assert sum(result.values()) == 150
 
     # ── Sum conservation (parametrized) ──────────────────────────────────

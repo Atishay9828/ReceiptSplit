@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from app.services.room_service import RoomService
 
 if True:
-
     pass
 
 router = APIRouter(prefix="/api/rooms/{room_id}/items", tags=["items"], responses=ERROR_RESPONSES)
@@ -161,5 +160,7 @@ async def unclaim_item(
     db: AsyncSession = Depends(get_db),
     service: ItemService = Depends(get_item_service),
 ) -> OKResponse:
-    await service.unclaim_item(db, room_id=room_id, item_id=item_id, participant_id=ctx.participant_id)
+    await service.unclaim_item(
+        db, room_id=room_id, item_id=item_id, participant_id=ctx.participant_id
+    )
     return OKResponse()

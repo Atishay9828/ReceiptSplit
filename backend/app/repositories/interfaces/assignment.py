@@ -24,3 +24,7 @@ class AssignmentRepository(Protocol):
     async def get_claimed_qty(self, db: AsyncSession, item_id: UUID) -> int:
         """Returns the total claimed quantity for an item (SUM of claimed_qty)."""
         ...
+
+    async def delete_by_participant(self, db: AsyncSession, participant_id: UUID) -> None:
+        """Deletes all assignments for a given participant."""
+        ...

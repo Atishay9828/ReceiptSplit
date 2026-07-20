@@ -39,6 +39,7 @@ _ALLOWED_ATTRS: dict[str, list[str]] = {}
 
 # ── String sanitization ───────────────────────────────────────────────────────
 
+
 def strip_html(value: str) -> str:
     """
     Strips all HTML tags from a string using the bleach library.
@@ -52,6 +53,7 @@ def strip_html(value: str) -> str:
 
 
 # ── Nickname validation ───────────────────────────────────────────────────────
+
 
 def validate_nickname(raw: str) -> Nickname:
     """
@@ -74,6 +76,7 @@ def validate_nickname(raw: str) -> Nickname:
 
 # ── Item name validation ──────────────────────────────────────────────────────
 
+
 def validate_item_name(raw: str) -> str:
     """
     Sanitizes and validates a line item name.
@@ -95,6 +98,7 @@ def validate_item_name(raw: str) -> str:
 
 # ── VPA validation ────────────────────────────────────────────────────────────
 
+
 def validate_vpa(raw: str) -> VPA:
     """
     Validates a UPI VPA string.
@@ -112,6 +116,7 @@ def validate_vpa(raw: str) -> VPA:
 
 
 # ── Paise validation ──────────────────────────────────────────────────────────
+
 
 def validate_paise(value: int, *, max_value: int, field_name: str = "amount") -> Paise:
     """
@@ -134,6 +139,7 @@ def validate_paise(value: int, *, max_value: int, field_name: str = "amount") ->
 
 # ── Adjustment amount validation ──────────────────────────────────────────────
 
+
 def validate_adjustment_amount(adj_type: str, amount_paise: int) -> None:
     """
     Validates the amount_paise for a split adjustment.
@@ -150,6 +156,7 @@ def validate_adjustment_amount(adj_type: str, amount_paise: int) -> None:
 
 
 # ── Color assignment ──────────────────────────────────────────────────────────
+
 
 def pick_available_color(used_colors: set[str]) -> str:
     """

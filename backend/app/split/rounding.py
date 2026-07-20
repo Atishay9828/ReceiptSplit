@@ -100,9 +100,7 @@ class RoundingPolicy:
         # Invariant 1: Sum conservation.
         total = sum(rounded.values())
         if total != grand_total_paise:
-            raise SumConservationViolation(
-                expected=grand_total_paise, actual=total
-            )
+            raise SumConservationViolation(expected=grand_total_paise, actual=total)
 
         # Invariant 2: Payer non-negative (Amendment SE-2).
         if payer_total < 0:

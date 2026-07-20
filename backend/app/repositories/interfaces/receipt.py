@@ -16,7 +16,11 @@ class ReceiptRepository(Protocol):
         ...
 
     async def update(
-        self, db: AsyncSession, receipt_id: UUID, expected_version: int, update_fields: dict[str, Any]
+        self,
+        db: AsyncSession,
+        receipt_id: UUID,
+        expected_version: int,
+        update_fields: dict[str, Any],
     ) -> bool:
         """Executes a CAS update on a receipt."""
         ...

@@ -1,4 +1,3 @@
-
 """ReceiptSplit item service."""
 
 from __future__ import annotations
@@ -23,7 +22,6 @@ if TYPE_CHECKING:
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     pass
 
 logger = logging.getLogger(__name__)
@@ -122,9 +120,7 @@ class ItemService:
             if old_item is None or old_item.deleted_at is not None:
                 raise ItemNotFound()
 
-            updated = await self._item_repo.update(
-                db, item_id, expected_version, changes
-            )
+            updated = await self._item_repo.update(db, item_id, expected_version, changes)
             if not updated:
                 raise VersionConflict()
 

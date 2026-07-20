@@ -1,0 +1,13 @@
+{
+  "merchant_name": "BIRYANI HOUSE",
+  "subtotal_paise": null,
+  "tax_paise": null,
+  "discount_paise": null,
+  "total_paise": 42000,
+  "items": [
+    {"name": "Chicken Biryani", "quantity": 2, "unit_price_paise": 18000, "total_paise": 36000, "confidence": 1.0},
+    {"name": "Water Bottle", "quantity": 3, "unit_price_paise": 2000, "total_paise": 6000, "confidence": 1.0}
+  ],
+  "warnings": [],
+  "needs_review": false
+}

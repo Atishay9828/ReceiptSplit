@@ -19,9 +19,22 @@ async def test_claim_item_success(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="item_wise")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -56,9 +69,22 @@ async def test_claim_item_quantity_exceeded(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="item_wise")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -88,9 +114,22 @@ async def test_unclaim_item_success(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="item_wise")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -131,9 +170,22 @@ async def test_claim_publishes_event(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="item_wise")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -144,7 +196,11 @@ async def test_claim_publishes_event(db_session: AsyncSession):
         db_session, receipt.id, room.id, participant.id, "Burger", quantity=1, total_paise=1000
     )
 
-    events_before = len((await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id))).scalars().all())
+    events_before = len(
+        (await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
 
     await item_svc.claim_item(
@@ -156,7 +212,11 @@ async def test_claim_publishes_event(db_session: AsyncSession):
         claimed_qty=1,
     )
 
-    events_after = len((await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id))).scalars().all())
+    events_after = len(
+        (await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
     assert events_after == events_before + 1
 
@@ -168,9 +228,22 @@ async def test_unclaim_publishes_event(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="item_wise")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -192,7 +265,11 @@ async def test_unclaim_publishes_event(db_session: AsyncSession):
 
     item = await item_svc._item_repo.get(db_session, item.id)
 
-    events_before = len((await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id))).scalars().all())
+    events_before = len(
+        (await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
 
     await item_svc.unclaim_item(
@@ -202,6 +279,10 @@ async def test_unclaim_publishes_event(db_session: AsyncSession):
         participant_id=participant.id,
     )
 
-    events_after = len((await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id))).scalars().all())
+    events_after = len(
+        (await db_session.execute(select(RoomEvent).where(RoomEvent.room_id == room.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
     assert events_after == events_before + 1

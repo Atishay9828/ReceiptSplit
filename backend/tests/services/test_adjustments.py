@@ -17,7 +17,11 @@ async def test_adjustment_edit_creates_audit_row(db_session: AsyncSession):
     part_svc = get_participant_service()
 
     room, _, i_token = await room_svc.create_room(db_session)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant, _ = await part_svc.join_room(
@@ -47,7 +51,11 @@ async def test_adjustment_edit_creates_audit_row(db_session: AsyncSession):
     )
 
     # Check audit rows
-    edits = (await db_session.execute(select(ReceiptEdit).where(ReceiptEdit.receipt_id == receipt.id))).scalars().all()
+    edits = (
+        (await db_session.execute(select(ReceiptEdit).where(ReceiptEdit.receipt_id == receipt.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
     # 1 for create, 2 for the 2 updated fields
     assert len(edits) == 3

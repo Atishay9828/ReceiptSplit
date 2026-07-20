@@ -103,14 +103,16 @@ async def _create_active_itemwise_room(client: AsyncClient) -> dict:
     return created
 
 
-async def _add_participant(client: AsyncClient, room_id: str, invite_token: str, nickname: str) -> dict:
+async def _add_participant(
+    client: AsyncClient, room_id: str, invite_token: str, nickname: str
+) -> dict:
     """Join a room and return the join response."""
     resp = await client.post(
         f"/api/rooms/{room_id}/join",
         json={
             "invite_token": invite_token,
             "nickname": nickname,
-            },
+        },
     )
     assert resp.status_code == 201
     return resp.json()
@@ -184,8 +186,7 @@ async def test_concurrent_claim_quantity_1(
 
     # Assertions
     assert len(successes) == 1, (
-        f"C-3 REAL: Expected exactly 1 success, got {len(successes)}. "
-        f"Status codes: {status_codes}"
+        f"C-3 REAL: Expected exactly 1 success, got {len(successes)}. Status codes: {status_codes}"
     )
     assert len(conflicts) == 1, (
         f"C-3 REAL: Expected exactly 1 VERSION_CONFLICT, got {len(conflicts)}. "
@@ -203,8 +204,7 @@ async def test_concurrent_claim_quantity_1(
         )
         total = result.scalar()
         assert total == 1, (
-            f"C-3 REAL: Over-allocation detected! "
-            f"Expected total_claimed=1, got {total}"
+            f"C-3 REAL: Over-allocation detected! Expected total_claimed=1, got {total}"
         )
 
 
@@ -256,12 +256,10 @@ async def test_concurrent_claim_quantity_2(
 
     # With CAS, only 1 of 3 succeeds (the one whose UPDATE matched the version)
     assert len(successes) == 1, (
-        f"Expected exactly 1 success, got {len(successes)}. "
-        f"Status codes: {status_codes}"
+        f"Expected exactly 1 success, got {len(successes)}. Status codes: {status_codes}"
     )
     assert len(conflicts) == 2, (
-        f"Expected exactly 2 conflicts, got {len(conflicts)}. "
-        f"Status codes: {status_codes}"
+        f"Expected exactly 2 conflicts, got {len(conflicts)}. Status codes: {status_codes}"
     )
 
     # Verify: no over-allocation in DB
@@ -275,12 +273,9 @@ async def test_concurrent_claim_quantity_2(
         )
         total = result.scalar()
         assert total <= 2, (
-            f"C-3 REAL: Over-allocation detected! "
-            f"Expected total_claimed <= 2, got {total}"
+            f"C-3 REAL: Over-allocation detected! Expected total_claimed <= 2, got {total}"
         )
-        assert total == 1, (
-            f"Expected total_claimed=1 (only one CAS winner), got {total}"
-        )
+        assert total == 1, f"Expected total_claimed=1 (only one CAS winner), got {total}"
 
 
 # ── Repeated runs for confidence ─────────────────────────────────────────────
@@ -303,9 +298,7 @@ async def test_concurrent_claim_no_overallocation_repeated(
 
     p2 = await _add_participant(race_client, room_id, invite_token, f"Racer-{run}")
 
-    item = await _add_item(
-        race_client, room_id, creator_token, f"Item-{run}", 1, 10000
-    )
+    item = await _add_item(race_client, room_id, creator_token, f"Item-{run}", 1, 10000)
     item_id = item["id"]
     item_version = item["version"]
 
@@ -327,6 +320,4 @@ async def test_concurrent_claim_no_overallocation_repeated(
             {"item_id": item_id},
         )
         total = result.scalar()
-        assert total == 1, (
-            f"Run {run}: C-3 REAL — over-allocation! total={total}"
-        )
+        assert total == 1, f"Run {run}: C-3 REAL — over-allocation! total={total}"

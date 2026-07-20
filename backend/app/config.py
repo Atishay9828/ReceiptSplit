@@ -13,10 +13,10 @@ Usage:
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -37,21 +37,32 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://postgres:password@localhost:5432/receiptsplit"
+    database_pool_size: int = 10
+    database_max_overflow: int = 20
+    database_pool_recycle_seconds: int = 300
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """Accept standard hosted Postgres URLs and select the asyncpg driver."""
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
     # The synchronous URL is required by Alembic (migrations run synchronously).
     # Derived automatically from database_url by swapping the driver.
     @property
     def database_url_sync(self) -> str:
-        return self.database_url.replace(
-            "postgresql+asyncpg://", "postgresql+psycopg2://"
-        )
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
     # ── Supabase ─────────────────────────────────────────────────────────────
     supabase_url: str = "https://placeholder.supabase.co"
     supabase_service_key: str = "placeholder-key"
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -72,8 +83,23 @@ class Settings(BaseSettings):
     room_ttl_days: int = 30
 
     # ── Security ─────────────────────────────────────────────────────────────
-    token_byte_length: int = 32          # 256-bit entropy — do not reduce
-    room_creation_rate_limit_per_hour: int = 20   # per IP, in-process limiter
+    token_byte_length: int = 32  # 256-bit entropy — do not reduce
+    room_creation_rate_limit_per_hour: int = 20  # per IP, in-process limiter
+    auth_oidc_provider: str = "dev"
+    auth_oidc_issuer: str | None = None
+    auth_oidc_audience: str | None = None
+    auth_jwks_url: str | None = None
+
+    # OCR MVP: free-first and local by default. Use "mock" in tests/dev fixtures.
+    ocr_provider: Literal["mock", "tesseract"] = "tesseract"
+    ocr_max_image_bytes: int = 5 * 1024 * 1024
+    ocr_max_width: int = 5000
+    ocr_max_height: int = 5000
+    ocr_timeout_seconds: int = 30
+    tesseract_cmd: str = "tesseract"
+    ocr_storage_backend: Literal["local"] = "local"
+    ocr_local_storage_dir: str = ".local/ocr"
+    ocr_store_raw_text: bool = True
 
     # ── Development helpers ───────────────────────────────────────────────────
     @property

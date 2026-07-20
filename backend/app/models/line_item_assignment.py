@@ -35,7 +35,9 @@ class LineItemAssignment(Base):
         PG_UUID(as_uuid=True), ForeignKey("line_items.id", ondelete="CASCADE"), nullable=False
     )
     participant_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("room_participants.id", ondelete="CASCADE"), nullable=False
+        PG_UUID(as_uuid=True),
+        ForeignKey("room_participants.id", ondelete="CASCADE"),
+        nullable=False,
     )
     claimed_qty: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

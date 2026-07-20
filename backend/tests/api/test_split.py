@@ -22,7 +22,7 @@ async def _settlement_room(api_client: Any) -> Any:
         json={
             "invite_token": created["invite_token"],
             "nickname": "Bob",
-            },
+        },
     )
     assert join_response.status_code == 201
     item_response = await api_client.post(
@@ -45,6 +45,98 @@ async def test_split_preview(api_client: Any) -> Any:
     assert response.status_code == 200
     assert response.json()["grand_total_paise"] == 1000
     assert len(response.json()["participant_totals"]) == 2
+
+
+async def test_split_preview_positive_discount_payload_subtracts(api_client: Any) -> Any:
+    created = await _settlement_room(api_client)
+    adjustment = await api_client.post(
+        f"/api/rooms/{created['room']['id']}/adjustments",
+        json={
+            "type": "discount",
+            "label": "Coupon",
+            "amount_paise": 100,
+            "allocation_method": "proportional",
+        },
+        headers=bearer(created["creator_token"]),
+    )
+    assert adjustment.status_code == 201
+
+    response = await api_client.get(
+        f"/api/rooms/{created['room']['id']}/split/preview",
+        headers=bearer(created["creator_token"]),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grand_total_paise"] == 900
+
+
+async def test_split_preview_updated_discount_amount_stays_subtractive(api_client: Any) -> Any:
+    created = await _settlement_room(api_client)
+    headers = bearer(created["creator_token"])
+    adjustment = (
+        await api_client.post(
+            f"/api/rooms/{created['room']['id']}/adjustments",
+            json={
+                "type": "discount",
+                "label": "Coupon",
+                "amount_paise": 100,
+                "allocation_method": "proportional",
+            },
+            headers=headers,
+        )
+    ).json()
+
+    update = await api_client.patch(
+        f"/api/rooms/{created['room']['id']}/adjustments/{adjustment['id']}",
+        json={"version": adjustment["version"], "amount_paise": 200},
+        headers=headers,
+    )
+    assert update.status_code == 200
+
+    response = await api_client.get(
+        f"/api/rooms/{created['room']['id']}/split/preview",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grand_total_paise"] == 800
+
+
+async def test_split_preview_percentage_adjustments(api_client: Any) -> Any:
+    created = await _settlement_room(api_client)
+    headers = bearer(created["creator_token"])
+    tax = await api_client.post(
+        f"/api/rooms/{created['room']['id']}/adjustments",
+        json={
+            "type": "tax",
+            "label": "GST",
+            "amount_paise": 0,
+            "rate_basis_points": 500,
+            "allocation_method": "proportional",
+        },
+        headers=headers,
+    )
+    discount = await api_client.post(
+        f"/api/rooms/{created['room']['id']}/adjustments",
+        json={
+            "type": "discount",
+            "label": "Discount",
+            "amount_paise": 0,
+            "rate_basis_points": 1000,
+            "allocation_method": "proportional",
+        },
+        headers=headers,
+    )
+    assert tax.status_code == 201
+    assert discount.status_code == 201
+
+    response = await api_client.get(
+        f"/api/rooms/{created['room']['id']}/split/preview",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grand_total_paise"] == 950
 
 
 async def test_split_preview_etag(api_client: Any) -> Any:

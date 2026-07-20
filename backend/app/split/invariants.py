@@ -33,7 +33,6 @@ if True:
     pass
 
 
-
 def check_sum_conservation(result: SplitResult) -> None:
     """Verify: sum(participant_totals) == grand_total_paise.
 
@@ -46,9 +45,7 @@ def check_sum_conservation(result: SplitResult) -> None:
     """
     actual = sum(t.total_paise for t in result.participant_totals)
     if actual != result.grand_total_paise:
-        raise SumConservationViolation(
-            expected=result.grand_total_paise, actual=actual
-        )
+        raise SumConservationViolation(expected=result.grand_total_paise, actual=actual)
 
 
 def check_non_negative_totals(result: SplitResult) -> None:
@@ -76,11 +73,7 @@ def check_payer_non_negative(result: SplitResult) -> None:
     """
     for t in result.participant_totals:
         if t.is_payer and t.total_paise < 0:
-            others_sum = sum(
-                o.total_paise
-                for o in result.participant_totals
-                if not o.is_payer
-            )
+            others_sum = sum(o.total_paise for o in result.participant_totals if not o.is_payer)
             raise NegativePayerTotalViolation(
                 payer_total=t.total_paise,
                 grand_total=result.grand_total_paise,

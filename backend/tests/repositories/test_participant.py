@@ -1,4 +1,5 @@
 """Tests for PostgresParticipantRepository — Advisory lock concurrency control."""
+
 from __future__ import annotations
 
 import asyncio

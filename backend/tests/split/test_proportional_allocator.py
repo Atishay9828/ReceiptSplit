@@ -142,8 +142,12 @@ class TestProportionalAllocator:
 
     def test_large_amounts(self):
         pids = _uuids(4)
-        shares = {pids[0]: 50_000_000, pids[1]: 25_000_000,
-                  pids[2]: 15_000_000, pids[3]: 10_000_000}
+        shares = {
+            pids[0]: 50_000_000,
+            pids[1]: 25_000_000,
+            pids[2]: 15_000_000,
+            pids[3]: 10_000_000,
+        }
         result = ProportionalAllocator.allocate(100_000_000, shares, pids)
         assert sum(result.values()) == 100_000_000
         assert result[pids[0]] == 50_000_000

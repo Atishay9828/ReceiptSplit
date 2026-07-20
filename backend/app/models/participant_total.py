@@ -22,12 +22,16 @@ class ParticipantTotal(Base):
         PG_UUID(as_uuid=True), ForeignKey("split_sessions.id", ondelete="CASCADE"), nullable=False
     )
     participant_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("room_participants.id", ondelete="CASCADE"), nullable=False
+        PG_UUID(as_uuid=True),
+        ForeignKey("room_participants.id", ondelete="CASCADE"),
+        nullable=False,
     )
     items_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     discount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     tax_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
-    service_charge_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    service_charge_paise: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, server_default="0"
+    )
     delivery_fee_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     adjustment_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     total_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")

@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Adjustment Service
 
@@ -15,6 +14,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from app.domain.adjustments import is_percentage_allowed, normalize_stored_amount
 from app.models.split_adjustment import SplitAdjustment
 from app.shared.errors import DomainError, VersionConflict
 
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     pass
 
 logger = logging.getLogger(__name__)
@@ -62,11 +61,19 @@ class AdjustmentService:
         sort_order: int = 0,
     ) -> SplitAdjustment:
         """Create a new adjustment. Records audit trail."""
+        if rate_basis_points is not None and not is_percentage_allowed(adj_type):
+            raise DomainError(
+                code="INVALID_ADJUSTMENT_AMOUNT",
+                message="Rounding adjustments must use a flat amount.",
+            )
+        stored_amount = 0 if rate_basis_points is not None else normalize_stored_amount(
+            adj_type, amount_paise
+        )
         adj = SplitAdjustment(
             room_id=room_id,
             type=adj_type,
             label=label,
-            amount_paise=amount_paise,
+            amount_paise=stored_amount,
             rate_basis_points=rate_basis_points,
             allocation_method=allocation_method,
             sort_order=sort_order,
@@ -89,17 +96,21 @@ class AdjustmentService:
                 participant_id=actor_id,
                 field="adjustment.created",
                 old_value=None,
-                new_value=f'{{"type":"{adj_type}","label":"{label}","amount_paise":{amount_paise}}}',
+                new_value=f'{{"type":"{adj_type}","label":"{label}","amount_paise":{stored_amount},"rate_basis_points":{rate_basis_points or 0}}}',
             )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.created", actor_id,
+                db,
+                room_id,
+                "adjustment.created",
+                actor_id,
                 {"adjustment_id": str(adj.id), "type": adj_type, "label": label},
             )
             await db.refresh(adj)
 
         await self._events.broadcast(
-            room_id, "adjustment.created",
+            room_id,
+            "adjustment.created",
             {"adjustment_id": str(adj.id), "type": adj_type, "label": label},
             seq,
         )
@@ -133,6 +144,33 @@ class AdjustmentService:
                     message="Room is no longer open for edits.",
                 )
 
+            adjustment = next(
+                (
+                    current
+                    for current in await self._adj_repo.list_by_room(db, room_id)
+                    if current.id == adjustment_id
+                ),
+                None,
+            )
+            if adjustment is None:
+                raise VersionConflict()
+
+            if update_fields.get("rate_basis_points") is not None and not is_percentage_allowed(
+                adjustment.type
+            ):
+                raise DomainError(
+                    code="INVALID_ADJUSTMENT_AMOUNT",
+                    message="Rounding adjustments must use a flat amount.",
+                )
+
+            if "rate_basis_points" in update_fields:
+                update_fields["amount_paise"] = 0
+
+            if "amount_paise" in update_fields:
+                update_fields["amount_paise"] = normalize_stored_amount(
+                    adjustment.type, update_fields["amount_paise"]
+                )
+
             updated = await self._adj_repo.update(
                 db, adjustment_id, expected_version, update_fields
             )
@@ -150,12 +188,16 @@ class AdjustmentService:
                 )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.updated", actor_id,
+                db,
+                room_id,
+                "adjustment.updated",
+                actor_id,
                 {"adjustment_id": str(adjustment_id), "fields": list(changes.keys())},
             )
 
         await self._events.broadcast(
-            room_id, "adjustment.updated",
+            room_id,
+            "adjustment.updated",
             {"adjustment_id": str(adjustment_id), "fields": list(changes.keys())},
             seq,
         )
@@ -178,9 +220,7 @@ class AdjustmentService:
                     message="Room is no longer open for edits.",
                 )
 
-            deleted = await self._adj_repo.soft_delete(
-                db, adjustment_id, expected_version
-            )
+            deleted = await self._adj_repo.soft_delete(db, adjustment_id, expected_version)
             if not deleted:
                 raise VersionConflict()
 
@@ -194,12 +234,16 @@ class AdjustmentService:
             )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "adjustment.deleted", actor_id,
+                db,
+                room_id,
+                "adjustment.deleted",
+                actor_id,
                 {"adjustment_id": str(adjustment_id)},
             )
 
         await self._events.broadcast(
-            room_id, "adjustment.deleted",
+            room_id,
+            "adjustment.deleted",
             {"adjustment_id": str(adjustment_id)},
             seq,
         )

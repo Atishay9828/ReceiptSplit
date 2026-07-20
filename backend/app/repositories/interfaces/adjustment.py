@@ -16,7 +16,11 @@ class AdjustmentRepository(Protocol):
         ...
 
     async def update(
-        self, db: AsyncSession, adjustment_id: UUID, expected_version: int, update_fields: dict[str, Any]
+        self,
+        db: AsyncSession,
+        adjustment_id: UUID,
+        expected_version: int,
+        update_fields: dict[str, Any],
     ) -> bool:
         """Executes a CAS update on a split adjustment."""
         ...
@@ -26,4 +30,3 @@ class AdjustmentRepository(Protocol):
     ) -> bool:
         """Soft-deletes a split adjustment using CAS."""
         ...
-

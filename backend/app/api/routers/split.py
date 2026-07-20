@@ -14,21 +14,25 @@ from app.api.schemas.split import (
     SplitSessionResponse,
     VersionedRequest,
 )
-from app.auth.dependencies import require_creator_in_room, require_room_access
+from app.auth.dependencies import require_room_access, require_room_owner_or_creator
 from app.database import get_db
 from app.services.registry import get_split_service
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.auth.dependencies import AuthorizedRoomActor
     from app.auth.models import AuthContext
     from app.services.split_service import SplitService
 
 if True:
-
     pass
 
-router = APIRouter(prefix="/api/rooms/{room_id}/split", tags=["split"], responses={304: {"description": "Not modified"}, **ERROR_RESPONSES})
+router = APIRouter(
+    prefix="/api/rooms/{room_id}/split",
+    tags=["split"],
+    responses={304: {"description": "Not modified"}, **ERROR_RESPONSES},
+)
 
 
 @router.get(
@@ -49,15 +53,17 @@ async def preview_split(
     result, room_version = await split_service.preview.calculate_preview(db, room_id)
     etag = f"{room_id}-{room_version}"
     if if_none_match == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag, "Cache-Control": "no-store"})
+        return Response(
+            status_code=status.HTTP_304_NOT_MODIFIED,
+            headers={"ETag": etag, "Cache-Control": "no-store"},
+        )
 
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "no-store"
     preview = SplitPreviewResponse(
         grand_total_paise=result.grand_total_paise,
         participant_totals=[
-            ParticipantTotalResponse.model_validate(total)
-            for total in result.participant_totals
+            ParticipantTotalResponse.model_validate(total) for total in result.participant_totals
         ],
     )
     return preview
@@ -73,11 +79,13 @@ async def preview_split(
 async def lock_split(
     room_id: UUID,
     payload: VersionedRequest,
-    ctx: AuthContext = Depends(require_creator_in_room),
+    actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: SplitService = Depends(get_split_service),
 ) -> SplitSessionResponse:
-    session = await service.lock(db, room_id=room_id, version=payload.version, actor_id=ctx.participant_id)
+    session = await service.lock(
+        db, room_id=room_id, version=payload.version, actor_id=actor.actor_id
+    )
     return SplitSessionResponse.model_validate(session)
 
 
@@ -90,11 +98,11 @@ async def lock_split(
 async def unlock_split(
     room_id: UUID,
     payload: VersionedRequest,
-    ctx: AuthContext = Depends(require_creator_in_room),
+    actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: SplitService = Depends(get_split_service),
 ) -> OKResponse:
-    await service.unlock(db, room_id=room_id, version=payload.version, actor_id=ctx.participant_id)
+    await service.unlock(db, room_id=room_id, version=payload.version, actor_id=actor.actor_id)
     return OKResponse()
 
 

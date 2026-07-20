@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Room Service
 
@@ -37,10 +36,10 @@ if TYPE_CHECKING:
     from app.repositories.interfaces.participant import ParticipantRepository
     from app.repositories.interfaces.receipt import ReceiptRepository
     from app.repositories.interfaces.room import RoomRepository
+    from app.services.audit_service import AuditService
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     pass
 
 logger = logging.getLogger(__name__)
@@ -53,16 +52,20 @@ class RoomService:
         receipt_repo: ReceiptRepository,
         participant_repo: ParticipantRepository,
         event_publisher: EventPublisher,
+        audit_service: AuditService | None = None,
     ) -> None:
         self._room_repo = room_repo
         self._receipt_repo = receipt_repo
         self._participant_repo = participant_repo
         self._events = event_publisher
+        self._audit = audit_service
 
     async def create_room(
         self,
         db: AsyncSession,
         split_mode: str = "equal",
+        payer_name: str | None = None,
+        payer_vpa: str | None = None,
         room_ttl_days: int = 30,
     ) -> tuple[Room, str, str]:
         """
@@ -77,6 +80,8 @@ class RoomService:
         room = Room(
             status="draft",
             split_mode=split_mode,
+            payer_name=payer_name,
+            payer_vpa=payer_vpa,
             expires_at=now + timedelta(days=room_ttl_days),
         )
         async with db.begin_nested():
@@ -103,7 +108,7 @@ class RoomService:
             participant = RoomParticipant(
                 room_id=room.id,
                 invite_id=invite.id,
-                nickname="Creator",
+                nickname=payer_name or "Creator",
                 color="#4F46E5",
                 role="creator",
                 token_hash=hash_token(raw_creator_token),
@@ -119,11 +124,18 @@ class RoomService:
                 actor_id=participant.id,
                 payload={"split_mode": split_mode},
             )
+            if self._audit is not None:
+                await self._audit.record(
+                    db,
+                    action="room.created",
+                    room_id=room.id,
+                    actor_participant_id=participant.id,
+                    actor_type="creator",
+                    metadata={"split_mode": split_mode},
+                )
             await db.refresh(room)
 
-        await self._events.broadcast(
-            room.id, "room.created", {"split_mode": split_mode}, seq
-        )
+        await self._events.broadcast(room.id, "room.created", {"split_mode": split_mode}, seq)
 
         return room, raw_creator_token, raw_invite_token
 
@@ -154,11 +166,16 @@ class RoomService:
         Raises VersionConflict if stale.
         """
         async with db.begin_nested():
-            updated = await self._room_repo.update(
-                db, room_id, expected_version, update_fields
-            )
+            updated = await self._room_repo.update(db, room_id, expected_version, update_fields)
             if not updated:
                 raise VersionConflict()
+
+            if update_fields.get("payer_name"):
+                participants = await self._participant_repo.list_active(db, room_id)
+                for participant in participants:
+                    if participant.role == "creator":
+                        participant.nickname = str(update_fields["payer_name"])
+                        break
 
             seq = await self._events.append_in_tx(
                 db,

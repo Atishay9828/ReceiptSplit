@@ -9,6 +9,7 @@ from app.repositories.interfaces.receipt import ReceiptRepository
 from app.repositories.interfaces.receipt_edit import ReceiptEditRepository
 from app.repositories.interfaces.room import RoomRepository
 from app.repositories.interfaces.split_session import SplitSessionRepository
+from app.repositories.interfaces.user import UserRepository
 
 __all__ = [
     "AdjustmentRepository",
@@ -20,4 +21,5 @@ __all__ = [
     "ReceiptRepository",
     "RoomRepository",
     "SplitSessionRepository",
+    "UserRepository",
 ]

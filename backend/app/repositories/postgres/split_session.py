@@ -32,9 +32,7 @@ class PostgresSplitSessionRepository(PostgresRepository[SplitSession], SplitSess
 
     async def delete_by_room(self, db: AsyncSession, room_id: UUID) -> bool:
         stmt = (
-            delete(SplitSession)
-            .where(SplitSession.room_id == room_id)
-            .returning(SplitSession.id)
+            delete(SplitSession).where(SplitSession.room_id == room_id).returning(SplitSession.id)
         )
         result = await db.execute(stmt)
         return result.first() is not None

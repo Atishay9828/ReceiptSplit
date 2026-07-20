@@ -21,7 +21,10 @@ class Receipt(Base):
         PG_UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     room_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, unique=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
     is_replaceable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
@@ -29,6 +32,4 @@ class Receipt(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    __table_args__ = (
-        CheckConstraint("source IN ('manual','ocr')", name="ck_receipts_source"),
-    )
+    __table_args__ = (CheckConstraint("source IN ('manual','ocr')", name="ck_receipts_source"),)

@@ -24,10 +24,11 @@ if TYPE_CHECKING:
     from app.services.room_service import RoomService
 
 if True:
-
     pass
 
-router = APIRouter(prefix="/api/rooms/{room_id}/adjustments", tags=["adjustments"], responses=ERROR_RESPONSES)
+router = APIRouter(
+    prefix="/api/rooms/{room_id}/adjustments", tags=["adjustments"], responses=ERROR_RESPONSES
+)
 
 
 async def _receipt_id_for_room(db: AsyncSession, room_id: UUID, service: RoomService) -> UUID:

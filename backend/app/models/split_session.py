@@ -32,7 +32,10 @@ class SplitSession(Base):
         PG_UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     room_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, unique=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     mode: Mapped[str] = mapped_column(String(20), nullable=False)
     grand_total_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -45,6 +48,4 @@ class SplitSession(Base):
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
-    __table_args__ = (
-        CheckConstraint("mode IN ('equal','item_wise')", name="ck_session_mode"),
-    )
+    __table_args__ = (CheckConstraint("mode IN ('equal','item_wise')", name="ck_session_mode"),)

@@ -16,6 +16,7 @@ def test_valid_transitions():
     assert can_transition("settling", "settled") is True
     assert can_transition("settled", "archived") is True
 
+
 def test_invalid_transitions():
     assert can_transition("draft", "settling") is False
     assert can_transition("draft", "settled") is False
@@ -26,6 +27,7 @@ def test_invalid_transitions():
         validate_transition("draft", "settling")
     with pytest.raises(InvalidStateTransition):
         validate_transition("draft", "settled")
+
 
 def test_terminal_states():
     # archived is terminal

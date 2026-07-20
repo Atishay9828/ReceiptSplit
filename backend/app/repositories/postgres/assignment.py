@@ -46,3 +46,9 @@ class PostgresAssignmentRepository(AssignmentRepository):
         )
         result = await db.execute(stmt)
         return result.scalar() or 0
+
+    async def delete_by_participant(self, db: AsyncSession, participant_id: UUID) -> None:
+        stmt = delete(LineItemAssignment).where(
+            LineItemAssignment.participant_id == participant_id
+        )
+        await db.execute(stmt)

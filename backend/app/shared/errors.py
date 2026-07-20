@@ -18,6 +18,7 @@ from typing import Any
 
 # ── Base ──────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class DomainError(Exception):
     """
@@ -45,6 +46,7 @@ class DomainError(Exception):
 
 
 # ── 400 Validation Errors ─────────────────────────────────────────────────────
+
 
 class InvalidVPAFormat(DomainError):
     def __init__(self) -> None:
@@ -158,6 +160,7 @@ class PercentagesNotOneHundred(DomainError):
 
 # ── 403 Authorization Errors ──────────────────────────────────────────────────
 
+
 class RoomFull(DomainError):
     def __init__(self) -> None:
         super().__init__(
@@ -198,7 +201,16 @@ class InvalidToken(DomainError):
         )
 
 
+class RateLimitExceeded(DomainError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="RATE_LIMITED",
+            message="Too many attempts. Please try again later.",
+        )
+
+
 # ── 404 Not Found ─────────────────────────────────────────────────────────────
+
 
 class RoomNotFound(DomainError):
     def __init__(self) -> None:
@@ -217,6 +229,7 @@ class ItemNotFound(DomainError):
 
 
 # ── 409 Conflict ──────────────────────────────────────────────────────────────
+
 
 class ItemAlreadyClaimed(DomainError):
     def __init__(self, item_name: str, claimed_by: str, remaining_qty: int) -> None:
@@ -266,6 +279,7 @@ class WrongSplitMode(DomainError):
 
 # ── 422 Semantic Errors ───────────────────────────────────────────────────────
 
+
 class UnclaimedItemsExist(DomainError):
     def __init__(self, item_names: list[str]) -> None:
         super().__init__(
@@ -293,6 +307,7 @@ class InsufficientParticipants(DomainError):
 
 # ── 423 Locked ────────────────────────────────────────────────────────────────
 
+
 class RoomLocked(DomainError):
     def __init__(self) -> None:
         super().__init__(
@@ -318,6 +333,7 @@ class ReceiptLocked(DomainError):
 
 
 # ── 500 Internal Errors ───────────────────────────────────────────────────────
+
 
 class SplitInvariantFailed(DomainError):
     """

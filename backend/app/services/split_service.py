@@ -1,4 +1,3 @@
-
 """
 ReceiptSplit — Split Service
 
@@ -18,6 +17,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.domain import room_state_machine
+from app.domain.adjustments import calculation_type, normalize_stored_amount
 from app.models.participant_total import ParticipantTotal
 from app.models.split_session import SplitSession
 from app.shared.errors import (
@@ -57,7 +57,6 @@ if TYPE_CHECKING:
     from app.services.event_publisher import EventPublisher
 
 if True:
-
     from app.split.models import SplitResult
 
 logger = logging.getLogger(__name__)
@@ -81,6 +80,7 @@ class SplitSessionBuilder:
                 "type": a.type,
                 "label": a.label,
                 "amount_paise": a.amount_paise,
+                "rate_basis_points": a.rate_basis_points,
                 "allocation_method": a.allocation_method,
                 "sort_order": a.sort_order,
             }
@@ -113,9 +113,10 @@ class SplitSessionBuilder:
 
         split_adjustments = [
             SplitAdjInput(
-                type=a.type,
-                amount_paise=a.amount_paise,
+                type=calculation_type(a.type),
+                amount_paise=normalize_stored_amount(a.type, a.amount_paise),
                 allocation=a.allocation_method,
+                rate_basis_points=a.rate_basis_points,
             )
             for a in adjustments
         ]
@@ -198,9 +199,7 @@ class SplitPreviewService:
         self._assign_repo = assignment_repo
         self._session_repo = session_repo
 
-    async def calculate_preview(
-        self, db: AsyncSession, room_id: UUID
-    ) -> tuple[SplitResult, int]:
+    async def calculate_preview(self, db: AsyncSession, room_id: UUID) -> tuple[SplitResult, int]:
         room = await self._room_repo.get_by_id(db, room_id)
         if room is None:
             raise DomainError(code="ROOM_NOT_FOUND", message="Room not found.")
@@ -228,9 +227,7 @@ class SplitPreviewService:
         )
         return SplitCalculator.calculate(split_input), room.version
 
-    async def get_current_session(
-        self, db: AsyncSession, room_id: UUID
-    ) -> SplitSession | None:
+    async def get_current_session(self, db: AsyncSession, room_id: UUID) -> SplitSession | None:
         return await self._session_repo.get_by_room(db, room_id)
 
 
@@ -327,11 +324,18 @@ class SplitLockCoordinator:
 
             # Persist session and totals
             session = await SplitSessionBuilder.persist_session(
-                db, self._session_repo, room, result, snapshot,
+                db,
+                self._session_repo,
+                room,
+                result,
+                snapshot,
             )
 
             seq = await self._events.append_in_tx(
-                db, room_id, "split.locked", actor_id,
+                db,
+                room_id,
+                "split.locked",
+                actor_id,
                 {
                     "session_id": str(session.id),
                     "grand_total_paise": result.grand_total_paise,
@@ -339,7 +343,8 @@ class SplitLockCoordinator:
             )
 
         await self._events.broadcast(
-            room_id, "split.locked",
+            room_id,
+            "split.locked",
             {"session_id": str(session.id), "grand_total_paise": result.grand_total_paise},
             seq,
         )
@@ -379,7 +384,11 @@ class SplitLockCoordinator:
                 raise VersionConflict()
 
             seq = await self._events.append_in_tx(
-                db, room_id, "split.unlocked", actor_id, {},
+                db,
+                room_id,
+                "split.unlocked",
+                actor_id,
+                {},
             )
 
         await self._events.broadcast(room_id, "split.unlocked", {}, seq)
@@ -407,12 +416,8 @@ class SplitService:
     ) -> SplitSession:
         return await self.lock_coordinator.lock(db, room_id, version, actor_id)
 
-    async def unlock(
-        self, db: AsyncSession, room_id: UUID, version: int, actor_id: UUID
-    ) -> None:
+    async def unlock(self, db: AsyncSession, room_id: UUID, version: int, actor_id: UUID) -> None:
         return await self.lock_coordinator.unlock(db, room_id, version, actor_id)
 
-    async def get_current_session(
-        self, db: AsyncSession, room_id: UUID
-    ) -> SplitSession | None:
+    async def get_current_session(self, db: AsyncSession, room_id: UUID) -> SplitSession | None:
         return await self.preview.get_current_session(db, room_id)

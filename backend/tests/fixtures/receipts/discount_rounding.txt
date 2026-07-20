@@ -1,0 +1,7 @@
+URBAN THALI
+Veg Thali 180.00
+Lassi 60.00
+Subtotal 240.00
+Discount -20.00
+Rounding 0.50
+Grand Total 220.50

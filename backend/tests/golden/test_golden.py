@@ -73,7 +73,8 @@ def _build_split_input(data: dict) -> SplitInput:
             participant_id=_to_uuid(a["participant_id"]),
             claimed_qty=a["claimed_qty"],
             created_at=datetime.fromisoformat(a["created_at"]).replace(tzinfo=UTC)
-            if isinstance(a["created_at"], str) else a["created_at"],
+            if isinstance(a["created_at"], str)
+            else a["created_at"],
         )
         for a in inp.get("assignments", [])
     ]
@@ -115,7 +116,9 @@ class TestGoldenFixtures:
 
         expected = fixture_data["expected"]
         if expected.get("sum_conservation", True):
-            assert sum(t.total_paise for t in result.participant_totals) == result.grand_total_paise
+            assert (
+                sum(t.total_paise for t in result.participant_totals) == result.grand_total_paise
+            )
 
     def test_grand_total(self, fixture_name: str, fixture_data: dict):
         """Grand total matches expected."""

@@ -1,4 +1,5 @@
 """Tests for PostgresEventRepository — Atomic sequencing and rollback."""
+
 from __future__ import annotations
 
 import asyncio
@@ -56,23 +57,22 @@ async def test_concurrent_event_sequencing(async_engine: AsyncEngine):
             seq = await event_repo.append_in_tx(
                 session,
                 room_id=room_id,
-                event_type="test_event",
+                event_type="test.event",
                 actor_id=None,
                 payload={"worker": worker_id},
             )
             await session.close()
             return seq
 
-    tasks = [append_event(i) for i in range(10)]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    count = 10
+    tasks = [append_event(i) for i in range(count)]
 
-    # Fail fast on any exceptions
-    for res in results:
-        if isinstance(res, Exception):
-            raise res
+    # Gather results.
+    results = await asyncio.gather(*tasks)
 
-    sequences = sorted(results)
-    assert sequences == list(range(1, 11)), f"Expected gapless 1..10, got {sequences}"
+    # All sequence numbers should be unique, continuous from 1 to 50.
+    sequences = sorted([r.sequence_no for r in results])
+    assert sequences == list(range(1, count + 1)), f"Expected gapless 1..10, got {sequences}"
 
 
 @pytest.mark.asyncio
@@ -117,13 +117,11 @@ async def test_event_rollback_on_transaction_failure(async_engine: AsyncEngine):
         )
         await session.close()
 
-    assert seq == 1, f"Expected seq=1 after rollback, got {seq}"
+    assert seq.sequence_no == 1, f"Expected seq=1 after rollback, got {seq.sequence_no}"
 
-    # Verify only one event exists
+    # Insert a second event and commit successfully.
     async with async_engine.connect() as conn:
-        result = await conn.execute(
-            select(RoomEvent).where(RoomEvent.room_id == room_id)
-        )
+        result = await conn.execute(select(RoomEvent).where(RoomEvent.room_id == room_id))
         events = result.all()
         assert len(events) == 1
         assert events[0].event_type == "successful_event"

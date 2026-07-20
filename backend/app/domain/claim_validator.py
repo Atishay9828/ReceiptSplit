@@ -35,9 +35,7 @@ class ClaimValidator:
             raise WrongSplitMode()
 
     @staticmethod
-    def validate_quantity_available(
-        claimed_qty: int, item_qty: int, already_claimed: int
-    ) -> None:
+    def validate_quantity_available(claimed_qty: int, item_qty: int, already_claimed: int) -> None:
         """
         Validates the requested claim quantity.
         Rules:

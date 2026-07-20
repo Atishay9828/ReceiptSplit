@@ -53,6 +53,7 @@ class _RecordingDb:
         return _RecordingTx(self)
 
     import contextlib
+
     @contextlib.asynccontextmanager
     async def begin_nested(self):
         self.in_lock_tx = True
@@ -288,9 +289,22 @@ async def test_lock_creates_session_and_totals(db_session: AsyncSession):
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="equal")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant1, _ = await part_svc.join_room(
@@ -323,7 +337,15 @@ async def test_lock_creates_session_and_totals(db_session: AsyncSession):
     assert session.grand_total_paise == 1000
 
     # Check totals
-    totals = (await db_session.execute(select(ParticipantTotal).where(ParticipantTotal.split_session_id == session.id))).scalars().all()
+    totals = (
+        (
+            await db_session.execute(
+                select(ParticipantTotal).where(ParticipantTotal.split_session_id == session.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     await db_session.commit()
     assert len(totals) == 3
 
@@ -345,16 +367,31 @@ async def test_unlock_removes_session_and_requires_settling_state(db_session: As
 
     room, _creator_token, i_token = await room_svc.create_room(db_session, split_mode="equal")
     from app.models.room_participant import RoomParticipant
-    creator_id = (await db_session.execute(select(RoomParticipant.id).where(RoomParticipant.room_id == room.id))).scalars().first()
+
+    creator_id = (
+        (
+            await db_session.execute(
+                select(RoomParticipant.id).where(RoomParticipant.room_id == room.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     room = await room_svc.transition_room(db_session, room.id, room.version, "active", creator_id)
-    receipt = (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id))).scalars().first()
+    receipt = (
+        (await db_session.execute(select(Receipt).where(Receipt.room_id == room.id)))
+        .scalars()
+        .first()
+    )
     await db_session.commit()
 
     participant1, _ = await part_svc.join_room(
         db_session, room.id, hash_token(i_token), "Alice", COLOR_PALETTE[1]
     )
     await part_svc.join_room(db_session, room.id, hash_token(i_token), "Bob", COLOR_PALETTE[2])
-    await item_svc.add_item(db_session, receipt.id, room.id, participant1.id, "Burger", quantity=1, total_paise=1000)
+    await item_svc.add_item(
+        db_session, receipt.id, room.id, participant1.id, "Burger", quantity=1, total_paise=1000
+    )
 
     await db_session.refresh(room)
     room = await room_svc.get_room(db_session, room.id)
@@ -377,7 +414,11 @@ async def test_unlock_removes_session_and_requires_settling_state(db_session: As
     await split_svc.unlock(db_session, room.id, room.version, participant1.id)
 
     # Verify session is deleted
-    sessions = (await db_session.execute(select(SplitSession).where(SplitSession.room_id == room.id))).scalars().all()
+    sessions = (
+        (await db_session.execute(select(SplitSession).where(SplitSession.room_id == room.id)))
+        .scalars()
+        .all()
+    )
     await db_session.commit()
     assert len(sessions) == 0
 

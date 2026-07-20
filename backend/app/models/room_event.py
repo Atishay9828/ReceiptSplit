@@ -33,6 +33,4 @@ class RoomEvent(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    __table_args__ = (
-        Index("idx_events_room_seq", "room_id", "sequence_no", unique=True),
-    )
+    __table_args__ = (Index("idx_events_room_seq", "room_id", "sequence_no", unique=True),)

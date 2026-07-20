@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.config import settings
+from app.security.rate_limit import limiter
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
+    limiter.reset()
     application = FastAPI(
         title="ReceiptSplit API",
         description="UPI-native, receipt-first bill splitting for India.",
@@ -41,7 +43,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "If-None-Match"],
         max_age=600,
     )

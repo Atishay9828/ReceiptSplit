@@ -48,15 +48,13 @@ class SplitAdjustment(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('tax','service_charge','delivery_fee','discount','adjustment')",
+            "type IN ('tax','service_charge','delivery_fee','packaging_fee','tip','discount','coupon','offer','adjustment','rounding')",
             name="ck_adj_type",
         ),
         CheckConstraint(
             "amount_paise > -10000000 AND amount_paise <= 10000000", name="ck_adj_amount"
         ),
-        CheckConstraint(
-            "allocation_method IN ('proportional','equal')", name="ck_adj_alloc"
-        ),
+        CheckConstraint("allocation_method IN ('proportional','equal')", name="ck_adj_alloc"),
         CheckConstraint("version >= 1", name="ck_adj_version"),
         Index(
             "idx_adjustments_room",

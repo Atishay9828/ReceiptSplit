@@ -103,9 +103,7 @@ async def test_room_creation_persists_all_rows(
       - room_events (room.created)
     """
     # Act: create room via the real app
-    response = await real_api_client.post(
-        "/api/rooms", json={"split_mode": "equal"}
-    )
+    response = await real_api_client.post("/api/rooms", json={"split_mode": "equal"})
     assert response.status_code == 201, f"Room creation failed: {response.text}"
     body = response.json()
     room_id = body["room"]["id"]
@@ -184,9 +182,7 @@ async def test_item_creation_persists(
     This confirms mutation persistence beyond room creation.
     """
     # Step 1: Create room
-    create_resp = await real_api_client.post(
-        "/api/rooms", json={"split_mode": "equal"}
-    )
+    create_resp = await real_api_client.post("/api/rooms", json={"split_mode": "equal"})
     assert create_resp.status_code == 201
     created = create_resp.json()
     room_id = created["room"]["id"]
@@ -222,6 +218,8 @@ async def test_item_creation_persists(
         assert str(item_row.name) == "Masala Dosa"
         assert item_row.quantity == 2
         assert item_row.total_paise == 18000
+
+
 """
 Description: These tests use a production-like commit path to verify that data
 actually persists after requests complete. If any assertion marked "C-2 REAL"

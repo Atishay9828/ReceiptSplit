@@ -30,12 +30,14 @@ if TYPE_CHECKING:
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def fixed_clock():
     """Returns a FixedClock set to 2026-06-01T12:00:00Z."""
     from datetime import datetime
 
     from app.shared.clock import FixedClock
+
     return FixedClock(datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC))
 
 
@@ -54,7 +56,7 @@ def db_url(postgres_container) -> str:
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def _create_tables(db_url: str):
     """Create all tables once at session start using asyncpg (no psycopg2 needed)."""
 
@@ -76,7 +78,7 @@ def _create_tables(db_url: str):
 
 
 @pytest_asyncio.fixture
-async def async_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:
+async def async_engine(db_url: str, _create_tables: None) -> AsyncGenerator[AsyncEngine, None]:
     """Function-scoped async engine: created fresh per test on the test's own event loop."""
     engine = create_async_engine(db_url, echo=False, poolclass=NullPool)
     yield engine

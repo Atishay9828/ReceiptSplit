@@ -36,16 +36,17 @@ class TestTokenGeneration:
     def test_creator_token_has_256_bit_entropy(self):
         # 32 bytes = 64 hex chars after prefix
         token = generate_creator_token()
-        hex_part = token[len(CREATOR_PREFIX):]
+        hex_part = token[len(CREATOR_PREFIX) :]
         assert len(hex_part) == 64
 
     def test_tokens_are_unique(self):
         tokens = {generate_creator_token() for _ in range(1000)}
-        assert len(tokens) == 1000   # no collisions in 1000 samples
+        assert len(tokens) == 1000  # no collisions in 1000 samples
 
     def test_different_prefixes_produce_different_hashes(self):
         """Same random bytes but different prefix → different hash."""
         import secrets
+
         random_hex = secrets.token_hex(32)
         creator = f"{CREATOR_PREFIX}{random_hex}"
         participant = f"{PARTICIPANT_PREFIX}{random_hex}"

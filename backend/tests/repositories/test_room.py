@@ -1,4 +1,5 @@
 """Tests for PostgresRoomRepository — CRUD and CAS operations."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
