@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated, Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -52,10 +53,19 @@ class Settings(BaseSettings):
         return value
 
     # The synchronous URL is required by Alembic (migrations run synchronously).
-    # Derived automatically from database_url by swapping the driver.
+    # Derived automatically from database_url by swapping the driver and
+    # translating asyncpg's SSL query option to psycopg2's equivalent.
     @property
     def database_url_sync(self) -> str:
-        return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        sync_url = self.database_url.replace(
+            "postgresql+asyncpg://", "postgresql+psycopg2://", 1
+        )
+        parts = urlsplit(sync_url)
+        query = [
+            ("sslmode" if key == "ssl" else key, value)
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        ]
+        return urlunsplit(parts._replace(query=urlencode(query)))
 
     # ── Supabase ─────────────────────────────────────────────────────────────
     supabase_url: str = "https://placeholder.supabase.co"
