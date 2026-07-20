@@ -36,7 +36,8 @@ Alembic runs synchronously and derives a `postgresql+psycopg2://...` URL from
 The public API runs on Render at <https://receiptsplit-api.onrender.com>. Its health check is
 <https://receiptsplit-api.onrender.com/health>. Render builds from the repository's
 `feat/split-engine` branch with `backend` as the root directory; pushes containing backend changes
-trigger a new deployment. See the root `README.md` and `render.yaml` for the free deployment setup.
+trigger `.github/workflows/deploy-render.yml`, which calls Render's encrypted deploy hook. See the
+root `README.md` and `render.yaml` for the free deployment setup.
 
 ## Environment Variables
 
