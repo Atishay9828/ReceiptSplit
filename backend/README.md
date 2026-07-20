@@ -31,6 +31,13 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 Alembic runs synchronously and derives a `postgresql+psycopg2://...` URL from
 `RECEIPTSPLIT_DATABASE_URL`, so `psycopg2-binary` is a normal backend dependency.
 
+## Production
+
+The public API runs on Render at <https://receiptsplit-api.onrender.com>. Its health check is
+<https://receiptsplit-api.onrender.com/health>. Render builds from the repository's
+`feat/split-engine` branch with `backend` as the root directory; pushes containing backend changes
+trigger a new deployment. See the root `README.md` and `render.yaml` for the free deployment setup.
+
 ## Environment Variables
 
 | Variable | Required | Description |
