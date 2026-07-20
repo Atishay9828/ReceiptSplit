@@ -2,7 +2,7 @@
 
 ## Current Status Summary
 
-- Current active milestone: M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion UX Repair.
+- Current active milestone: M016 Persistent Rooms, Friends, Multi-Bill Ledger & Mixed Item Splits.
 - Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
 - Current blocker: M015/M015.1 dependency audit has a moderate Next/PostCSS advisory; real-device
   UPI checks remain pending.
@@ -33,6 +33,7 @@
 | M014.1 Real-World UX Bug Bash & Payment Flow Repair | FULL PASS | `2e14478` | Participant removal, quantity claiming, payment status visibility, settlement auto-transition |
 | M015 Dark Mode + Pilot Readiness QA | CONDITIONAL PASS | pending | Dark theme system, persisted toggle, pilot QA docs, mocked local browser screenshots; audit/backend/real-device UPI checks pending |
 | M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion UX Repair | CONDITIONAL PASS | closeout commit | Creator identity, discount/percentage adjustment math, step-based creator views, settled completion UX, navy/cyan/violet theme repair; screenshots under `docs/reports/screenshots/M015.1/`; audit has 2 moderate advisories |
+| M016 Persistent Rooms, Friends, Multi-Bill Ledger & Mixed Item Splits | IN PROGRESS | pending | Persistent groups with multiple bills, usernames/friends, Google ID-token verification, pending/cleared ledger, and per-item individual/equal allocation; live Google sign-in awaits a real OAuth client ID |
 
 ## Deferred Baselines
 

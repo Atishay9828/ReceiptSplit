@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from fastapi import Depends
 
 from app.auth.errors import InvalidJwt
-from app.auth.jwt import DevJwtVerifier, JwtClaims, JwtVerifier
+from app.auth.jwt import DevJwtVerifier, GoogleJwtVerifier, JwtClaims, JwtVerifier
 from app.config import Settings, get_settings
 
 
@@ -26,6 +26,8 @@ def build_jwt_verifier(settings: Settings) -> JwtVerifier:
             issuer=settings.auth_oidc_issuer,
             audience=settings.auth_oidc_audience,
         )
+    if settings.auth_oidc_provider == "google" and settings.auth_oidc_audience:
+        return GoogleJwtVerifier(audience=settings.auth_oidc_audience)
     return UnsupportedJwtVerifier(provider=settings.auth_oidc_provider)
 
 

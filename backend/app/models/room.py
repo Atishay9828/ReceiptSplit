@@ -24,6 +24,10 @@ class Room(Base):
     split_mode: Mapped[str] = mapped_column(String(20), nullable=False, server_default="equal")
     payer_vpa: Mapped[str | None] = mapped_column(String(50), nullable=True)
     payer_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    group_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=True
+    )
     creator_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
@@ -44,6 +48,7 @@ class Room(Base):
         CheckConstraint("split_mode IN ('equal','item_wise')", name="ck_rooms_split_mode"),
         CheckConstraint("version >= 1", name="ck_rooms_version_positive"),
         Index("idx_rooms_creator_user", "creator_user_id"),
+        Index("idx_rooms_group", "group_id", "created_at"),
         Index(
             "idx_rooms_status_expires",
             "status",

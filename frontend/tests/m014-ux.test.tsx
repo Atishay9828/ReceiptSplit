@@ -176,7 +176,7 @@ describe("M014 frontend polish", () => {
 
     expect(screen.getByText("Paneer roll")).toBeInTheDocument();
     expect(screen.getByText(/available/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /claim paneer roll/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add paneer roll to my share/i }));
     await waitFor(() => expect(onClaim).toHaveBeenCalledWith("item-1", { item_version: 3, claimed_qty: 1 }));
   });
 
@@ -191,7 +191,7 @@ describe("M014 frontend polish", () => {
       />
     );
 
-    expect(screen.getByText(/claimed by you/i)).toBeInTheDocument();
+    expect(screen.getByText(/in your share/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /unclaim paneer roll/i })).toBeInTheDocument();
   });
 

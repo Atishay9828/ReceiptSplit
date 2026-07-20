@@ -25,6 +25,7 @@ class JoinRoomRequest(BaseModel):
 class ParticipantResponse(ORMModel):
     id: UUID
     room_id: UUID
+    user_id: UUID | None
     nickname: str
     color: str
     role: str

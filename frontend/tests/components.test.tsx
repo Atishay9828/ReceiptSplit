@@ -49,8 +49,25 @@ describe("forms and controls", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: "Dosa",
         quantity: 2,
-        total_paise: 12050
+        total_paise: 12050,
+        allocation_mode: "individual"
       })
+    );
+  });
+
+  it("lets a shared item bypass individual claiming", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ItemForm onSubmit={onSubmit} />);
+
+    await userEvent.type(screen.getByLabelText(/item name/i), "Pizza");
+    await userEvent.type(screen.getByLabelText(/amount/i), "600");
+    await userEvent.selectOptions(screen.getByLabelText(/how should this item be split/i), "equal");
+    await userEvent.click(screen.getByRole("button", { name: /save item/i }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Pizza", allocation_mode: "equal" })
+      )
     );
   });
 

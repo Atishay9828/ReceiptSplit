@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 
 from app.split.allocators import EqualAllocator, ProportionalAllocator
 from app.split.invariants import check_all_invariants, check_allocation_conservation
-from app.split.models import ParticipantBreakdown, SplitResult
+from app.split.models import ParticipantBreakdown, SplitAdjustment, SplitResult
 from app.split.rounding import RoundingPolicy
 
 if TYPE_CHECKING:
@@ -251,6 +251,9 @@ def _validate_input(inp: SplitInput) -> None:
         if item.total_paise < 0:
             msg = f"Item {item.id} has negative total_paise {item.total_paise}"
             raise ValueError(msg)
+        if item.allocation_mode not in ("individual", "equal"):
+            msg = f"Invalid item allocation mode: {item.allocation_mode!r}"
+            raise ValueError(msg)
 
     if inp.mode not in ("equal", "item_wise"):
         msg = f"Invalid split mode: {inp.mode!r}"
@@ -274,6 +277,8 @@ def _validate_item_wise_assignments(inp: SplitInput) -> None:
 
     unclaimed_ids = []
     for item in inp.items:
+        if item.allocation_mode == "equal":
+            continue
         total_assigned = assigned.get(item.id, 0)
         if total_assigned != item.quantity:
             unclaimed_ids.append(str(item.id))
@@ -325,6 +330,11 @@ def _compute_item_wise_shares(
         )
 
     for item in inp.items:
+        if item.allocation_mode == "equal":
+            equal_shares = EqualAllocator.allocate(item.total_paise, round_robin)
+            for participant_id, amount in equal_shares.items():
+                shares[participant_id] += amount
+            continue
         unit_cost = item.total_paise // item.quantity
         item_remainder = item.total_paise - (unit_cost * item.quantity)
 
@@ -348,7 +358,7 @@ def _compute_item_wise_shares(
 
 def _allocate_adjustments_by_type(
     adj_type: str,
-    adjustments: list,
+    adjustments: list[SplitAdjustment],
     shares: dict[UUID, int],
     round_robin: list[UUID],
     shares_subtotal: int,
@@ -427,7 +437,7 @@ def _allocate_adjustments_by_type(
     return result
 
 
-def _adjustment_effect_amount(adjustment, base_paise: int) -> int:
+def _adjustment_effect_amount(adjustment: SplitAdjustment, base_paise: int) -> int:
     if adjustment.rate_basis_points is None:
         amount = adjustment.amount_paise
     else:

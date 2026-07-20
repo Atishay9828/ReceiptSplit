@@ -6,8 +6,11 @@ import type {
   ApiError,
   ApiErrorShape,
   Assignment,
+  AuthUser,
   ClaimPayload,
+  CommunityUser,
   DisputeInput,
+  Group,
   Item,
   ItemPayload,
   JoinRoomResponse,
@@ -92,7 +95,8 @@ export class ReceiptSplitApi {
       body: {
         split_mode: payload.split_mode,
         payer_name: payload.payer_name,
-        payer_vpa: payload.payer_vpa
+        payer_vpa: payload.payer_vpa,
+        title: payload.title
       }
     });
 
@@ -257,6 +261,56 @@ export class ReceiptSplitApi {
     return this.request<{ ok: true }>(`/api/rooms/${roomId}/participants/${participantId}`, {
       method: "DELETE",
       token
+    });
+  }
+
+  getMe(token: string): Promise<AuthUser> {
+    return this.request<AuthUser>("/api/auth/me", { token });
+  }
+
+  updateProfile(
+    token: string,
+    payload: { username: string; display_name: string }
+  ): Promise<CommunityUser> {
+    return this.request<CommunityUser>("/api/users/me/profile", {
+      method: "PUT",
+      token,
+      body: payload
+    });
+  }
+
+  listFriends(token: string): Promise<{ friends: CommunityUser[] }> {
+    return this.request<{ friends: CommunityUser[] }>("/api/users/me/friends", { token });
+  }
+
+  addFriend(token: string, username: string): Promise<CommunityUser> {
+    return this.request<CommunityUser>("/api/users/me/friends", {
+      method: "POST",
+      token,
+      body: { username }
+    });
+  }
+
+  listGroups(token: string): Promise<{ groups: Group[] }> {
+    return this.request<{ groups: Group[] }>("/api/groups", { token });
+  }
+
+  createGroup(
+    token: string,
+    payload: { name: string; member_usernames: string[] }
+  ): Promise<Group> {
+    return this.request<Group>("/api/groups", { method: "POST", token, body: payload });
+  }
+
+  createGroupBill(
+    token: string,
+    groupId: string,
+    payload: RoomCreateRequest & { title: string }
+  ): Promise<{ bill: RoomCreateResponse }> {
+    return this.request<{ bill: RoomCreateResponse }>(`/api/groups/${groupId}/bills`, {
+      method: "POST",
+      token,
+      body: payload
     });
   }
 

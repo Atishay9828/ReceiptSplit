@@ -69,6 +69,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const suppressedPreviewKeyRef = useRef<string | null>(null);
+  const refreshGenerationRef = useRef(0);
 
   const token = session?.token;
   const locked = summary?.room.status === "settling" || summary?.room.status === "settled";
@@ -86,11 +87,22 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
       if (!activeToken) {
         return;
       }
+      const generation = ++refreshGenerationRef.current;
       const nextSummary = await api.getSummary(roomId, activeToken);
+      if (generation !== refreshGenerationRef.current) {
+        return;
+      }
       setSummary(nextSummary);
       try {
-        setSettlement(await api.getSettlement(roomId, activeToken));
+        const nextSettlement = await api.getSettlement(roomId, activeToken);
+        if (generation !== refreshGenerationRef.current) {
+          return;
+        }
+        setSettlement(nextSettlement);
       } catch {
+        if (generation !== refreshGenerationRef.current) {
+          return;
+        }
         setSettlement(null);
       }
 
@@ -105,10 +117,16 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 
       try {
         const nextPreview = await api.previewSplit(roomId, activeToken);
+        if (generation !== refreshGenerationRef.current) {
+          return;
+        }
         suppressedPreviewKeyRef.current = null;
         setPreview(nextPreview);
         setPreviewError(null);
       } catch (err) {
+        if (generation !== refreshGenerationRef.current) {
+          return;
+        }
         if (isPreviewValidationError(err)) {
           suppressedPreviewKeyRef.current = getSplitPreviewRequestKey(nextSummary);
           setPreviewError("Split preview is not ready yet. Refresh after claims update and try again.");
@@ -221,7 +239,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 }
 
 function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: boolean }) {
-  const splitLabel = summary.room.split_mode === "item_wise" ? "Item-wise" : "Equal";
+  const splitLabel = summary.room.split_mode === "item_wise" ? "Mixed items" : "Everything equal";
   const statusLabel =
     summary.room.status === "active"
       ? "Claiming"
@@ -233,7 +251,9 @@ function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: b
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-leaf">ReceiptSplit</p>
           <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="truncate text-xl font-bold sm:text-2xl">{summary.room.payer_name || "ReceiptSplit room"}</h1>
+            <h1 className="truncate text-xl font-bold sm:text-2xl">
+              {summary.room.title || summary.room.payer_name || "ReceiptSplit bill"}
+            </h1>
             <p className="text-xs font-semibold text-muted">{splitLabel} split</p>
           </div>
         </div>
@@ -441,7 +461,9 @@ function CreatorTools({
       <RoomStepHeader step={creatorStep} />
       {creatorStep === "claiming" ? (
         <>
-          <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
+          {session.inviteToken ? (
+            <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
+          ) : null}
           <Participants
             participants={summary.participants}
             mode="creator"
@@ -675,8 +697,14 @@ export function CreatorSettledView({
               <Copy size={16} aria-hidden="true" />
               Copy summary
             </Button>
-            <Button type="button" variant="secondary" onClick={() => window.location.assign("/create")}>
-              Create another split
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                window.location.assign(summary.room.group_id ? "/dashboard" : "/create")
+              }
+            >
+              {summary.room.group_id ? "Back to room bills" : "Create another bill"}
             </Button>
           </div>
         </div>
@@ -959,6 +987,7 @@ export function ParticipantClaimList({
           const available = Math.max(item.quantity - totalClaimed, 0);
           const status = myClaim ? "claimed_by_you" : available > 0 ? "available" : "claimed";
           const unitPaise = item.quantity > 1 ? Math.round(item.total_paise / item.quantity) : null;
+          const splitEqually = item.allocation_mode === "equal";
 
           return (
             <div key={item.id} className="rounded-md border border-[#dbe5df] bg-cloud/50 p-3">
@@ -982,12 +1011,24 @@ export function ParticipantClaimList({
                     </p>
                   ) : null}
                 </div>
-                <ItemClaimStatusBadge status={status} />
+                {splitEqually ? (
+                  <StatusBadge tone="info">Shared equally</StatusBadge>
+                ) : (
+                  <ItemClaimStatusBadge status={status} />
+                )}
               </div>
               <div className="mt-3">
-                {myClaim ? (
+                {splitEqually ? (
+                  <p className="rounded-md bg-info-soft px-3 py-2 text-sm font-semibold text-info">
+                    Included automatically in everyone&apos;s share.
+                  </p>
+                ) : myClaim ? (
                   <div className="flex items-center gap-3">
-                    <StatusBadge tone="info">You claimed {myClaim.claimed_qty}</StatusBadge>
+                    <StatusBadge tone="info">
+                      {myClaim.claimed_qty === 1
+                        ? "Added to your share"
+                        : `${myClaim.claimed_qty} units in your share`}
+                    </StatusBadge>
                     <Button
                       type="button"
                       variant="ghost"
@@ -995,7 +1036,7 @@ export function ParticipantClaimList({
                       aria-label={`Unclaim ${item.name}`}
                       onClick={() => onUnclaim(item.id)}
                     >
-                      Unclaim
+                      Remove
                     </Button>
                   </div>
                 ) : item.quantity > 1 && available > 0 && !locked && summary.room.split_mode === "item_wise" ? (
@@ -1009,10 +1050,10 @@ export function ParticipantClaimList({
                     type="button"
                     variant="secondary"
                     disabled={locked || available < 1 || summary.room.split_mode !== "item_wise"}
-                    aria-label={`Claim ${item.name}`}
+                    aria-label={`Add ${item.name} to my share`}
                     onClick={() => onClaim(item.id, { item_version: item.version, claimed_qty: 1 })}
                   >
-                    Claim
+                    Add to my share
                   </Button>
                 )}
               </div>
@@ -1046,8 +1087,10 @@ function QuantityClaimControl({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 rounded-md border border-[#dbe5df] bg-white">
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold text-[#63706b]">How many did you have?</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-md border border-[#dbe5df] bg-white">
         <button
           type="button"
           className="grid h-8 w-8 place-items-center rounded-l-md text-sm font-bold text-[#52625b] hover:bg-cloud disabled:opacity-40"
@@ -1067,26 +1110,27 @@ function QuantityClaimControl({
         >
           +
         </button>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={busy}
+          onClick={claim}
+          aria-label={`Add ${qty} of ${item.name} to my share`}
+        >
+          Add to my share
+        </Button>
       </div>
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={busy}
-        onClick={claim}
-        aria-label={`Claim ${qty} of ${item.name}`}
-      >
-        Claim {qty}
-      </Button>
     </div>
   );
 }
 
 function ItemClaimStatusBadge({ status }: { status: "available" | "claimed_by_you" | "claimed" }) {
   if (status === "claimed_by_you") {
-    return <StatusBadge tone="info">Claimed by you</StatusBadge>;
+    return <StatusBadge tone="info">In your share</StatusBadge>;
   }
   if (status === "claimed") {
-    return <StatusBadge tone="muted">Claimed</StatusBadge>;
+    return <StatusBadge tone="muted">Assigned</StatusBadge>;
   }
   return <StatusBadge tone="success">Available</StatusBadge>;
 }
@@ -1681,6 +1725,7 @@ function CreatorClaimSection({
           const myClaim = itemAssignments.find((a) => a.participant_id === creatorParticipantId);
           const totalClaimed = itemAssignments.reduce((sum, a) => sum + a.claimed_qty, 0);
           const available = Math.max(item.quantity - totalClaimed, 0);
+          const splitEqually = item.allocation_mode === "equal";
 
           return (
             <div key={item.id} className="rounded-md border border-[#dbe5df] bg-cloud/50 p-3">
@@ -1692,19 +1737,29 @@ function CreatorClaimSection({
                     {item.quantity > 1 ? ` · ${available} of ${item.quantity} available` : ""}
                   </p>
                 </div>
-                {myClaim ? (
-                  <StatusBadge tone="info">You claimed {myClaim.claimed_qty}</StatusBadge>
+                {splitEqually ? (
+                  <StatusBadge tone="info">Shared equally</StatusBadge>
+                ) : myClaim ? (
+                  <StatusBadge tone="info">
+                    {myClaim.claimed_qty === 1
+                      ? "Added to your share"
+                      : `${myClaim.claimed_qty} units in your share`}
+                  </StatusBadge>
                 ) : null}
               </div>
               <div className="mt-3">
-                {myClaim ? (
+                {splitEqually ? (
+                  <p className="rounded-md bg-info-soft px-3 py-2 text-sm font-semibold text-info">
+                    Included automatically in everyone&apos;s share.
+                  </p>
+                ) : myClaim ? (
                   <Button
                     type="button"
                     variant="ghost"
                     aria-label={`Unclaim ${item.name}`}
                     onClick={() => onUnclaim(item.id)}
                   >
-                    Unclaim
+                    Remove
                   </Button>
                 ) : item.quantity > 1 && available > 0 ? (
                   <QuantityClaimControl
@@ -1717,10 +1772,10 @@ function CreatorClaimSection({
                     type="button"
                     variant="secondary"
                     disabled={available < 1 || summary.room.split_mode !== "item_wise"}
-                    aria-label={`Claim ${item.name}`}
+                    aria-label={`Add ${item.name} to my share`}
                     onClick={() => onClaim(item.id, { item_version: item.version, claimed_qty: 1 })}
                   >
-                    Claim
+                    Add to my share
                   </Button>
                 )}
               </div>
@@ -1744,14 +1799,20 @@ function ItemList({
   onRefresh: () => Promise<void>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ name: "", quantity: "1", amount: "" });
+  const [draft, setDraft] = useState({
+    name: "",
+    quantity: "1",
+    amount: "",
+    allocationMode: "individual" as NonNullable<Item["allocation_mode"]>
+  });
 
   function startEdit(item: Item) {
     setEditing(item.id);
     setDraft({
       name: item.name,
       quantity: String(item.quantity),
-      amount: (item.total_paise / 100).toFixed(2)
+      amount: (item.total_paise / 100).toFixed(2),
+      allocationMode: item.allocation_mode ?? "individual"
     });
   }
 
@@ -1760,7 +1821,8 @@ function ItemList({
       version: item.version,
       name: draft.name.trim(),
       quantity: Number.parseInt(draft.quantity, 10),
-      total_paise: parseRupeesToPaise(draft.amount)
+      total_paise: parseRupeesToPaise(draft.amount),
+      allocation_mode: draft.allocationMode
     });
     setEditing(null);
     await onRefresh();
@@ -1782,6 +1844,19 @@ function ItemList({
                   <Input label="Quantity" value={draft.quantity} onChange={(e) => setDraft({ ...draft, quantity: e.target.value })} />
                   <Input label="Amount" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} />
                 </div>
+                <Select
+                  label="How should this item be split?"
+                  value={draft.allocationMode}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      allocationMode: event.target.value as NonNullable<Item["allocation_mode"]>
+                    })
+                  }
+                >
+                  <option value="individual">People pick what they had</option>
+                  <option value="equal">Split equally among everyone</option>
+                </Select>
                 <div className="grid grid-cols-2 gap-3">
                   <Button type="button" onClick={() => save(item)}>
                     Save
@@ -1796,7 +1871,9 @@ function ItemList({
                 <div>
                   <h3 className="font-semibold">{item.name}</h3>
                   <p className="text-sm text-[#63706b]">
-                    {formatPaise(item.total_paise)} · {claimed}/{item.quantity} claimed
+                    {formatPaise(item.total_paise)} · {item.allocation_mode === "equal"
+                      ? "shared equally"
+                      : `${claimed}/${item.quantity} assigned`}
                   </p>
                 </div>
                 {!locked ? (

@@ -7,7 +7,9 @@ from typing import Any
 import pytest
 
 from app.auth.errors import InvalidJwt
-from app.auth.jwt import DevJwtVerifier, FakeJwtVerifier, JwtClaims
+from app.auth.jwt import DevJwtVerifier, FakeJwtVerifier, GoogleJwtVerifier, JwtClaims
+from app.auth.provider import build_jwt_verifier
+from app.config import Settings
 
 pytestmark = pytest.mark.asyncio
 
@@ -75,3 +77,11 @@ async def test_fake_jwt_verifier_rejects_unknown_token() -> None:
 
     with pytest.raises(InvalidJwt):
         await verifier.verify("unknown")
+
+
+async def test_google_provider_builds_signed_token_verifier() -> None:
+    verifier = build_jwt_verifier(
+        Settings(auth_oidc_provider="google", auth_oidc_audience="client.apps.googleusercontent.com")
+    )
+
+    assert verifier == GoogleJwtVerifier(audience="client.apps.googleusercontent.com")

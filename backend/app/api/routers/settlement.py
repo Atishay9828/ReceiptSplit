@@ -55,7 +55,12 @@ async def get_settlement(
 ) -> SettlementSummaryResponse:
     room = await room_service.get_room(db, room_id)
     requests = await service.get_settlement_summary(
-        db, room_id=room_id, actor=SettlementActor(participant=ctx.participant, user=ctx.user)
+        db,
+        room_id=room_id,
+        actor=SettlementActor(
+            participant=ctx.participant,
+            user=ctx.user if ctx.participant is None else None,
+        ),
     )
     return _summary(room, requests)
 

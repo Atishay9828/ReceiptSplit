@@ -41,6 +41,7 @@ from app.auth.models import AuthContext, AuthenticatedUser, RequestAuthContext
 from app.auth.provider import get_jwt_verifier
 from app.auth.tokens import hash_token
 from app.database import get_db
+from app.repositories.postgres.participant import PostgresParticipantRepository
 from app.repositories.postgres.room import PostgresRoomRepository
 from app.repositories.postgres.user import PostgresUserRepository
 from app.shared.errors import InvalidToken, NotAuthorized
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _room_repo = PostgresRoomRepository()
+_participant_repo = PostgresParticipantRepository()
 _user_repo = PostgresUserRepository()
 
 
@@ -145,9 +147,38 @@ async def resolve_request_auth_context(
 # ── Room-scope enforcement (Amendment API-1) ───────────────────────────────────
 
 
+async def get_room_request_auth_context(
+    authorization: str | None = Header(
+        default=None, description="Bearer <jwt_or_capability_token>"
+    ),
+    db: AsyncSession = Depends(get_db),
+    jwt_verifier: JwtVerifier = Depends(get_jwt_verifier),
+) -> RequestAuthContext:
+    if authorization is None:
+        raise NotAuthorized()
+    ctx = await resolve_request_auth_context(authorization, db, jwt_verifier)
+    if ctx.user is None:
+        return ctx
+    user = await _user_repo.upsert_by_provider_subject(
+        db,
+        provider=ctx.user.provider,
+        subject=ctx.user.subject,
+        email=ctx.user.email,
+    )
+    return RequestAuthContext(
+        user=AuthenticatedUser(
+            id=user.id,
+            provider=user.provider,
+            subject=user.subject,
+            email=user.email,
+        )
+    )
+
+
 async def require_room_access(
     room_id: UUID,
-    ctx: AuthContext = Depends(get_current_participant),
+    request_ctx: RequestAuthContext = Depends(get_room_request_auth_context),
+    db: AsyncSession = Depends(get_db),
 ) -> AuthContext:
     """
     Security invariant: the authenticated participant must belong to the
@@ -159,6 +190,20 @@ async def require_room_access(
     Raises:
         InvalidToken: if ctx.room_id != path room_id.
     """
+    if request_ctx.participant is not None:
+        ctx = request_ctx.participant
+    elif request_ctx.user is not None:
+        participant = await _participant_repo.get_by_room_user(db, room_id, request_ctx.user.id)
+        if participant is None:
+            raise NotAuthorized()
+        ctx = AuthContext(
+            participant_id=participant.id,
+            room_id=participant.room_id,
+            role=participant.role,
+        )
+    else:
+        raise NotAuthorized()
+
     if ctx.room_id != room_id:
         # This should never happen in production — it indicates either
         # a bug in the token issuance logic or a deliberate IDOR attempt.
@@ -268,9 +313,8 @@ async def attach_room_owner(room_id: UUID, user: AuthenticatedUser, db: AsyncSes
 
 async def require_room_event_access(
     room_id: UUID,
-    authorization: str | None = Header(None),
+    ctx: RequestAuthContext = Depends(get_room_request_auth_context),
     db: AsyncSession = Depends(get_db),
-    jwt_verifier: JwtVerifier = Depends(get_jwt_verifier),
 ) -> RequestAuthContext:
     """
     Accepts ANY valid room credential for read access to event endpoints:
@@ -290,11 +334,6 @@ async def require_room_event_access(
       GET /api/rooms/{room_id}/events/stream
       GET /api/rooms/{room_id}/events/latest
     """
-    if authorization is None:
-        raise NotAuthorized()
-
-    ctx = await resolve_request_auth_context(authorization, db, jwt_verifier)
-
     if ctx.participant is not None:
         # Capability token path: enforce room_id match (cross-room isolation).
         if ctx.participant.room_id != room_id:
@@ -309,7 +348,18 @@ async def require_room_event_access(
         return ctx
 
     if ctx.user is not None:
-        # Owner JWT path: user must be the room creator.
+        participant = await _participant_repo.get_by_room_user(db, room_id, ctx.user.id)
+        if participant is not None:
+            return RequestAuthContext(
+                user=ctx.user,
+                participant=AuthContext(
+                    participant_id=participant.id,
+                    room_id=participant.room_id,
+                    role=participant.role,
+                ),
+            )
+
+        # Owner JWT fallback for rooms created before user-participant linking.
         room = await _room_repo.get_by_id(db, room_id)
         if room is None or room.creator_user_id != ctx.user.id:
             raise RoomOwnerRequired()

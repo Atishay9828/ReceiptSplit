@@ -97,7 +97,12 @@ class SplitSessionBuilder:
     ) -> SplitInput:
         """Build the split engine's SplitInput from DB models."""
         split_items = [
-            SplitItem(id=item.id, quantity=item.quantity, total_paise=item.total_paise)
+            SplitItem(
+                id=item.id,
+                quantity=item.quantity,
+                total_paise=item.total_paise,
+                allocation_mode=item.allocation_mode or "individual",
+            )
             for item in items
         ]
 

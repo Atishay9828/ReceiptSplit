@@ -7,6 +7,10 @@ from app.models.room_participant import RoomParticipant
 
 
 class ParticipantRepository(Protocol):
+    async def get_by_room_user(
+        self, db: AsyncSession, room_id: UUID, user_id: UUID
+    ) -> RoomParticipant | None: ...
+
     async def join_room_in_tx(
         self,
         db: AsyncSession,

@@ -51,6 +51,7 @@ class ItemService:
         name: str,
         quantity: int,
         total_paise: int,
+        allocation_mode: str = "individual",
     ) -> LineItem:
         """Create a new line item and record audit/event rows."""
         item = LineItem(
@@ -58,6 +59,7 @@ class ItemService:
             name=name,
             quantity=quantity,
             total_paise=total_paise,
+            allocation_mode=allocation_mode,
         )
 
         async with db.begin_nested():
@@ -221,6 +223,12 @@ class ItemService:
             item = await self._item_repo.fetch_optional(db, item_id)
             if item is None or item.deleted_at is not None:
                 raise ItemNotFound()
+
+            if item.allocation_mode != "individual":
+                raise DomainError(
+                    code="ITEM_SPLIT_EQUALLY",
+                    message="This item is already split equally among everyone.",
+                )
 
             updated = await self._item_repo.update(db, item_id, item_version, {})
             if not updated:

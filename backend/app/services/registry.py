@@ -35,6 +35,7 @@ from app.repositories.postgres import (
 from app.services.abuse_service import AbuseService
 from app.services.adjustment_service import AdjustmentService
 from app.services.audit_service import AuditService
+from app.services.community_service import CommunityService
 from app.services.event_publisher import EventPublisher
 from app.services.item_service import ItemService
 from app.services.participant_service import ParticipantService
@@ -102,6 +103,11 @@ def get_audit_service() -> AuditService:
 @lru_cache(maxsize=1)
 def get_abuse_service() -> AbuseService:
     return AbuseService(audit_service=get_audit_service())
+
+
+@lru_cache(maxsize=1)
+def get_community_service() -> CommunityService:
+    return CommunityService()
 
 
 # ── Service factories ────────────────────────────────────────────────────────

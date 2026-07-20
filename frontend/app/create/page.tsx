@@ -54,7 +54,7 @@ export default function CreatePage() {
       <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start lg:gap-10">
         <section className="grid gap-6 lg:sticky lg:top-24">
           <div className="grid gap-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-leaf">New receipt</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-leaf">Quick bill</p>
             <h1 className="max-w-2xl text-4xl font-bold leading-[1.02] tracking-[-0.04em] sm:text-6xl">
               Split a receipt with friends. Keep every share clear.
             </h1>
@@ -82,9 +82,12 @@ export default function CreatePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-info">Bill setup</p>
             <h2 className="mt-2 text-2xl font-bold" id="create-room-title">Create split room</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              This room represents one receipt. You can leave unsettled shares pending and return
-              to them later.
+              This creates one shareable bill. For trips or recurring groups, use My rooms to keep
+              several bills and their pending or cleared totals together.
             </p>
+            <Link className="mt-3 inline-flex min-h-11 items-center font-semibold text-info" href="/dashboard">
+              Create a persistent room instead →
+            </Link>
           </div>
           <CreateRoomForm onCreate={createRoom} submitLabel="Create split room" />
         </section>

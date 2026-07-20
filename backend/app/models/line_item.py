@@ -33,6 +33,9 @@ class LineItem(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     total_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    allocation_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="individual"
+    )
     source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
     confidence: Mapped[float] = mapped_column(Float, nullable=False, server_default="1.0")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
@@ -45,6 +48,9 @@ class LineItem(Base):
     __table_args__ = (
         CheckConstraint("quantity >= 1 AND quantity <= 999", name="ck_items_qty"),
         CheckConstraint("total_paise >= 0 AND total_paise <= 10000000", name="ck_items_total"),
+        CheckConstraint(
+            "allocation_mode IN ('individual','equal')", name="ck_items_allocation_mode"
+        ),
         CheckConstraint("source IN ('manual','ocr')", name="ck_items_source"),
         CheckConstraint("version >= 1", name="ck_items_version"),
         Index(

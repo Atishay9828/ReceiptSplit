@@ -11,6 +11,7 @@ const nextConfig = {
   async headers() {
     return [
       { source: "/join/:inviteToken", headers: sensitiveRouteHeaders },
+      { source: "/dashboard", headers: sensitiveRouteHeaders },
       { source: "/rooms/:roomId", headers: sensitiveRouteHeaders },
       { source: "/rooms/:roomId/creator", headers: sensitiveRouteHeaders }
     ];

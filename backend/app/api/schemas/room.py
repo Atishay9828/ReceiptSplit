@@ -18,6 +18,7 @@ class RoomCreateRequest(BaseModel):
     split_mode: str = Field(default="equal", pattern="^(equal|item_wise)$")
     payer_vpa: str | None = Field(default=None, max_length=50)
     payer_name: str | None = Field(default=None, max_length=100)
+    title: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class RoomUpdateRequest(BaseModel):
@@ -36,6 +37,8 @@ class RoomResponse(ORMModel):
     split_mode: str
     payer_vpa: str | None
     payer_name: str | None
+    title: str | None
+    group_id: UUID | None
     version: int
     created_at: datetime
     updated_at: datetime

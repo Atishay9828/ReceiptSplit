@@ -37,7 +37,7 @@ const roomSteps = [
   },
   {
     label: "Settled",
-    description: "The payer manually confirms each share and closes the room.",
+    description: "The payer confirms each share; the bill clears while the room stays open.",
     icon: CheckCircle2
   }
 ] as const;
@@ -61,6 +61,7 @@ export default function HomePage() {
 
         <nav className="home-nav" aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
+          <Link href="/dashboard">My rooms</Link>
           <Link className="home-nav-action" href="/create">
             Create a split
           </Link>
@@ -91,9 +92,7 @@ export default function HomePage() {
             </div>
 
             <ul className="home-trust-line" aria-label="Product facts">
-              <li>
-                <Check size={15} aria-hidden="true" /> No account for friends
-              </li>
+              <li><Check size={15} aria-hidden="true" /> Accounts for recurring groups</li>
               <li>
                 <Check size={15} aria-hidden="true" /> Integer-paise totals
               </li>
@@ -108,8 +107,8 @@ export default function HomePage() {
 
         <section className="home-section home-flow" id="how-it-works" aria-labelledby="flow-title">
           <div className="home-section-heading">
-            <p className="home-section-label">Inside one room</p>
-            <h2 id="flow-title">The bill moves forward. Everyone sees where it stands.</h2>
+            <p className="home-section-label">Many bills, one room</p>
+            <h2 id="flow-title">Each bill moves forward. The trip history stays together.</h2>
           </div>
 
           <ol className="room-step-list">
@@ -136,11 +135,15 @@ export default function HomePage() {
             <p className="home-section-label">Run the next bill</p>
             <h2 id="start-title">Start with the receipt already on your table.</h2>
             <p>
-              The payer creates the room. Everyone else joins from one private invite link—no app
-              install and no account setup.
+              Create a quick bill with a private link, or sign in to keep multiple rooms, friends,
+              pending shares, and cleared bills together.
             </p>
             <Link className="home-primary-action" href="/create">
-              Create a split room
+              Create a quick bill
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+            <Link className="home-primary-action" href="/dashboard">
+              Open my rooms
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
           </div>

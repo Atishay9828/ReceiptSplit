@@ -52,7 +52,10 @@ export function shouldRequestSplitPreview(summary: RoomSummary, suppressedKey?: 
 export function getSplitPreviewRequestKey(summary: RoomSummary): string {
   const items = [...summary.items]
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((item) => `${item.id}:${item.version}:${item.quantity}:${item.total_paise}`)
+    .map(
+      (item) =>
+        `${item.id}:${item.version}:${item.quantity}:${item.total_paise}:${item.allocation_mode}`
+    )
     .join(",");
   const assignments = [...summary.assignments]
     .sort((left, right) => left.id.localeCompare(right.id))
@@ -103,7 +106,11 @@ function areItemClaimsComplete(summary: RoomSummary): boolean {
     );
   }
 
-  return summary.items.every((item) => (claimedByItem.get(item.id) ?? 0) === item.quantity);
+  return summary.items.every(
+    (item) =>
+      item.allocation_mode === "equal" ||
+      (claimedByItem.get(item.id) ?? 0) === item.quantity
+  );
 }
 
 function blocked(code: SplitPreviewBlockerCode, message: string): SplitPreviewReadiness {

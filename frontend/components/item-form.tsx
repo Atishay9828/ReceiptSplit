@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { parseRupeesToPaise } from "@/lib/money";
 import type { ItemPayload } from "@/types/api";
 
@@ -15,6 +16,8 @@ export function ItemForm({ onSubmit }: ItemFormProps) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [amount, setAmount] = useState("");
+  const [allocationMode, setAllocationMode] =
+    useState<ItemPayload["allocation_mode"]>("individual");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,7 +45,12 @@ export function ItemForm({ onSubmit }: ItemFormProps) {
     setError(null);
     setSubmitting(true);
     try {
-      await onSubmit({ name: cleanName, quantity: parsedQuantity, total_paise: totalPaise });
+      await onSubmit({
+        name: cleanName,
+        quantity: parsedQuantity,
+        total_paise: totalPaise,
+        allocation_mode: allocationMode
+      });
       setName("");
       setQuantity("1");
       setAmount("");
@@ -71,6 +79,16 @@ export function ItemForm({ onSubmit }: ItemFormProps) {
           onChange={(event) => setAmount(event.target.value)}
         />
       </div>
+      <Select
+        label="How should this item be split?"
+        value={allocationMode}
+        onChange={(event) =>
+          setAllocationMode(event.target.value as ItemPayload["allocation_mode"])
+        }
+      >
+        <option value="individual">People pick what they had</option>
+        <option value="equal">Split equally among everyone</option>
+      </Select>
       {error ? <p className="text-sm font-medium text-coral">{error}</p> : null}
       <Button type="submit" disabled={submitting}>
         Save item

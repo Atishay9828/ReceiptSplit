@@ -123,6 +123,15 @@ describe("split preview readiness", () => {
     });
   });
 
+  it("treats an equal-share item inside item-wise mode as already assigned", () => {
+    const mixed = summary({
+      items: [item({ name: "Pizza", allocation_mode: "equal" })],
+      assignments: []
+    });
+
+    expect(getSplitPreviewReadiness(mixed)).toMatchObject({ ready: true, code: "ready" });
+  });
+
   it("treats equal split without participants as not ready", () => {
     const equal = summary({
       room: { split_mode: "equal" },

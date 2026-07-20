@@ -80,6 +80,7 @@ async def create_room(
         split_mode=payload.split_mode,
         payer_name=payload.payer_name,
         payer_vpa=payload.payer_vpa,
+        title=payload.title,
     )
     if auth_ctx.user is not None:
         await attach_room_owner(room.id, auth_ctx.user, db)

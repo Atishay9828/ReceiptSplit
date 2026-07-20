@@ -67,7 +67,9 @@ class SettlementActor:
 
     @property
     def is_creator(self) -> bool:
-        return self.user is not None or bool(self.participant and self.participant.is_creator)
+        return bool(self.participant and self.participant.is_creator) or (
+            self.user is not None and self.participant is None
+        )
 
 
 @dataclass(frozen=True, slots=True)

@@ -25,7 +25,9 @@ services:
       - key: RECEIPTSPLIT_CORS_ORIGINS
         value: https://receiptsplit-web.vercel.app
       - key: RECEIPTSPLIT_AUTH_OIDC_PROVIDER
-        value: disabled
+        value: google
+      - key: RECEIPTSPLIT_AUTH_OIDC_AUDIENCE
+        sync: false
       - key: RECEIPTSPLIT_OCR_PROVIDER
         value: mock
       - key: RECEIPTSPLIT_OCR_STORE_RAW_TEXT
