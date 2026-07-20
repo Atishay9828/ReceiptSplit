@@ -96,11 +96,10 @@ See `backend/README.md` for backend configuration and test commands.
 
 ## Deploy from GitHub
 
-The production setup uses two Vercel projects connected to this repository and one managed
-PostgreSQL database:
+The production setup uses two Vercel projects and one managed PostgreSQL database:
 
-- Website project root: `frontend`
-- API project root: `backend`
+- Website: <https://receiptsplit-web.vercel.app> (project root: `frontend`)
+- API health: <https://receiptsplit-api.vercel.app/health> (project root: `backend`)
 - Database: Supabase Postgres in Singapore, close to the API region
 
 Vercel automatically creates preview deployments for branches and redeploys production when the
@@ -114,7 +113,7 @@ RECEIPTSPLIT_DATABASE_URL=<managed-postgres-session-pooler-url>
 RECEIPTSPLIT_DATABASE_POOL_SIZE=1
 RECEIPTSPLIT_DATABASE_MAX_OVERFLOW=0
 RECEIPTSPLIT_DATABASE_POOL_RECYCLE_SECONDS=120
-RECEIPTSPLIT_CORS_ORIGINS=https://<website-domain>
+RECEIPTSPLIT_CORS_ORIGINS=https://receiptsplit-web.vercel.app
 RECEIPTSPLIT_AUTH_OIDC_PROVIDER=disabled
 RECEIPTSPLIT_OCR_PROVIDER=mock
 RECEIPTSPLIT_OCR_STORE_RAW_TEXT=false
@@ -124,13 +123,16 @@ RECEIPTSPLIT_LOG_LEVEL=INFO
 Configure the website project after the API URL is known:
 
 ```text
-NEXT_PUBLIC_API_BASE_URL=https://<api-domain>
+NEXT_PUBLIC_API_BASE_URL=https://receiptsplit-api.vercel.app
 ```
 
 Run every committed Alembic migration against the managed database before deploying backend code
 that depends on it. The current public MVP deliberately rejects account JWTs until a production
 OIDC verifier is configured; room and participant capability tokens continue to work. OCR uses the
 mock provider because Vercel's local filesystem is ephemeral.
+
+The initial production builds are live. Git-triggered redeployment requires both Vercel projects
+to be linked to `Atishay9828/ReceiptSplit` with `feat/split-engine` as the production branch.
 
 ## Architecture
 
