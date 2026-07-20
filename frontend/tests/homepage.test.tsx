@@ -15,15 +15,14 @@ describe("ReceiptSplit public homepage", () => {
     push.mockReset();
   });
 
-  it("leads into the real create flow and explains the product through concrete artifacts", () => {
+  it("leads into the product flow without publishing the engineering learning story", () => {
     render(<HomePage />);
 
     expect(screen.getByRole("heading", { name: /a receipt should end the debate/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /create a split/i })[0]).toHaveAttribute("href", "/create");
-    expect(screen.getByText(/a scan starts a draft/i)).toBeInTheDocument();
-    expect(screen.getByText(/reconnects should not rewrite/i)).toBeInTheDocument();
-    expect(screen.getByText(/money refuses/i)).toBeInTheDocument();
-    expect(screen.getByText(/honest states are a safety feature/i)).toBeInTheDocument();
+    expect(screen.queryByText(/what I learned by shipping it/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /build story|see how I built it/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 3 claimed/i)).toBeInTheDocument();
     expect(screen.queryByText(/verified paid|payment verified|bank confirmed/i)).not.toBeInTheDocument();
   });
 

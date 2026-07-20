@@ -1,6 +1,16 @@
 "use client";
 
-import { CheckCircle2, ReceiptText, Smartphone, WalletCards } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  ListChecks,
+  ReceiptText,
+  Smartphone,
+  UsersRound,
+  WalletCards
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -25,36 +35,71 @@ export default function CreatePage() {
   }
 
   return (
-    <main className="mx-auto grid min-h-dvh w-full max-w-5xl content-center gap-5 px-4 py-8 text-ink sm:px-6">
-      <section className="grid gap-5 rounded-md border border-border bg-surface p-5 shadow-soft sm:p-7 lg:grid-cols-[1fr_420px] lg:items-center">
-        <div className="grid gap-5">
-          <span className="inline-grid h-12 w-12 place-items-center rounded-md bg-mint text-leaf">
-            <ReceiptText size={26} aria-hidden="true" />
-          </span>
-          <div className="grid gap-3">
-            <p className="text-sm font-semibold uppercase text-leaf">ReceiptSplit</p>
-            <h1 className="max-w-xl text-3xl font-bold leading-tight sm:text-5xl">
-              Split a receipt with friends in under a minute.
+    <div className="min-h-dvh text-ink">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 pr-16 sm:px-6 sm:pr-20">
+          <Link className="inline-flex min-h-11 items-center gap-2 font-bold" href="/">
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-mint text-leaf">
+              <ReceiptText size={20} aria-hidden="true" />
+            </span>
+            ReceiptSplit
+          </Link>
+          <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-muted hover:text-ink" href="/">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back home
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start lg:gap-10">
+        <section className="grid gap-6 lg:sticky lg:top-24">
+          <div className="grid gap-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-leaf">New receipt</p>
+            <h1 className="max-w-2xl text-4xl font-bold leading-[1.02] tracking-[-0.04em] sm:text-6xl">
+              Split a receipt with friends. Keep every share clear.
             </h1>
-            <p className="max-w-xl text-base leading-7 text-muted">
-              Upload a bill, let friends claim what they had, and settle directly through UPI.
+            <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
+              Create the bill, share one private invite, and let everyone claim their food. Payment
+              can stay pending until each person is ready.
             </p>
           </div>
+
+          <ol className="grid gap-3 sm:grid-cols-3" aria-label="What happens after creating a bill">
+            <FlowStep icon={<ListChecks size={19} aria-hidden="true" />} label="1. Add the bill" detail="Scan a receipt or enter items manually." />
+            <FlowStep icon={<UsersRound size={19} aria-hidden="true" />} label="2. Collect claims" detail="Friends join and claim what they had." />
+            <FlowStep icon={<Clock3 size={19} aria-hidden="true" />} label="3. Settle later" detail="Due shares remain visible until confirmed." />
+          </ol>
+
           <div className="grid gap-2 text-sm sm:grid-cols-3">
             <TrustPill icon={<Smartphone size={16} aria-hidden="true" />} label="No app needed for friends" />
-            <TrustPill icon={<WalletCards size={16} aria-hidden="true" />} label="No wallet" />
+            <TrustPill icon={<WalletCards size={16} aria-hidden="true" />} label="No shared wallet" />
             <TrustPill icon={<CheckCircle2 size={16} aria-hidden="true" />} label="Direct UPI payment" />
           </div>
-        </div>
-        <div className="rounded-md border border-border bg-cloud/70 p-4 sm:p-5">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">Create split room</h2>
-            <p className="mt-1 text-sm text-muted">No awkward maths. Claim food, split cleanly.</p>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-soft sm:p-6" aria-labelledby="create-room-title">
+          <div className="mb-5 border-b border-border pb-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-info">Bill setup</p>
+            <h2 className="mt-2 text-2xl font-bold" id="create-room-title">Create split room</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              This room represents one receipt. You can leave unsettled shares pending and return
+              to them later.
+            </p>
           </div>
           <CreateRoomForm onCreate={createRoom} submitLabel="Create split room" />
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function FlowStep({ icon, label, detail }: { icon: ReactNode; label: string; detail: string }) {
+  return (
+    <li className="rounded-md border border-border bg-surface p-4">
+      <span className="grid h-10 w-10 place-items-center rounded-md bg-info-soft text-info">{icon}</span>
+      <p className="mt-4 font-bold">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-muted">{detail}</p>
+    </li>
   );
 }
 

@@ -15,6 +15,8 @@ export class RoomEventSync {
   private seen = new Set<number>();
   private controller: AbortController | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private replayTimer: ReturnType<typeof setInterval> | null = null;
+  private replayInFlight: Promise<void> | null = null;
   private readonly baseUrl: string;
   lastSequence: number;
 
@@ -59,6 +61,7 @@ export class RoomEventSync {
 
   start(): void {
     void this.connect();
+    this.replayTimer = setInterval(() => void this.pollDurableEvents(), 3000);
   }
 
   stop(): void {
@@ -68,7 +71,24 @@ export class RoomEventSync {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.replayTimer) {
+      clearInterval(this.replayTimer);
+      this.replayTimer = null;
+    }
     this.options.onConnectionChange?.(false);
+  }
+
+  private async pollDurableEvents(): Promise<void> {
+    if (this.replayInFlight) {
+      return this.replayInFlight;
+    }
+
+    this.replayInFlight = this.replay()
+      .catch(() => undefined)
+      .finally(() => {
+        this.replayInFlight = null;
+      });
+    return this.replayInFlight;
   }
 
   private async connect(): Promise<void> {

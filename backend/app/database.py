@@ -61,12 +61,12 @@ def _build_engine() -> AsyncEngine:
     return create_async_engine(
         settings.database_url,
         echo=settings.is_development,  # log SQL in development only
-        pool_size=10,
-        max_overflow=20,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
         pool_pre_ping=True,
         # Supabase Postgres closes idle connections after ~5 minutes.
         # pool_recycle ensures connections are refreshed before that.
-        pool_recycle=300,
+        pool_recycle=settings.database_pool_recycle_seconds,
     )
 
 

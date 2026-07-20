@@ -14,29 +14,123 @@ ReceiptSplit/
 └── README.md
 ```
 
-## Development Setup
+## Run Locally
 
-See `backend/README.md` for backend setup details.
+### Prerequisites
 
-Local backend:
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20+ and npm
+- Docker Desktop with the Docker engine running
+
+The commands below are for Windows PowerShell and start PostgreSQL, the FastAPI backend, and the
+Next.js website.
+
+### First-time setup
+
+Run these commands from the repository root:
 
 ```powershell
+# Start PostgreSQL on 127.0.0.1:54329
 docker compose -f docker-compose.dev.yml up -d
-cd backend
-uv sync
-cp .env.example .env
+
+# Install backend dependencies and create backend/.env
+Set-Location backend
+uv sync --extra dev
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv run alembic upgrade head
+Set-Location ..
+
+# Install frontend dependencies and create frontend/.env.local
+Set-Location frontend
+npm.cmd install
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
+Set-Location ..
+```
+
+### Start the app
+
+Keep the following two terminals open.
+
+Terminal 1 - backend:
+
+```powershell
+Set-Location backend
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Local frontend:
+If `uv` is unavailable after the environment has already been created, use:
 
 ```powershell
-cd frontend
-copy .env.example .env.local
-npm install
-npm run dev -- --hostname 127.0.0.1 --port 3000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+
+Terminal 2 - website:
+
+```powershell
+Set-Location frontend
+npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+```
+
+Open the website at <http://127.0.0.1:3000>. The backend API runs at
+<http://127.0.0.1:8000>, its health check is <http://127.0.0.1:8000/health>, and interactive API
+documentation is available at <http://127.0.0.1:8000/docs>.
+
+After pulling backend changes that include new migrations, run this before starting the backend:
+
+```powershell
+Set-Location backend
+uv run alembic upgrade head
+```
+
+### Stop the app
+
+Press `Ctrl+C` in both development-server terminals. Stop the local database from the repository
+root when it is no longer needed:
+
+```powershell
+docker compose -f docker-compose.dev.yml down
+```
+
+See `backend/README.md` for backend configuration and test commands.
+
+## Deploy from GitHub
+
+The production setup uses two Vercel projects connected to this repository and one managed
+PostgreSQL database:
+
+- Website project root: `frontend`
+- API project root: `backend`
+- Database: Supabase Postgres in Singapore, close to the API region
+
+Vercel automatically creates preview deployments for branches and redeploys production when the
+configured production branch is updated. Do not commit deployment secrets or local `.env` files.
+
+Configure these API environment variables in Vercel:
+
+```text
+RECEIPTSPLIT_ENV=production
+RECEIPTSPLIT_DATABASE_URL=<managed-postgres-session-pooler-url>
+RECEIPTSPLIT_DATABASE_POOL_SIZE=1
+RECEIPTSPLIT_DATABASE_MAX_OVERFLOW=0
+RECEIPTSPLIT_DATABASE_POOL_RECYCLE_SECONDS=120
+RECEIPTSPLIT_CORS_ORIGINS=https://<website-domain>
+RECEIPTSPLIT_AUTH_OIDC_PROVIDER=disabled
+RECEIPTSPLIT_OCR_PROVIDER=mock
+RECEIPTSPLIT_OCR_STORE_RAW_TEXT=false
+RECEIPTSPLIT_LOG_LEVEL=INFO
+```
+
+Configure the website project after the API URL is known:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://<api-domain>
+```
+
+Run every committed Alembic migration against the managed database before deploying backend code
+that depends on it. The current public MVP deliberately rejects account JWTs until a production
+OIDC verifier is configured; room and participant capability tokens continue to work. OCR uses the
+mock provider because Vercel's local filesystem is ephemeral.
 
 ## Architecture
 

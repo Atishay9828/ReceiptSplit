@@ -37,6 +37,19 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://postgres:password@localhost:5432/receiptsplit"
+    database_pool_size: int = 10
+    database_max_overflow: int = 20
+    database_pool_recycle_seconds: int = 300
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """Accept standard hosted Postgres URLs and select the asyncpg driver."""
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
     # The synchronous URL is required by Alembic (migrations run synchronously).
     # Derived automatically from database_url by swapping the driver.

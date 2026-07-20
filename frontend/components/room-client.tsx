@@ -189,7 +189,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   const readiness = getSplitPreviewReadiness(summary);
 
   return (
-    <main className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-5 pb-20 text-ink sm:px-6">
+    <main className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 overflow-x-clip px-4 py-5 pb-20 text-ink sm:px-6">
       <RoomHeader summary={summary} connected={connected} />
       {mode === "creator" && session.role === "creator" ? (
         <CreatorTools
@@ -221,22 +221,31 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 }
 
 function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: boolean }) {
+  const splitLabel = summary.room.split_mode === "item_wise" ? "Item-wise" : "Equal";
+  const statusLabel =
+    summary.room.status === "active"
+      ? "Claiming"
+      : summary.room.status.charAt(0).toUpperCase() + summary.room.status.slice(1);
+
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-leaf">ReceiptSplit room</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{summary.room.payer_name || "ReceiptSplit"}</h1>
-          <p className="mt-1 text-sm text-[#63706b]">
-            {summary.room.split_mode === "item_wise" ? "Item-wise" : "Equal"} · {summary.room.status}
-          </p>
+    <header className="sticky top-0 z-40 rounded-md border border-border bg-surface/95 px-4 py-3 pr-14 shadow-soft backdrop-blur-xl sm:px-5 sm:pr-16">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-leaf">ReceiptSplit</p>
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="truncate text-xl font-bold sm:text-2xl">{summary.room.payer_name || "ReceiptSplit room"}</h1>
+            <p className="text-xs font-semibold text-muted">{splitLabel} split</p>
+          </div>
         </div>
-        <span className="rounded-full bg-cloud px-3 py-1 text-xs font-semibold text-[#52625b]">
-          {connected ? "Live" : "Syncing"}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-info-soft px-3 py-1 text-xs font-bold text-info">{statusLabel}</span>
+          <span className="hidden rounded-full bg-cloud px-3 py-1 text-xs font-semibold text-muted sm:inline-flex">
+            {connected ? "Live" : "Syncing"}
+          </span>
+        </div>
       </div>
       <LifecycleIndicator status={summary.room.status} />
-    </section>
+    </header>
   );
 }
 
@@ -858,9 +867,9 @@ function getParticipantTotalCopy(status: ParticipantTotalStatus) {
       };
     case "ready_to_pay":
       return {
-        label: "Ready to pay",
-        title: "Pay your share directly to the payer.",
-        description: "Use the payment card below when the creator prepares settlement.",
+        label: "Pending",
+        title: "Your share can stay pending.",
+        description: "Pay the payer directly when you are ready, then return here to mark it paid.",
         tone: "info" as const
       };
     case "payment_opened":
@@ -1298,7 +1307,9 @@ export function ParticipantSettlementPanel({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Pay your share</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Pay directly to the payer. No wallet, no middle step.</p>
+          <p className="mt-1 text-sm text-[#63706b]">
+            Pay directly when you are ready. This request stays pending until the payer confirms it.
+          </p>
         </div>
         <SettlementStatusBadge status={request.status} />
       </div>
