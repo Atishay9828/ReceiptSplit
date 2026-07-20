@@ -105,7 +105,8 @@ The free deployment uses three services:
 The website is live at <https://receiptsplit-web.vercel.app> and the API is live at
 <https://receiptsplit-api.onrender.com>. Vercel tracks the repository's `feat/split-engine`
 default branch and automatically creates preview deployments for other branches. Render tracks
-backend changes on the same branch and redeploys the API automatically.
+backend changes on the same branch and redeploys the API through
+`.github/workflows/deploy-render.yml`.
 
 ### Deploy the API on Render
 
@@ -115,6 +116,8 @@ backend changes on the same branch and redeploys the API automatically.
 3. Apply the Blueprint. The start command runs Alembic migrations before starting FastAPI.
 4. Copy the resulting service URL. This repository currently uses
    `https://receiptsplit-api.onrender.com`.
+5. Add the service's private deploy-hook URL as the GitHub Actions repository secret
+   `RENDER_DEPLOY_HOOK`. Backend changes pushed to `feat/split-engine` will then redeploy Render.
 
 The Blueprint configures these non-secret API settings:
 
