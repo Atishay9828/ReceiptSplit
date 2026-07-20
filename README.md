@@ -96,20 +96,29 @@ See `backend/README.md` for backend configuration and test commands.
 
 ## Deploy from GitHub
 
-The production setup uses two Vercel projects and one managed PostgreSQL database:
+The free deployment uses three services:
 
-- Website: <https://receiptsplit-web.vercel.app> (project root: `frontend`)
-- API health: <https://receiptsplit-api.vercel.app/health> (project root: `backend`)
-- Database: Supabase Postgres in Singapore, close to the API region
+- Website: Vercel, with `frontend` as the project root
+- API: Render Free Web Service, defined by the repository-root `render.yaml`
+- Database: Supabase Postgres in Singapore
 
-Vercel automatically creates preview deployments for branches and redeploys production when the
-configured production branch is updated. Do not commit deployment secrets or local `.env` files.
+The website is live at <https://receiptsplit-web.vercel.app>. Vercel tracks the repository's
+`feat/split-engine` default branch and automatically creates preview deployments for other
+branches. After the Blueprint is applied, Render also tracks the default branch and redeploys the
+API after each backend commit.
 
-Configure these API environment variables in Vercel:
+### Deploy the API on Render
+
+1. In Render, choose **New > Blueprint** and connect `Atishay9828/ReceiptSplit`.
+2. Render reads `render.yaml`, selects the free plan, and asks for
+   `RECEIPTSPLIT_DATABASE_URL`. Paste the Supabase session-pooler URL there; never commit it.
+3. Apply the Blueprint. The start command runs Alembic migrations before starting FastAPI.
+4. Copy the resulting `https://<service>.onrender.com` URL.
+
+The Blueprint configures these non-secret API settings:
 
 ```text
 RECEIPTSPLIT_ENV=production
-RECEIPTSPLIT_DATABASE_URL=<managed-postgres-session-pooler-url>
 RECEIPTSPLIT_DATABASE_POOL_SIZE=1
 RECEIPTSPLIT_DATABASE_MAX_OVERFLOW=0
 RECEIPTSPLIT_DATABASE_POOL_RECYCLE_SECONDS=120
@@ -120,19 +129,24 @@ RECEIPTSPLIT_OCR_STORE_RAW_TEXT=false
 RECEIPTSPLIT_LOG_LEVEL=INFO
 ```
 
-Configure the website project after the API URL is known:
+### Point Vercel at Render
+
+Set this variable for Production, Preview, and Development in the Vercel website project, then
+redeploy the current production commit:
 
 ```text
-NEXT_PUBLIC_API_BASE_URL=https://receiptsplit-api.vercel.app
+NEXT_PUBLIC_API_BASE_URL=https://<service>.onrender.com
 ```
 
-Run every committed Alembic migration against the managed database before deploying backend code
-that depends on it. The current public MVP deliberately rejects account JWTs until a production
-OIDC verifier is configured; room and participant capability tokens continue to work. OCR uses the
-mock provider because Vercel's local filesystem is ephemeral.
+Verify the API at `https://<service>.onrender.com/health`, then open the website and create a room.
+The current public MVP deliberately rejects account JWTs until a production OIDC verifier is
+configured; room and participant capability tokens continue to work. OCR uses the mock provider
+because free hosting has an ephemeral filesystem.
 
-The initial production builds are live. Git-triggered redeployment requires both Vercel projects
-to be linked to `Atishay9828/ReceiptSplit` with `feat/split-engine` as the production branch.
+Render's free service sleeps after 15 minutes without traffic and can take about one minute to wake
+on the next request. It provides 750 free instance-hours per workspace per month. Keep a payment
+method off the account if automatic billing is not wanted; Render suspends service or builds at the
+free limits instead of charging an account without a payment method.
 
 ## Architecture
 
