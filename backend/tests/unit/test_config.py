@@ -38,3 +38,24 @@ def test_database_url_accepts_standard_hosted_postgres_url(
     assert settings.database_url_sync == (
         "postgresql+psycopg2://user:password@db.example.com:5432/receiptsplit"
     )
+
+
+def test_database_url_sync_translates_asyncpg_ssl_option(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "RECEIPTSPLIT_DATABASE_URL",
+        "postgresql+asyncpg://user:password@db.example.com:5432/receiptsplit"
+        "?ssl=require&application_name=receiptsplit",
+    )
+
+    settings = Settings()
+
+    assert settings.database_url == (
+        "postgresql+asyncpg://user:password@db.example.com:5432/receiptsplit"
+        "?ssl=require&application_name=receiptsplit"
+    )
+    assert settings.database_url_sync == (
+        "postgresql+psycopg2://user:password@db.example.com:5432/receiptsplit"
+        "?sslmode=require&application_name=receiptsplit"
+    )
