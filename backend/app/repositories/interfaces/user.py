@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 
 
 class UserRepository(Protocol):
+    async def get_by_username(self, db: AsyncSession, username: str) -> User | None:
+        """Finds a user by case-insensitive username."""
+        ...
+
     async def create(self, db: AsyncSession, user: User) -> User:
         """Persists a new user."""
         ...

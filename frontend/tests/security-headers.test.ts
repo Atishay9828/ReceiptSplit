@@ -11,6 +11,7 @@ describe("sensitive route headers", () => {
     expect(headers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: "/join/:inviteToken" }),
+        expect.objectContaining({ source: "/dashboard" }),
         expect.objectContaining({ source: "/rooms/:roomId" }),
         expect.objectContaining({ source: "/rooms/:roomId/creator" })
       ])

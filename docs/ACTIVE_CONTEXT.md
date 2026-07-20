@@ -38,8 +38,7 @@ context.
 ## Current Milestone Status
 
 - Last full pass: M014.1 Real-World UX Bug Bash & Payment Flow Repair, commit `2e14478`.
-- Current active milestone: M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion
-  UX Repair.
+- Current active milestone: M016 Persistent Rooms, Friends, Multi-Bill Ledger & Mixed Item Splits.
 - M015 state: CONDITIONAL PASS pending audit approval, Docker/Testcontainers backend proof, and
   real-device UPI checks.
 - M015 adds a persisted light/dark theme system, dark-mode UI polish across create/join/room/payment
@@ -55,8 +54,38 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Close out M015.1 commit and preserve validation evidence. Real-device UPI checks remain external
-QA; dependency audit has a moderate Next/PostCSS advisory with no safe automatic fix path.
+Finish M016 deployment configuration and publish the validated branch. A real Google OAuth web
+client ID is still required in Vercel and Render before account sign-in can work on the live site.
+
+## M016 Current Implementation
+
+- A persistent room is a long-lived friend group; each receipt is a separate bill under that room.
+- Room dashboards aggregate all bill totals plus money pending and payer-confirmed as cleared.
+- Locked non-payer shares count as pending even before someone opens the UPI action.
+- Item-wise bills can mix individually claimed items with items split equally among everyone.
+- Participant controls use explicit `Add to my share` / `Remove` actions and quantity wording;
+  the ambiguous `Claim 1/2` labels are gone.
+- Account profiles support unique usernames, direct friend connections, and multiple groups.
+- Google Identity Services is wired end to end through server-side ID-token verification. The UI
+  exposes an honest configuration fallback until the real OAuth client ID is supplied.
+- Architecture details: `docs/architecture/persistent-rooms.md`.
+
+M016 validation in this working tree:
+
+- Backend Ruff passed.
+- Focused strict mypy passed for the new community, auth, and mixed-split scope.
+- PostgreSQL integration tests passed for accounts, usernames, friends, persistent rooms,
+  multi-bill membership, pending/cleared totals, authorization, and settlement privacy.
+- Frontend lint and typecheck passed; 18 files / 75 tests passed; production build passed.
+- Browser smoke passed for the dashboard configuration fallback and mixed item creation. It also
+  found and drove a fix for stale live-sync responses overwriting newer item state.
+- Full backend pytest passed after the compatibility fix, with three expected skips and one
+  Starlette deprecation warning.
+- A final privacy-only response assertion was added after that pass; its focused Ruff/mypy checks
+  passed, but the DB test rerun was blocked when Docker Desktop shut down (`CreateFile: The system
+  cannot find the file specified`).
+- Live Google sign-in remains blocked on a real OAuth web client ID; production deployment still
+  needs the validated branch published through the connected hosting pipeline.
 
 ## M014.1 Current Implementation
 

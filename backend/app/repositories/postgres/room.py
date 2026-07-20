@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select, update
 
 from app.models.room import Room
+from app.models.room_participant import RoomParticipant
 from app.models.room_sequence import RoomSequence
 from app.repositories.interfaces.room import RoomRepository
 from app.repositories.postgres.base import PostgresRepository
@@ -41,6 +42,12 @@ class PostgresRoomRepository(PostgresRepository[Room], RoomRepository):
             .returning(Room.id)
         )
         result = await db.execute(stmt)
+        participant_stmt = (
+            update(RoomParticipant)
+            .where(RoomParticipant.room_id == room_id, RoomParticipant.role == "creator")
+            .values(user_id=user_id)
+        )
+        await db.execute(participant_stmt)
         return result.first() is not None
 
     async def list_by_creator(self, db: AsyncSession, user_id: UUID) -> list[Room]:

@@ -61,6 +61,7 @@ async def add_item(
         name=payload.name,
         quantity=payload.quantity,
         total_paise=payload.total_paise,
+        allocation_mode=payload.allocation_mode,
     )
     return ItemResponse.model_validate(item)
 

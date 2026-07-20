@@ -306,6 +306,33 @@ class TestItemWiseSplit:
         # remainder = 900 - 300*3 = 0
         assert sum(t.total_paise for t in result.participant_totals) == 900
 
+    def test_item_wise_mode_can_mix_individual_and_equal_items(self):
+        ps = _participants(2)
+        drink = SplitItem(id=uuid4(), quantity=1, total_paise=200, allocation_mode="individual")
+        pizza = SplitItem(id=uuid4(), quantity=1, total_paise=601, allocation_mode="equal")
+
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="item_wise",
+                items=[drink, pizza],
+                assignments=[
+                    SplitAssignment(
+                        item_id=drink.id,
+                        participant_id=ps[1].id,
+                        claimed_qty=1,
+                        created_at=_ts(0),
+                    )
+                ],
+                adjustments=[],
+                participants=ps,
+            )
+        )
+
+        totals = {entry.participant_id: entry.items_paise for entry in result.participant_totals}
+        assert totals[ps[0].id] == 301
+        assert totals[ps[1].id] == 500
+        assert result.grand_total_paise == 801
+
     def test_item_wise_per_item_remainder_to_last_claimer(self):
         """Per-item remainder goes to the last claimer by timestamp."""
         ps = _participants(2)

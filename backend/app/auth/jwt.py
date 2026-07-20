@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from dataclasses import dataclass
@@ -88,3 +89,37 @@ class FakeJwtVerifier:
         if claims is None:
             raise InvalidJwt()
         return claims
+
+
+@dataclass(frozen=True, slots=True)
+class GoogleJwtVerifier:
+    """Verify Google Identity Services ID tokens with Google's signed keys."""
+
+    audience: str
+
+    async def verify(self, token: str) -> JwtClaims:
+        try:
+            from google.auth.transport import requests
+            from google.oauth2 import id_token
+
+            payload = await asyncio.to_thread(
+                id_token.verify_oauth2_token,
+                token,
+                requests.Request(),
+                self.audience,
+            )
+        except Exception as exc:
+            raise InvalidJwt() from exc
+
+        subject = payload.get("sub")
+        issuer = payload.get("iss")
+        if not isinstance(subject, str) or not subject:
+            raise InvalidJwt()
+        if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
+            raise InvalidJwt()
+        email = payload.get("email")
+        return JwtClaims(
+            provider="google",
+            subject=subject,
+            email=email if isinstance(email, str) else None,
+        )

@@ -28,6 +28,11 @@ class PostgresUserRepository(PostgresRepository[User], UserRepository):
     async def get_by_id(self, db: AsyncSession, user_id: UUID) -> User | None:
         return await self.fetch_optional(db, user_id)
 
+    async def get_by_username(self, db: AsyncSession, username: str) -> User | None:
+        stmt = select(User).where(func.lower(User.username) == username.lower())
+        result = await db.execute(stmt)
+        return result.scalars().first()
+
     async def find_by_provider_subject(
         self, db: AsyncSession, provider: str, subject: str
     ) -> User | None:

@@ -38,6 +38,7 @@ class SplitItem:
     id: UUID
     quantity: int
     total_paise: int
+    allocation_mode: str = "individual"
 
 
 @dataclass(frozen=True, slots=True)

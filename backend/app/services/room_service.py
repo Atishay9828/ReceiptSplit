@@ -66,6 +66,8 @@ class RoomService:
         split_mode: str = "equal",
         payer_name: str | None = None,
         payer_vpa: str | None = None,
+        title: str | None = None,
+        group_id: UUID | None = None,
         room_ttl_days: int = 30,
     ) -> tuple[Room, str, str]:
         """
@@ -82,6 +84,8 @@ class RoomService:
             split_mode=split_mode,
             payer_name=payer_name,
             payer_vpa=payer_vpa,
+            title=title,
+            group_id=group_id,
             expires_at=now + timedelta(days=room_ttl_days),
         )
         async with db.begin_nested():

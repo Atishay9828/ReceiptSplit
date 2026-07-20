@@ -16,6 +16,7 @@ class ItemCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     quantity: int = Field(ge=1, le=999)
     total_paise: int = Field(ge=0, le=10_000_000)
+    allocation_mode: str = Field(default="individual", pattern="^(individual|equal)$")
 
     @field_validator("name", mode="before")
     @classmethod
@@ -30,6 +31,7 @@ class ItemUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     quantity: int | None = Field(default=None, ge=1, le=999)
     total_paise: int | None = Field(default=None, ge=0, le=10_000_000)
+    allocation_mode: str | None = Field(default=None, pattern="^(individual|equal)$")
 
     @field_validator("name", mode="before")
     @classmethod
@@ -50,6 +52,7 @@ class ItemResponse(ORMModel):
     name: str
     quantity: int
     total_paise: int
+    allocation_mode: str
     source: str
     confidence: float
     sort_order: int

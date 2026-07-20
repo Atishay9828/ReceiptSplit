@@ -79,6 +79,17 @@ class PostgresParticipantRepository(PostgresRepository[RoomParticipant], Partici
         result = await db.execute(stmt)
         return result.scalars().first()
 
+    async def get_by_room_user(
+        self, db: AsyncSession, room_id: UUID, user_id: UUID
+    ) -> RoomParticipant | None:
+        stmt = select(RoomParticipant).where(
+            RoomParticipant.room_id == room_id,
+            RoomParticipant.user_id == user_id,
+            RoomParticipant.left_at.is_(None),
+        )
+        result = await db.execute(stmt)
+        return result.scalars().first()
+
     async def list_active(self, db: AsyncSession, room_id: UUID) -> list[RoomParticipant]:
         stmt = select(RoomParticipant).where(
             RoomParticipant.room_id == room_id, RoomParticipant.left_at.is_(None)

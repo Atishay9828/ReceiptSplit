@@ -12,6 +12,7 @@ export type AdjustmentType =
   | "adjustment"
   | "rounding";
 export type AllocationMethod = "proportional" | "equal";
+export type ItemAllocationMode = "individual" | "equal";
 
 export type ApiErrorShape = {
   error?: {
@@ -34,6 +35,8 @@ export type Room = {
   split_mode: SplitMode;
   payer_vpa: string | null;
   payer_name: string | null;
+  title?: string | null;
+  group_id?: string | null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -43,6 +46,7 @@ export type Room = {
 export type Participant = {
   id: string;
   room_id: string;
+  user_id?: string | null;
   nickname: string;
   color: string;
   role: "creator" | "participant";
@@ -55,6 +59,7 @@ export type Item = {
   name: string;
   quantity: number;
   total_paise: number;
+  allocation_mode?: ItemAllocationMode;
   source: string;
   confidence: number;
   sort_order: number;
@@ -88,6 +93,7 @@ export type RoomCreateRequest = {
   split_mode: SplitMode;
   payer_name?: string;
   payer_vpa?: string;
+  title?: string;
 };
 
 export type RoomCreateResponse = {
@@ -113,6 +119,7 @@ export type ItemPayload = {
   name: string;
   quantity: number;
   total_paise: number;
+  allocation_mode: ItemAllocationMode;
 };
 
 export type ClaimPayload = {
@@ -322,4 +329,41 @@ export type ParsedReceiptConfirmResponse = {
   created_item_ids: string[];
   created_adjustment_ids: string[];
   events: string[];
+};
+
+export type AuthUser = {
+  id: string;
+  provider: string;
+  subject: string;
+  email: string | null;
+  username: string | null;
+  display_name: string | null;
+};
+
+export type CommunityUser = Pick<AuthUser, "id" | "username" | "display_name">;
+
+export type GroupMember = CommunityUser & { role: "owner" | "member" };
+
+export type GroupBillSummary = {
+  id: string;
+  title: string;
+  status: RoomStatus;
+  created_at: string;
+  grand_total_paise: number;
+  pending_paise: number;
+  cleared_paise: number;
+  current_participant_id: string | null;
+  is_creator: boolean;
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  role: "owner" | "member";
+  members: GroupMember[];
+  bills: GroupBillSummary[];
+  total_paise: number;
+  pending_paise: number;
+  cleared_paise: number;
+  created_at: string;
 };

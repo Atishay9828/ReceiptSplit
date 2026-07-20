@@ -26,6 +26,9 @@ class RoomParticipant(Base):
     invite_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("room_invites.id"), nullable=True
     )
+    user_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     nickname: Mapped[str] = mapped_column(String(30), nullable=False)
     color: Mapped[str] = mapped_column(String(7), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, server_default="participant")
@@ -42,4 +45,5 @@ class RoomParticipant(Base):
             "room_id",
             postgresql_where=text("left_at IS NULL"),
         ),
+        Index("idx_participants_room_user", "room_id", "user_id", unique=True),
     )

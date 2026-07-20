@@ -6,6 +6,9 @@ All models are exported here for easy access by Alembic and other modules.
 
 from app.models.abuse_report import AbuseReport
 from app.models.audit_log import AuditLog
+from app.models.friendship import Friendship
+from app.models.group import Group
+from app.models.group_member import GroupMember
 from app.models.line_item import LineItem
 from app.models.line_item_assignment import LineItemAssignment
 from app.models.ocr_job import OcrJob
@@ -29,6 +32,9 @@ from app.models.user import User
 __all__ = [
     "AbuseReport",
     "AuditLog",
+    "Friendship",
+    "Group",
+    "GroupMember",
     "LineItem",
     "LineItemAssignment",
     "OcrJob",
