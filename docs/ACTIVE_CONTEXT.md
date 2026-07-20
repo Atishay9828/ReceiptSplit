@@ -81,9 +81,8 @@ M016 validation in this working tree:
   found and drove a fix for stale live-sync responses overwriting newer item state.
 - Full backend pytest passed after the compatibility fix, with three expected skips and one
   Starlette deprecation warning.
-- A final privacy-only response assertion was added after that pass; its focused Ruff/mypy checks
-  passed, but the DB test rerun was blocked when Docker Desktop shut down (`CreateFile: The system
-  cannot find the file specified`).
+- The final privacy regression also passed against PostgreSQL after Docker Desktop was restored;
+  friend and group responses do not expose Google email addresses.
 - Live Google sign-in remains blocked on a real OAuth web client ID; production deployment still
   needs the validated branch published through the connected hosting pipeline.
 
