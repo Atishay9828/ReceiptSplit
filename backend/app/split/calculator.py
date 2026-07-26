@@ -44,6 +44,8 @@ from app.split.rounding import RoundingPolicy
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from app.split.models import SplitItem
+
 if True:
     from app.split.models import SplitInput
 
@@ -54,6 +56,47 @@ class SplitCalculator:
     Usage:
         result = SplitCalculator.calculate(split_input)
     """
+
+    @staticmethod
+    def calculate_grand_total(
+        items: list[SplitItem], adjustments: list[SplitAdjustment]
+    ) -> int:
+        """Calculate the receipt total without requiring completed item claims."""
+        subtotal = sum(item.total_paise for item in items)
+        total_discount = sum(
+            _adjustment_effect_amount(adjustment, subtotal)
+            for adjustment in adjustments
+            if adjustment.type == "discount"
+        )
+        total_discount = min(total_discount, subtotal)
+        total_tax = sum(
+            _adjustment_effect_amount(adjustment, subtotal)
+            for adjustment in adjustments
+            if adjustment.type == "tax"
+        )
+        total_service_charge = sum(
+            _adjustment_effect_amount(adjustment, subtotal)
+            for adjustment in adjustments
+            if adjustment.type == "service_charge"
+        )
+        total_delivery = sum(
+            _adjustment_effect_amount(adjustment, subtotal)
+            for adjustment in adjustments
+            if adjustment.type == "delivery_fee"
+        )
+        total_adjustment = sum(
+            _adjustment_effect_amount(adjustment, subtotal)
+            for adjustment in adjustments
+            if adjustment.type == "adjustment"
+        )
+        return (
+            subtotal
+            - total_discount
+            + total_tax
+            + total_service_charge
+            + total_delivery
+            + total_adjustment
+        )
 
     @staticmethod
     def calculate(inp: SplitInput) -> SplitResult:
@@ -150,38 +193,7 @@ class SplitCalculator:
         )
 
         # ── Compute grand total ──────────────────────────────────────────
-        # PDD §5.5: grand_total = subtotal + sum(taxes) + service_charge
-        #           + delivery_fee - sum(discounts) + sum(adjustments)
-        total_discount = sum(
-            _adjustment_effect_amount(a, subtotal) for a in inp.adjustments if a.type == "discount"
-        )
-        # PDD E6: Discount > subtotal → cap at subtotal.
-        # This cap must be applied to grand_total too, not just the allocation.
-        if total_discount > subtotal:
-            total_discount = subtotal
-
-        total_tax = sum(
-            _adjustment_effect_amount(a, subtotal) for a in inp.adjustments if a.type == "tax"
-        )
-        total_svc = sum(
-            _adjustment_effect_amount(a, subtotal)
-            for a in inp.adjustments
-            if a.type == "service_charge"
-        )
-        total_delivery = sum(
-            _adjustment_effect_amount(a, subtotal)
-            for a in inp.adjustments
-            if a.type == "delivery_fee"
-        )
-        total_adjustment = sum(
-            _adjustment_effect_amount(a, subtotal)
-            for a in inp.adjustments
-            if a.type == "adjustment"
-        )
-
-        grand_total = (
-            subtotal - total_discount + total_tax + total_svc + total_delivery + total_adjustment
-        )
+        grand_total = SplitCalculator.calculate_grand_total(inp.items, inp.adjustments)
 
         # ── Step 11: Compute raw totals ──────────────────────────────────
         raw_totals: dict[UUID, int] = {}

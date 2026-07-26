@@ -107,7 +107,7 @@ def get_abuse_service() -> AbuseService:
 
 @lru_cache(maxsize=1)
 def get_community_service() -> CommunityService:
-    return CommunityService()
+    return CommunityService(split_preview=get_split_service().preview)
 
 
 # ── Service factories ────────────────────────────────────────────────────────

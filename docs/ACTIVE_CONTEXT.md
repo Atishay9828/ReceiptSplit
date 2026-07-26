@@ -54,10 +54,9 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Finish the signed-in production smoke for M016. The validated branch, database migrations, Render
-backend, Vercel frontend, and Google OAuth web client are live. The remaining browser check needs a
-real user-consent click in Google's account chooser before the persistent rooms/friends dashboard
-can be exercised with that account.
+M016 is ready for closeout. Google sign-in and the signed-in production dashboard have now passed
+live smoke testing. The remaining open release conditions belong to M015/M015.1: the known
+Next/PostCSS audit advisory and real-device UPI checks.
 
 - Settlement requests support partial payments: a participant chooses any positive amount up to
   the remaining balance, the payer confirms or disputes that single pending claim, and confirmed
@@ -83,7 +82,7 @@ can be exercised with that account.
 - Frontend lint, typecheck, 19 files / 79 tests, and production build passed.
 - Google Identity Services is wired end to end through server-side ID-token verification. The
   production OAuth client is configured for `https://receiptsplit-web.vercel.app`, the external
-  consent screen is published, and the live dashboard renders the Google sign-in button.
+  consent screen is published, and a real Google account completed sign-in on the live dashboard.
 - Architecture details: `docs/architecture/persistent-rooms.md`.
 
 M016 validation in this working tree:
@@ -103,6 +102,15 @@ M016 validation in this working tree:
 - Authenticated dashboard regressions cover Google credential exchange, the persisted account
   session, friends added by username, room creation with selected friends, multi-bill rendering,
   and original/pending/cleared ledger totals.
+- Signed-in production smoke passed for `@atishay9828`: a friend was added by username, `Goa Demo
+  Trip` was created with two members, and a second `Weekend Demo Room` remained separate with a
+  different member set.
+- `Goa Demo Trip` retained two bills at once. `Dinner Day 1` remained open with ₹300 pending while
+  `Cab Day 2` independently previewed an ₹800 equal split as ₹400/₹400.
+- The smoke test exposed and repaired a dashboard summary gap: active bills now report their
+  current receipt total before a locked split session exists, instead of appearing as ₹0.
+- The production auth verifier was corrected from disabled to Google OIDC before the signed-in
+  smoke. Render then deployed the exact production commit successfully.
 - Full backend pytest passed after the compatibility fix, with three expected skips and one
   Starlette deprecation warning.
 - The final privacy regression also passed against PostgreSQL after Docker Desktop was restored;
@@ -110,8 +118,9 @@ M016 validation in this working tree:
 - Render is live at migration `008_partial_settlements`, including the persistent group/friend
   tables and cumulative settlement fields. A legacy database ownership mismatch was repaired by
   transferring the ReceiptSplit schema objects to the application role before redeploying.
-- The production branch is deployed through Render and Vercel. The only outstanding M016 browser
-  proof is the user-consent step and signed-in persistent rooms/friends dashboard smoke.
+- The production branch is deployed through Render and Vercel. M016 has signed-in browser proof
+  for Google auth, usernames, friends, multiple persistent rooms, multiple bills in one room,
+  mixed equal/individual items, and a pending settlement that remains open for later clearing.
 
 ## M014.1 Current Implementation
 

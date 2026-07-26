@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.models.line_item import LineItem
+    from app.models.line_item_assignment import LineItemAssignment
     from app.models.room import Room
     from app.models.room_participant import RoomParticipant
     from app.models.split_adjustment import SplitAdjustment
@@ -72,7 +73,7 @@ class SplitSessionBuilder:
     """
 
     @staticmethod
-    def snapshot_adjustments(adjustments: list[SplitAdjustment]) -> list[dict]:
+    def snapshot_adjustments(adjustments: list[SplitAdjustment]) -> list[dict[str, object]]:
         """Serialize active adjustments to JSON for immutable snapshot (DB-5)."""
         return [
             {
@@ -93,7 +94,7 @@ class SplitSessionBuilder:
         items: list[LineItem],
         participants: list[RoomParticipant],
         adjustments: list[SplitAdjustment],
-        assignments: list,
+        assignments: list[LineItemAssignment],
     ) -> SplitInput:
         """Build the split engine's SplitInput from DB models."""
         split_items = [
@@ -150,7 +151,7 @@ class SplitSessionBuilder:
         session_repo: SplitSessionRepository,
         room: Room,
         result: SplitResult,
-        snapshot: list[dict],
+        snapshot: list[dict[str, object]],
     ) -> SplitSession:
         """Create SplitSession and ParticipantTotal rows."""
         session = SplitSession(
@@ -203,6 +204,24 @@ class SplitPreviewService:
         self._adj_repo = adjustment_repo
         self._assign_repo = assignment_repo
         self._session_repo = session_repo
+
+    async def calculate_receipt_total(self, db: AsyncSession, room_id: UUID) -> int:
+        """Return the current receipt total even when claims are incomplete."""
+        receipt = await self._receipt_repo.get_by_room(db, room_id)
+        if receipt is None:
+            return 0
+        items = await self._item_repo.list_by_receipt(db, receipt.id)
+        adjustments = await self._adj_repo.list_by_room(db, room_id)
+        split_input = SplitSessionBuilder.build_split_input(
+            mode="equal",
+            items=items,
+            participants=[],
+            adjustments=adjustments,
+            assignments=[],
+        )
+        return SplitCalculator.calculate_grand_total(
+            split_input.items, split_input.adjustments
+        )
 
     async def calculate_preview(self, db: AsyncSession, room_id: UUID) -> tuple[SplitResult, int]:
         room = await self._room_repo.get_by_id(db, room_id)

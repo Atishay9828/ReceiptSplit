@@ -80,6 +80,14 @@ async def test_accounts_friends_persistent_rooms_and_member_access(api_client: A
         },
     )
     assert item.status_code == 201
+    active_groups = await api_client.get("/api/groups", headers=bearer(owner_token))
+    assert active_groups.status_code == 200
+    active_group = active_groups.json()["groups"][0]
+    assert active_group["bills"][0]["grand_total_paise"] == 1000
+    assert active_group["total_paise"] == 1000
+    assert active_group["pending_paise"] == 0
+    assert active_group["cleared_paise"] == 0
+
     locked = await api_client.post(
         f"/api/rooms/{room['id']}/split/lock",
         headers=bearer(owner_token),

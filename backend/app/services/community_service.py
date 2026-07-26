@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.services.room_service import RoomService
+    from app.services.split_service import SplitPreviewService
 
 
 class GroupBillRow(TypedDict):
@@ -33,6 +34,9 @@ class GroupBillRow(TypedDict):
 
 
 class CommunityService:
+    def __init__(self, split_preview: SplitPreviewService) -> None:
+        self._split_preview = split_preview
+
     async def update_profile(
         self, db: AsyncSession, user_id: UUID, *, username: str, display_name: str
     ) -> User:
@@ -206,6 +210,9 @@ class CommunityService:
         )
         bills: list[GroupBillRow] = []
         for room, split_session_id, grand_total, participant_id in result.all():
+            displayed_total = int(grand_total or 0)
+            if split_session_id is None:
+                displayed_total = await self._split_preview.calculate_receipt_total(db, room.id)
             owed = 0
             if split_session_id is not None:
                 owed_result = await db.execute(
@@ -227,7 +234,7 @@ class CommunityService:
             bills.append(
                 {
                     "room": room,
-                    "grand_total_paise": int(grand_total or 0),
+                    "grand_total_paise": displayed_total,
                     "pending_paise": max(owed - cleared, 0),
                     "cleared_paise": cleared,
                     "current_participant_id": participant_id,
