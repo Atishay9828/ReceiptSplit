@@ -823,8 +823,8 @@ function ParticipantTools({
         <ParticipantSettlementPanel
           settlement={settlement}
           participantId={session.participantId}
-          onOpenPayment={(requestId) =>
-            api.openPayment(summary.room.id, requestId, session.token).then(async (result) => {
+          onOpenPayment={(requestId, amountPaise) =>
+            api.openPayment(summary.room.id, requestId, session.token, amountPaise).then(async (result) => {
               await onRefresh();
               try {
                 window.open(result.upi_uri, "_self");
@@ -834,8 +834,8 @@ function ParticipantTools({
               return result;
             })
           }
-          onClaimPaid={(requestId) =>
-            run(() => api.claimPaid(summary.room.id, requestId, session.token))
+          onClaimPaid={(requestId, amountPaise) =>
+            run(() => api.claimPaid(summary.room.id, requestId, session.token, amountPaise))
           }
         />
       ) : null}
@@ -1185,10 +1185,26 @@ export function CreatorSettlementPanel({
           <h2 className="text-lg font-bold">Settlement dashboard</h2>
           <p className="mt-1 text-sm text-[#63706b]">Payer confirmation is manual. ReceiptSplit does not verify bank transfers.</p>
         </div>
-        {settlement?.aggregates.payer_confirmed_count === requests.length && requests.length > 0 ? (
-          <StatusBadge tone="success">All payer confirmed</StatusBadge>
+        {settlement?.aggregates.total_due_paise === 0 && requests.length > 0 ? (
+          <StatusBadge tone="success">All balances cleared</StatusBadge>
         ) : null}
       </div>
+      {settlement && requests.length > 0 ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+          <div className="rounded-md bg-cloud p-3">
+            <span className="text-[#63706b]">Bills total</span>
+            <strong className="mt-1 block">{formatPaise(settlement.aggregates.total_original_paise)}</strong>
+          </div>
+          <div className="rounded-md bg-mint/40 p-3">
+            <span className="text-[#63706b]">Cleared</span>
+            <strong className="mt-1 block">{formatPaise(settlement.aggregates.total_confirmed_paise)}</strong>
+          </div>
+          <div className="rounded-md bg-[#fff0ea] p-3">
+            <span className="text-[#63706b]">Pending</span>
+            <strong className="mt-1 block">{formatPaise(settlement.aggregates.total_due_paise)}</strong>
+          </div>
+        </div>
+      ) : null}
 
       {!configured ? (
         <form className="mt-4 grid gap-3" onSubmit={submitPayer}>
@@ -1223,14 +1239,15 @@ export function CreatorSettlementPanel({
           {requests.map((request) => {
             const canConfirm = request.status === "claimed_paid";
             const canDispute = request.status === "claimed_paid";
-            const isTerminal = request.status === "payer_confirmed";
-            const statusMessage = {
+            const isTerminal = request.remaining_amount_paise === 0;
+            const statusMessage = request.status === "claimed_paid"
+              ? `Participant marked ${formatPaise(request.pending_claim_amount_paise ?? 0)} paid — waiting for your confirmation.` : ({
               due: "Waiting for participant to open payment.",
               payment_opened: "Participant opened the UPI link.",
               claimed_paid: "Participant marked paid — waiting for your confirmation.",
               payer_confirmed: "Payer confirmed manually.",
               disputed: "Marked disputed."
-            }[request.status];
+            }[request.status]);
             return (
               <div
                 key={request.id}
@@ -1245,8 +1262,9 @@ export function CreatorSettlementPanel({
                     <h3 className="font-semibold">
                       {participantsById.get(request.participant_id) ?? "Participant"}
                     </h3>
-                    <p className="text-sm text-[#63706b]">
-                      {formatPaise(request.amount_paise)}
+                    <p className="text-sm text-[#63706b]">Total {formatPaise(request.amount_paise)}</p>
+                    <p className="text-xs text-[#63706b]">
+                      Cleared {formatPaise(request.confirmed_amount_paise)} · Pending {formatPaise(request.remaining_amount_paise)}
                     </p>
                     <p className="mt-0.5 text-xs text-[#63706b]">{statusMessage}</p>
                   </div>
@@ -1260,7 +1278,7 @@ export function CreatorSettlementPanel({
                       disabled={!canConfirm}
                       onClick={() => onConfirm(request.id)}
                     >
-                      Confirm payment
+                      Confirm {formatPaise(request.pending_claim_amount_paise ?? 0)}
                     </Button>
                     <Button
                       type="button"
@@ -1289,35 +1307,52 @@ export function ParticipantSettlementPanel({
 }: {
   settlement: SettlementSummary | null;
   participantId: string;
-  onOpenPayment: (requestId: string) => Promise<OpenPaymentResponse>;
-  onClaimPaid: (requestId: string) => Promise<void> | void;
+  onOpenPayment: (requestId: string, amountPaise: number) => Promise<OpenPaymentResponse>;
+  onClaimPaid: (requestId: string, amountPaise: number) => Promise<void> | void;
 }) {
   const request = settlement?.requests.find((entry) => entry.participant_id === participantId) ?? null;
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [amountRupees, setAmountRupees] = useState<string | null>(null);
+  const suggestedAmountPaise =
+    request?.pending_claim_amount_paise ?? request?.remaining_amount_paise ?? 0;
+  const amountInputValue = amountRupees ?? (suggestedAmountPaise / 100).toFixed(2);
+  const paymentAmountPaise = useMemo(() => {
+    const value = Number(amountInputValue);
+    return Number.isFinite(value) ? Math.round(value * 100) : 0;
+  }, [amountInputValue]);
+  const amountIsValid = Boolean(
+    request &&
+      paymentAmountPaise > 0 &&
+      paymentAmountPaise <= request.remaining_amount_paise
+  );
   const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isMobile = typeof navigator !== "undefined" && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 
   // Build UPI URI directly from request data for immediate QR display
   const upiUri = useMemo(() => {
-    if (!request) return "";
+    if (!request || !amountIsValid) return "";
     const params = new URLSearchParams({
       pa: request.payee_vpa,
       pn: request.payee_name,
-      am: (Math.floor(request.amount_paise / 100) + "." + String(request.amount_paise % 100).padStart(2, "0")),
+      am: (paymentAmountPaise / 100).toFixed(2),
       cu: "INR",
       tn: `ReceiptSplit ${request.payment_reference}`,
       tr: request.payment_reference
     });
     return `upi://pay?${params.toString()}`;
-  }, [request]);
+  }, [amountIsValid, paymentAmountPaise, request]);
 
   useEffect(() => {
     if (!upiUri || request?.status === "payer_confirmed") {
       return;
     }
-    void QRCode.toDataURL(upiUri, { margin: 1, width: 200 }).then(setQr);
+    let cancelled = false;
+    void QRCode.toDataURL(upiUri, { margin: 1, width: 200 }).then((nextQr) => {
+      if (!cancelled) setQr(nextQr);
+    });
+    return () => { cancelled = true; };
   }, [upiUri, request?.status]);
 
   if (!request) {
@@ -1329,16 +1364,17 @@ export function ParticipantSettlementPanel({
     );
   }
 
-  const isConfirmed = request.status === "payer_confirmed";
+  const isConfirmed = request.remaining_amount_paise === 0;
+  const isClaimPending = request.status === "claimed_paid";
   const isDisputed = request.status === "disputed";
-  const canPay = !isConfirmed && !isDisputed || isDisputed;
+  const canPay = !isConfirmed && !isClaimPending;
 
   async function openPayment() {
     if (!request) return;
     setBusy(true);
     setActionError(null);
     try {
-      await onOpenPayment(request.id);
+      await onOpenPayment(request.id, paymentAmountPaise);
     } catch (err) {
       setActionError(friendlyError(err));
     } finally {
@@ -1363,8 +1399,11 @@ export function ParticipantSettlementPanel({
         <div className="grid gap-1">
           <span className="text-[#63706b]">{isConfirmed ? "Amount" : "Amount due"}</span>
           <strong className={`text-4xl font-bold ${isConfirmed ? "text-[var(--rs-success)]" : "text-ink"}`}>
-            {formatPaise(request.amount_paise)}
+            {formatPaise(request.remaining_amount_paise)}
           </strong>
+          <span className="text-xs text-[#63706b]">
+            {formatPaise(request.confirmed_amount_paise)} already cleared of {formatPaise(request.amount_paise)}
+          </span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#63706b]">Payer</span>
@@ -1396,10 +1435,33 @@ export function ParticipantSettlementPanel({
           <p className="mt-1 text-sm text-[#52625b]">Check with the payer and retry if needed.</p>
         </div>
       ) : null}
+      {isClaimPending ? (
+        <div className="mt-4 rounded-md border border-[#f2d58a] bg-[#fff8df] p-4">
+          <p className="font-bold">Waiting for payer confirmation</p>
+          <p className="mt-1 text-sm text-[#52625b]">
+            You marked {formatPaise(request.pending_claim_amount_paise ?? 0)} paid.
+          </p>
+        </div>
+      ) : null}
 
       {/* QR for non-confirmed states */}
       {!isConfirmed ? (
         <div className="mt-4 grid gap-3">
+          <Input
+            label="Amount to pay now"
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            max={(request.remaining_amount_paise / 100).toFixed(2)}
+            step="0.01"
+            value={amountInputValue}
+            disabled={isClaimPending}
+            onChange={(event) => {
+              setQr("");
+              setAmountRupees(event.target.value);
+            }}
+            hint={`You can pay up to ${formatPaise(request.remaining_amount_paise)} now.`}
+          />
           {qr ? (
             <div className="grid gap-2">
               <p className="text-xs font-semibold text-[#63706b]">
@@ -1422,7 +1484,7 @@ export function ParticipantSettlementPanel({
               <Button
                 type="button"
                 size="lg"
-                disabled={busy}
+                disabled={busy || !amountIsValid || isClaimPending}
                 onClick={openPayment}
                 aria-label="Open UPI payment app"
               >
@@ -1433,7 +1495,7 @@ export function ParticipantSettlementPanel({
                 type="button"
                 size="lg"
                 variant="secondary"
-                disabled={busy}
+                disabled={busy || !amountIsValid || isClaimPending}
                 onClick={openPayment}
                 aria-label="Try to open UPI deep link"
               >
@@ -1454,6 +1516,7 @@ export function ParticipantSettlementPanel({
               variant="secondary"
               className="col-span-2"
               onClick={() => navigator.clipboard?.writeText(upiUri)}
+              disabled={!amountIsValid || isClaimPending}
               aria-label="Copy UPI payment link"
             >
               <Copy size={16} aria-hidden="true" />
@@ -1474,11 +1537,15 @@ export function ParticipantSettlementPanel({
             <Button
               type="button"
               variant="secondary"
-              disabled={request.status === "claimed_paid"}
-              onClick={() => onClaimPaid(request.id)}
+              disabled={!amountIsValid}
+              onClick={() => {
+                setQr("");
+                onClaimPaid(request.id, paymentAmountPaise);
+                setAmountRupees(null);
+              }}
               aria-label="Mark payment as done"
             >
-              I paid
+              Mark {formatPaise(paymentAmountPaise)} paid
             </Button>
           ) : null}
         </div>

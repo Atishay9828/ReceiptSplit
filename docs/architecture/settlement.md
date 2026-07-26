@@ -14,8 +14,8 @@ ReceiptSplit:
 - Stores payer UPI details controlled by the creator/payer.
 - Creates server-controlled settlement requests from locked participant totals.
 - Generates UPI URI and QR payload strings on the server.
-- Lets participants manually mark `I paid`.
-- Lets the payer manually confirm or dispute.
+- Lets participants manually mark a full or partial amount paid.
+- Lets the payer manually confirm or dispute each pending claim.
 - Records durable status history and room events.
 
 Do not use `verified paid` copy. The safe terms are `marked paid`, `payer confirmed`, and
@@ -32,6 +32,8 @@ M012 adds:
 
 `settlement_requests` stores:
 
+- `confirmed_amount_paise`
+- `pending_claim_amount_paise`
 - `room_id`
 - `split_session_id`
 - `participant_id`
@@ -66,8 +68,8 @@ URI formatting boundary and frontend display boundary.
 |---|---|
 | `due` | `payment_opened`, `claimed_paid`, `disputed` |
 | `payment_opened` | `claimed_paid`, `disputed` |
-| `claimed_paid` | `payer_confirmed`, `disputed` |
-| `disputed` | `payment_opened`, `claimed_paid`, `payer_confirmed` |
+| `claimed_paid` | `due` after a partial confirmation, `payer_confirmed`, `disputed` |
+| `disputed` | `payment_opened`, `claimed_paid` |
 | `payer_confirmed` | terminal |
 
 Participants can only open or claim their own request. Participants cannot confirm or dispute.
@@ -83,17 +85,34 @@ settlement service runs.
 upi://pay?pa=<payee_vpa>&pn=<payee_name>&am=<rupees.decimal>&cu=INR&tn=<note>&tr=<reference>
 ```
 
-The server chooses:
+The server owns and validates:
 
-- amount
+- original amount and remaining balance
 - payee VPA
 - payee display name
 - payment reference
 - UPI URI
 - QR payload
 
-The frontend can only request actions such as open payment, claim paid, confirm, or dispute. It does
-not submit trusted amount, VPA, or reference values.
+The frontend may request a positive amount up to the server-owned remaining balance. The backend
+rejects overclaims and permits only one unconfirmed claim per participant request. Omitting the
+amount preserves the original behavior and uses the full remaining balance. VPA, payee name,
+reference, confirmed totals, and remaining totals remain server-controlled.
+
+## Partial Payments
+
+Each participant still has one idempotent settlement request for a locked split session. Partial
+payments do not create duplicate requests. Instead:
+
+- `confirmed_amount_paise` stores the cumulative payer-confirmed amount;
+- `pending_claim_amount_paise` stores the single amount awaiting payer review;
+- payer confirmation adds the pending claim to the confirmed total;
+- if money remains, status returns to `due`; otherwise it becomes `payer_confirmed`;
+- a dispute clears only the pending claim and preserves earlier confirmed amounts;
+- the room becomes settled only when every request has zero remaining balance.
+
+Claimed and confirmed partial amounts are copied into settlement status-event metadata so the
+durable audit history retains each increment.
 
 ## Events
 

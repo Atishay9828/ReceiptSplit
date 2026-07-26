@@ -207,18 +207,24 @@ export class ReceiptSplitApi {
   openPayment(
     roomId: string,
     requestId: string,
-    token: string
+    token: string,
+    amountPaise?: number
   ): Promise<OpenPaymentResponse> {
     return this.request<OpenPaymentResponse>(
       `/api/rooms/${roomId}/settlement/requests/${requestId}/open-payment`,
-      { method: "POST", token }
+      { method: "POST", token, body: amountPaise ? { amount_paise: amountPaise } : undefined }
     );
   }
 
-  claimPaid(roomId: string, requestId: string, token: string): Promise<SettlementRequestSummary> {
+  claimPaid(
+    roomId: string,
+    requestId: string,
+    token: string,
+    amountPaise?: number
+  ): Promise<SettlementRequestSummary> {
     return this.request<SettlementRequestSummary>(
       `/api/rooms/${roomId}/settlement/requests/${requestId}/claim-paid`,
-      { method: "POST", token }
+      { method: "POST", token, body: amountPaise ? { amount_paise: amountPaise } : undefined }
     );
   }
 

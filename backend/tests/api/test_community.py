@@ -125,6 +125,7 @@ async def test_accounts_friends_persistent_rooms_and_member_access(api_client: A
     claimed = await api_client.post(
         f"/api/rooms/{room['id']}/settlement/requests/{request_id}/claim-paid",
         headers=bearer(friend_token),
+        json={"amount_paise": 200},
     )
     assert claimed.status_code == 200
     confirmed = await api_client.post(
@@ -132,6 +133,22 @@ async def test_accounts_friends_persistent_rooms_and_member_access(api_client: A
         headers=bearer(owner_token),
     )
     assert confirmed.status_code == 200
+
+    partial_groups = await api_client.get("/api/groups", headers=bearer(owner_token))
+    assert partial_groups.json()["groups"][0]["pending_paise"] == 300
+    assert partial_groups.json()["groups"][0]["cleared_paise"] == 200
+
+    remaining_claim = await api_client.post(
+        f"/api/rooms/{room['id']}/settlement/requests/{request_id}/claim-paid",
+        headers=bearer(friend_token),
+    )
+    assert remaining_claim.status_code == 200
+    assert remaining_claim.json()["pending_claim_amount_paise"] == 300
+    final_confirmation = await api_client.post(
+        f"/api/rooms/{room['id']}/settlement/requests/{request_id}/confirm",
+        headers=bearer(owner_token),
+    )
+    assert final_confirmation.status_code == 200
 
     cleared_groups = await api_client.get("/api/groups", headers=bearer(owner_token))
     assert cleared_groups.json()["groups"][0]["pending_paise"] == 0

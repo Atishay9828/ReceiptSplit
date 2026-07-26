@@ -17,12 +17,20 @@ class DisputeSettlementRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=300)
 
 
+class SettlementAmountRequest(BaseModel):
+    amount_paise: int | None = Field(default=None, gt=0)
+
+
 class SettlementRequestResponse(ORMModel):
     id: UUID
     room_id: UUID
     participant_id: UUID
     amount_paise: int
     amount_display: str
+    confirmed_amount_paise: int
+    pending_claim_amount_paise: int | None
+    remaining_amount_paise: int
+    remaining_amount_display: str
     currency: str
     payee_vpa: str
     payee_name: str
@@ -44,6 +52,7 @@ class SettlementAggregates(BaseModel):
     disputed_count: int
     total_due_paise: int
     total_confirmed_paise: int
+    total_original_paise: int
 
 
 class SettlementSummaryResponse(BaseModel):

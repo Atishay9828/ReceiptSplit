@@ -48,9 +48,18 @@ class InvalidPayerDetailsError(DomainError):
 
 
 class SettlementAmountError(DomainError):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        message: str = "Settlement amount must be positive.",
+        *,
+        remaining_paise: int | None = None,
+    ) -> None:
         super().__init__(
-            code="SETTLEMENT_AMOUNT_ERROR", message="Settlement amount must be positive."
+            code="SETTLEMENT_AMOUNT_ERROR",
+            message=message,
+            details={"remaining_paise": remaining_paise}
+            if remaining_paise is not None
+            else {},
         )
 
 
@@ -69,11 +78,14 @@ ALLOWED_SETTLEMENT_TRANSITIONS: dict[SettlementStatus, set[SettlementStatus]] = 
         SettlementStatus.DISPUTED,
     },
     SettlementStatus.PAYMENT_OPENED: {SettlementStatus.CLAIMED_PAID, SettlementStatus.DISPUTED},
-    SettlementStatus.CLAIMED_PAID: {SettlementStatus.PAYER_CONFIRMED, SettlementStatus.DISPUTED},
+    SettlementStatus.CLAIMED_PAID: {
+        SettlementStatus.DUE,
+        SettlementStatus.PAYER_CONFIRMED,
+        SettlementStatus.DISPUTED,
+    },
     SettlementStatus.DISPUTED: {
         SettlementStatus.PAYMENT_OPENED,
         SettlementStatus.CLAIMED_PAID,
-        SettlementStatus.PAYER_CONFIRMED,
     },
     SettlementStatus.PAYER_CONFIRMED: set(),
 }

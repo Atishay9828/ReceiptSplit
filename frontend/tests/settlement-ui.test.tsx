@@ -21,6 +21,10 @@ const settlement: SettlementSummary = {
       participant_id: "participant-2",
       amount_paise: 500,
       amount_display: "5.00",
+      confirmed_amount_paise: 0,
+      pending_claim_amount_paise: 500,
+      remaining_amount_paise: 500,
+      remaining_amount_display: "5.00",
       currency: "INR",
       payee_vpa: "receiptsplit.test@upi",
       payee_name: "AJ Payer",
@@ -41,7 +45,8 @@ const settlement: SettlementSummary = {
     payer_confirmed_count: 0,
     disputed_count: 0,
     total_due_paise: 500,
-    total_confirmed_paise: 0
+    total_confirmed_paise: 0,
+    total_original_paise: 500
   }
 };
 
@@ -81,7 +86,7 @@ describe("settlement UI", () => {
     expect(screen.getByText("marked paid")).toBeInTheDocument();
     expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /confirm payment/i }));
+    await userEvent.click(screen.getByRole("button", { name: /confirm ₹5\.00/i }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith("request-1"));
   });
 
@@ -91,7 +96,12 @@ describe("settlement UI", () => {
 
     const participantSettlement = {
       ...settlement,
-      requests: [{ ...settlement.requests[0], status: "payment_opened" as const }]
+      requests: [{
+        ...settlement.requests[0],
+        status: "payment_opened" as const,
+        pending_claim_amount_paise: null,
+        claimed_paid_at: null
+      }]
     };
 
     render(
@@ -104,9 +114,12 @@ describe("settlement UI", () => {
     );
 
     expect(screen.getByText("Pay your share")).toBeInTheDocument();
+    const amountInput = screen.getByLabelText(/amount to pay now/i);
+    await userEvent.clear(amountInput);
+    await userEvent.type(amountInput, "2.00");
     await userEvent.click(screen.getByRole("button", { name: /open upi/i }));
 
-    await waitFor(() => expect(onOpenPayment).toHaveBeenCalledWith("request-1"));
+    await waitFor(() => expect(onOpenPayment).toHaveBeenCalledWith("request-1", 200));
     expect(await screen.findByText(/Scan with your phone's camera or UPI app/i)).toBeInTheDocument();
     expect(screen.getAllByText("receiptsplit.test@upi").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/ReceiptSplit does not verify bank transfer/i).length).toBeGreaterThanOrEqual(1);
@@ -115,7 +128,7 @@ describe("settlement UI", () => {
     expect(screen.queryByText(/verified paid/i)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /mark payment as done/i }));
-    await waitFor(() => expect(onClaimPaid).toHaveBeenCalledWith("request-1"));
+    await waitFor(() => expect(onClaimPaid).toHaveBeenCalledWith("request-1", 200));
   });
 
   it("shows safe rate-limit copy when opening payment is throttled", async () => {
@@ -123,7 +136,14 @@ describe("settlement UI", () => {
 
     render(
       <ParticipantSettlementPanel
-        settlement={settlement}
+        settlement={{
+          ...settlement,
+          requests: [{
+            ...settlement.requests[0],
+            status: "payment_opened",
+            pending_claim_amount_paise: null
+          }]
+        }}
         participantId="participant-2"
         onOpenPayment={onOpenPayment}
         onClaimPaid={vi.fn()}

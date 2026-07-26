@@ -87,6 +87,10 @@ const request: SettlementRequestSummary = {
   participant_id: "participant-2",
   amount_paise: 16000,
   amount_display: "160.00",
+  confirmed_amount_paise: 0,
+  pending_claim_amount_paise: 16000,
+  remaining_amount_paise: 16000,
+  remaining_amount_display: "160.00",
   currency: "INR",
   payee_vpa: "receiptsplit.test@upi",
   payee_name: "AJ Payer",
@@ -113,7 +117,8 @@ const settlement: SettlementSummary = {
     payer_confirmed_count: 0,
     disputed_count: 0,
     total_due_paise: 16000,
-    total_confirmed_paise: 0
+    total_confirmed_paise: 0,
+    total_original_paise: 16000
   }
 };
 
@@ -251,7 +256,7 @@ describe("M014 frontend polish", () => {
     );
 
     expect(screen.getByText(/settlement dashboard/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /confirm payment/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /confirm ₹160\.00/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /mark disputed/i })).toBeInTheDocument();
     expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
   });
