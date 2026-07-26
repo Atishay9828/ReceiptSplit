@@ -29,6 +29,10 @@ class SettlementRequest(Base):
         nullable=False,
     )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    confirmed_amount_paise: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, server_default="0"
+    )
+    pending_claim_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="INR")
     payee_vpa: Mapped[str] = mapped_column(String(80), nullable=False)
     payee_name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -52,6 +56,16 @@ class SettlementRequest(Base):
 
     __table_args__ = (
         CheckConstraint("amount_paise > 0", name="ck_settlement_requests_amount_positive"),
+        CheckConstraint(
+            "confirmed_amount_paise >= 0 AND confirmed_amount_paise <= amount_paise",
+            name="ck_settlement_requests_confirmed_amount",
+        ),
+        CheckConstraint(
+            "pending_claim_amount_paise IS NULL OR "
+            "(pending_claim_amount_paise > 0 AND "
+            "pending_claim_amount_paise <= amount_paise - confirmed_amount_paise)",
+            name="ck_settlement_requests_pending_claim_amount",
+        ),
         CheckConstraint("currency = 'INR'", name="ck_settlement_requests_currency_inr"),
         CheckConstraint(
             "status IN ('due','payment_opened','claimed_paid','payer_confirmed','disputed')",

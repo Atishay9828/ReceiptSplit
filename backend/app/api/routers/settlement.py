@@ -12,6 +12,7 @@ from app.api.schemas.settlement import (
     OpenPaymentResponse,
     PayerDetailsRequest,
     SettlementAggregates,
+    SettlementAmountRequest,
     SettlementRequestResponse,
     SettlementSummaryResponse,
 )
@@ -147,6 +148,7 @@ async def open_payment(
     room_id: UUID,
     request_id: UUID,
     http_request: Request,
+    payload: SettlementAmountRequest | None = None,
     ctx: AuthContext = Depends(require_room_access),
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
@@ -162,11 +164,12 @@ async def open_payment(
         room_id=room_id,
         request_id=request_id,
         actor=SettlementActor(participant=ctx),
+        amount_paise=payload.amount_paise if payload is not None else None,
     )
     return OpenPaymentResponse(
         settlement_request_id=result.request.id,
         status=result.request.status,
-        amount_paise=result.request.amount_paise,
+        amount_paise=result.amount_paise,
         amount_display=result.link.amount_display,
         payee_vpa=result.link.payee_vpa,
         payee_name=result.link.payee_name,
@@ -188,6 +191,7 @@ async def claim_paid(
     request_id: UUID,
     http_request: Request,
     ctx: AuthContext = Depends(require_room_access),
+    payload: SettlementAmountRequest | None = None,
     db: AsyncSession = Depends(get_db),
     service: SettlementService = Depends(get_settlement_service),
 ) -> SettlementRequestResponse:
@@ -202,6 +206,7 @@ async def claim_paid(
         room_id=room_id,
         request_id=request_id,
         actor=SettlementActor(participant=ctx),
+        amount_paise=payload.amount_paise if payload is not None else None,
     )
     return _request_response(settlement_request)
 
@@ -283,6 +288,10 @@ def _request_response(request: SettlementRequest) -> SettlementRequestResponse:
         amount_paise=request.amount_paise,
         amount_display=SettlementService.amount_display(request),
         currency=request.currency,
+        confirmed_amount_paise=request.confirmed_amount_paise,
+        pending_claim_amount_paise=request.pending_claim_amount_paise,
+        remaining_amount_paise=SettlementService.remaining_amount_paise(request),
+        remaining_amount_display=SettlementService.remaining_amount_display(request),
         payee_vpa=request.payee_vpa,
         payee_name=request.payee_name,
         payment_reference=request.payment_reference,
@@ -307,14 +316,14 @@ def _aggregates(requests: list[SettlementRequest]) -> SettlementAggregates:
     total_confirmed = 0
     for request in requests:
         counts[request.status] += 1
-        if request.status == "payer_confirmed":
-            total_confirmed += request.amount_paise
+        total_confirmed += request.confirmed_amount_paise
     return SettlementAggregates(
         due_count=counts["due"],
         payment_opened_count=counts["payment_opened"],
         claimed_paid_count=counts["claimed_paid"],
         payer_confirmed_count=counts["payer_confirmed"],
         disputed_count=counts["disputed"],
-        total_due_paise=sum(request.amount_paise for request in requests),
+        total_due_paise=sum(SettlementService.remaining_amount_paise(r) for r in requests),
         total_confirmed_paise=total_confirmed,
+        total_original_paise=sum(request.amount_paise for request in requests),
     )

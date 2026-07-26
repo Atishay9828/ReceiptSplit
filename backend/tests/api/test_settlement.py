@@ -185,3 +185,89 @@ async def test_cross_room_participant_cannot_open_request(api_client: Any) -> No
     )
 
     assert response.status_code == 403
+
+
+async def test_partial_payments_clear_incrementally_and_keep_remainder_due(
+    api_client: Any,
+) -> None:
+    data = await _prepared_room(api_client)
+    room_id = data["room"]["id"]
+    request_id = _participant_request(data["settlement"])["id"]
+    participant_headers = bearer(data["participant_token"])
+    creator_headers = bearer(data["creator_token"])
+
+    overclaim = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/claim-paid",
+        json={"amount_paise": 501},
+        headers=participant_headers,
+    )
+    assert overclaim.status_code == 400
+    assert overclaim.json()["error"]["details"]["remaining_paise"] == 500
+
+    opened = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/open-payment",
+        json={"amount_paise": 200},
+        headers=participant_headers,
+    )
+    assert opened.status_code == 200
+    assert opened.json()["amount_paise"] == 200
+    assert "am=2.00" in opened.json()["upi_uri"]
+
+    claimed = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/claim-paid",
+        json={"amount_paise": 200},
+        headers=participant_headers,
+    )
+    assert claimed.status_code == 200
+    assert claimed.json()["pending_claim_amount_paise"] == 200
+    assert claimed.json()["confirmed_amount_paise"] == 0
+    assert claimed.json()["remaining_amount_paise"] == 500
+
+    duplicate = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/claim-paid",
+        json={"amount_paise": 100},
+        headers=participant_headers,
+    )
+    assert duplicate.status_code == 422
+
+    confirmed = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/confirm",
+        headers=creator_headers,
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "due"
+    assert confirmed.json()["confirmed_amount_paise"] == 200
+    assert confirmed.json()["remaining_amount_paise"] == 300
+    assert confirmed.json()["pending_claim_amount_paise"] is None
+
+    partial_summary = await api_client.get(
+        f"/api/rooms/{room_id}/settlement",
+        headers=creator_headers,
+    )
+    assert partial_summary.status_code == 200
+    assert partial_summary.json()["aggregates"] == {
+        "due_count": 1,
+        "payment_opened_count": 0,
+        "claimed_paid_count": 0,
+        "payer_confirmed_count": 0,
+        "disputed_count": 0,
+        "total_due_paise": 300,
+        "total_confirmed_paise": 200,
+        "total_original_paise": 500,
+    }
+
+    final_claim = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/claim-paid",
+        headers=participant_headers,
+    )
+    assert final_claim.status_code == 200
+    assert final_claim.json()["pending_claim_amount_paise"] == 300
+
+    final_confirmation = await api_client.post(
+        f"/api/rooms/{room_id}/settlement/requests/{request_id}/confirm",
+        headers=creator_headers,
+    )
+    assert final_confirmation.status_code == 200
+    assert final_confirmation.json()["status"] == "payer_confirmed"
+    assert final_confirmation.json()["confirmed_amount_paise"] == 500
+    assert final_confirmation.json()["remaining_amount_paise"] == 0

@@ -218,9 +218,7 @@ class CommunityService:
             settlement = await db.execute(
                 select(
                     func.coalesce(
-                        func.sum(SettlementRequest.amount_paise).filter(
-                            SettlementRequest.status == "payer_confirmed"
-                        ),
+                        func.sum(SettlementRequest.confirmed_amount_paise),
                         0,
                     ),
                 ).where(SettlementRequest.room_id == room.id)

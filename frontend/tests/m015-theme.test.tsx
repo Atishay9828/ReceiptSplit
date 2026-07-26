@@ -23,6 +23,10 @@ const baseRequest: SettlementRequestSummary = {
   participant_id: "participant-2",
   amount_paise: 36000,
   amount_display: "360.00",
+  confirmed_amount_paise: 0,
+  pending_claim_amount_paise: null,
+  remaining_amount_paise: 36000,
+  remaining_amount_display: "360.00",
   currency: "INR",
   payee_vpa: "receiptsplit.test@upi",
   payee_name: "AJ",
@@ -37,20 +41,30 @@ const baseRequest: SettlementRequestSummary = {
 };
 
 function settlementWith(request: SettlementRequestSummary): SettlementSummary {
+  const isConfirmed = request.status === "payer_confirmed";
+  const normalizedRequest = {
+    ...request,
+    confirmed_amount_paise: isConfirmed ? request.amount_paise : 0,
+    pending_claim_amount_paise: request.status === "claimed_paid" ? request.amount_paise : null,
+    remaining_amount_paise: isConfirmed ? 0 : request.amount_paise,
+    remaining_amount_display: isConfirmed ? "0.00" : request.amount_display
+  };
+
   return {
     room_id: "room-1",
     payer_details_configured: true,
     payee_vpa: request.payee_vpa,
     payee_name: request.payee_name,
-    requests: [request],
+    requests: [normalizedRequest],
     aggregates: {
       due_count: request.status === "due" ? 1 : 0,
       payment_opened_count: request.status === "payment_opened" ? 1 : 0,
       claimed_paid_count: request.status === "claimed_paid" ? 1 : 0,
       payer_confirmed_count: request.status === "payer_confirmed" ? 1 : 0,
       disputed_count: request.status === "disputed" ? 1 : 0,
-      total_due_paise: request.amount_paise,
-      total_confirmed_paise: request.status === "payer_confirmed" ? request.amount_paise : 0
+      total_due_paise: isConfirmed ? 0 : request.amount_paise,
+      total_confirmed_paise: isConfirmed ? request.amount_paise : 0,
+      total_original_paise: request.amount_paise
     }
   };
 }

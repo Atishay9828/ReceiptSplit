@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
 
 from app.domain.settlement import (
+    SettlementAmountError,
     SettlementForbiddenError,
     SettlementLink,
     SettlementLinkBuilder,
@@ -76,6 +77,7 @@ class SettlementActor:
 class OpenPaymentResult:
     request: SettlementRequest
     link: SettlementLink
+    amount_paise: int
     disclaimer: str = SETTLEMENT_DISCLAIMER
 
 
@@ -244,6 +246,7 @@ class SettlementService:
         room_id: UUID,
         request_id: UUID,
         actor: SettlementActor,
+        amount_paise: int | None = None,
     ) -> OpenPaymentResult:
         request = await self._get_own_participant_request(db, room_id, request_id, actor)
         old_status = SettlementStatus(request.status)
@@ -293,13 +296,14 @@ class SettlementService:
                         "count": count,
                     },
                 )
+        payment_amount = self._validated_payment_amount(request, amount_paise)
         link = self._links.build(
             payee_vpa=request.payee_vpa,
             payee_name=request.payee_name,
-            amount_paise=request.amount_paise,
+            amount_paise=payment_amount,
             reference=request.payment_reference,
         )
-        return OpenPaymentResult(request=request, link=link)
+        return OpenPaymentResult(request=request, link=link, amount_paise=payment_amount)
 
     async def claim_paid(
         self,
@@ -308,8 +312,12 @@ class SettlementService:
         room_id: UUID,
         request_id: UUID,
         actor: SettlementActor,
+        amount_paise: int | None = None,
     ) -> SettlementRequest:
         request = await self._get_own_participant_request(db, room_id, request_id, actor)
+        remaining_before = self.remaining_amount_paise(request)
+        claimed_amount = self._validated_payment_amount(request, amount_paise)
+        request.pending_claim_amount_paise = claimed_amount
         return await self._transition(
             db,
             request=request,
@@ -317,6 +325,10 @@ class SettlementService:
             new_status=SettlementStatus.CLAIMED_PAID,
             event_type="settlement.claimed_paid",
             timestamp_field="claimed_paid_at",
+            event_metadata={
+                "claimed_amount_paise": claimed_amount,
+                "remaining_before_paise": remaining_before,
+            },
         )
 
     async def confirm_paid(
@@ -330,13 +342,29 @@ class SettlementService:
         if not actor.is_creator:
             raise SettlementForbiddenError()
         request = await self._get_request(db, room_id, request_id)
+        claimed_amount = request.pending_claim_amount_paise
+        if claimed_amount is None or request.status != SettlementStatus.CLAIMED_PAID.value:
+            raise SettlementNotReadyError("There is no payment claim waiting for confirmation.")
+        request.confirmed_amount_paise += claimed_amount
+        request.pending_claim_amount_paise = None
+        remaining_after = self.remaining_amount_paise(request)
+        new_status = (
+            SettlementStatus.PAYER_CONFIRMED
+            if remaining_after == 0
+            else SettlementStatus.DUE
+        )
         return await self._transition(
             db,
             request=request,
             actor=actor,
-            new_status=SettlementStatus.PAYER_CONFIRMED,
+            new_status=new_status,
             event_type="settlement.payer_confirmed",
-            timestamp_field="payer_confirmed_at",
+            timestamp_field="payer_confirmed_at" if remaining_after == 0 else None,
+            event_metadata={
+                "confirmed_amount_paise": claimed_amount,
+                "total_confirmed_paise": request.confirmed_amount_paise,
+                "remaining_after_paise": remaining_after,
+            },
         )
 
     async def dispute_payment(
@@ -351,6 +379,8 @@ class SettlementService:
         if not actor.is_creator:
             raise SettlementForbiddenError()
         request = await self._get_request(db, room_id, request_id)
+        disputed_amount = request.pending_claim_amount_paise
+        request.pending_claim_amount_paise = None
         return await self._transition(
             db,
             request=request,
@@ -359,6 +389,9 @@ class SettlementService:
             event_type="settlement.disputed",
             timestamp_field="disputed_at",
             reason=sanitize_text(reason, max_length=300),
+            event_metadata={"disputed_amount_paise": disputed_amount}
+            if disputed_amount is not None
+            else {},
         )
 
     async def _transition(
@@ -369,8 +402,9 @@ class SettlementService:
         actor: SettlementActor,
         new_status: SettlementStatus,
         event_type: str,
-        timestamp_field: str,
+        timestamp_field: str | None,
         reason: str | None = None,
+        event_metadata: dict[str, object] | None = None,
     ) -> SettlementRequest:
         async with db.begin_nested():
             old_status = SettlementStatus(request.status)
@@ -378,7 +412,8 @@ class SettlementService:
             request.status = new_status.value
             request.updated_at = datetime.now(UTC)
             request.version += 1
-            setattr(request, timestamp_field, request.updated_at)
+            if timestamp_field is not None:
+                setattr(request, timestamp_field, request.updated_at)
             await db.flush()
             await self._insert_status_event(
                 db,
@@ -387,6 +422,7 @@ class SettlementService:
                 old_status=old_status,
                 new_status=new_status,
                 reason=reason,
+                event_metadata=event_metadata,
             )
             await self._events.append_in_tx(
                 db,
@@ -398,6 +434,7 @@ class SettlementService:
                     "participant_id": str(request.participant_id),
                     "old_status": old_status.value,
                     "new_status": new_status.value,
+                    **(event_metadata or {}),
                 },
             )
             if self._audit is not None:
@@ -414,6 +451,7 @@ class SettlementService:
                         "old_status": old_status.value,
                         "new_status": new_status.value,
                         "reason_present": bool(reason),
+                        **(event_metadata or {}),
                     },
                 )
 
@@ -462,6 +500,7 @@ class SettlementService:
         old_status: SettlementStatus | None,
         new_status: SettlementStatus,
         reason: str | None = None,
+        event_metadata: dict[str, Any] | None = None,
     ) -> None:
         db.add(
             SettlementStatusEvent(
@@ -473,7 +512,7 @@ class SettlementService:
                 old_status=old_status.value if old_status is not None else None,
                 new_status=new_status.value,
                 reason=reason,
-                event_metadata={},
+                event_metadata=event_metadata or {},
             )
         )
 
@@ -497,9 +536,13 @@ class SettlementService:
         room_id: UUID,
         request_id: UUID,
     ) -> SettlementRequest:
-        stmt = select(SettlementRequest).where(
-            SettlementRequest.id == request_id,
-            SettlementRequest.room_id == room_id,
+        stmt = (
+            select(SettlementRequest)
+            .where(
+                SettlementRequest.id == request_id,
+                SettlementRequest.room_id == room_id,
+            )
+            .with_for_update()
         )
         result = await db.execute(stmt)
         request = result.scalars().first()
@@ -548,6 +591,34 @@ class SettlementService:
     @staticmethod
     def amount_display(request: SettlementRequest) -> str:
         return format_paise_as_rupees(request.amount_paise)
+
+    @staticmethod
+    def remaining_amount_paise(request: SettlementRequest) -> int:
+        return request.amount_paise - request.confirmed_amount_paise
+
+    @classmethod
+    def remaining_amount_display(cls, request: SettlementRequest) -> str:
+        remaining = cls.remaining_amount_paise(request)
+        return "0.00" if remaining == 0 else format_paise_as_rupees(remaining)
+
+    @classmethod
+    def _validated_payment_amount(
+        cls, request: SettlementRequest, amount_paise: int | None
+    ) -> int:
+        remaining = cls.remaining_amount_paise(request)
+        if request.pending_claim_amount_paise is not None:
+            raise SettlementNotReadyError(
+                "Wait for the payer to confirm or dispute the current payment claim."
+            )
+        chosen = remaining if amount_paise is None else amount_paise
+        if chosen <= 0:
+            raise SettlementAmountError(remaining_paise=remaining)
+        if chosen > remaining:
+            raise SettlementAmountError(
+                "Payment claim cannot exceed the remaining balance.",
+                remaining_paise=remaining,
+            )
+        return chosen
 
     @staticmethod
     def _reference(room_id: UUID, participant_id: UUID) -> str:

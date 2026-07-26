@@ -165,6 +165,10 @@ export type SettlementRequestSummary = {
   participant_id: string;
   amount_paise: number;
   amount_display: string;
+  confirmed_amount_paise: number;
+  pending_claim_amount_paise: number | null;
+  remaining_amount_paise: number;
+  remaining_amount_display: string;
   currency: "INR";
   payee_vpa: string;
   payee_name: string;
@@ -186,6 +190,7 @@ export type SettlementAggregates = {
   disputed_count: number;
   total_due_paise: number;
   total_confirmed_paise: number;
+  total_original_paise: number;
 };
 
 export type SettlementSummary = {

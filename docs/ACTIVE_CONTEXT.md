@@ -57,6 +57,11 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 Finish M016 deployment configuration and publish the validated branch. A real Google OAuth web
 client ID is still required in Vercel and Render before account sign-in can work on the live site.
 
+- Settlement requests support partial payments: a participant chooses any positive amount up to
+  the remaining balance, the payer confirms or disputes that single pending claim, and confirmed
+  amounts accumulate without closing the bill early.
+- Group and bill dashboards report original, cleared, and pending paise from cumulative confirmed
+  amounts. The room settles only after every remaining balance reaches zero.
 ## M016 Current Implementation
 
 - A persistent room is a long-lived friend group; each receipt is a separate bill under that room.
@@ -66,6 +71,14 @@ client ID is still required in Vercel and Render before account sign-in can work
 - Participant controls use explicit `Add to my share` / `Remove` actions and quantity wording;
   the ambiguous `Claim 1/2` labels are gone.
 - Account profiles support unique usernames, direct friend connections, and multiple groups.
+- Partial-payment regression coverage proves overclaim rejection, one pending claim at a time,
+  incremental payer confirmation, final settlement, and group-level cleared/pending totals.
+- Existing PostgreSQL schema upgraded from `007_persistent_rooms` to
+  `008_partial_settlements`; a fresh temporary PostgreSQL database also migrated from `001`
+  through `008` successfully.
+- Full backend pytest passed with three expected skips and one Starlette deprecation warning;
+  backend Ruff and focused strict mypy passed.
+- Frontend lint, typecheck, 18 files / 75 tests, and production build passed.
 - Google Identity Services is wired end to end through server-side ID-token verification. The UI
   exposes an honest configuration fallback until the real OAuth client ID is supplied.
 - Architecture details: `docs/architecture/persistent-rooms.md`.

@@ -82,6 +82,10 @@ const settlement: SettlementSummary = {
       participant_id: "participant-2",
       amount_paise: 24000,
       amount_display: "240.00",
+      confirmed_amount_paise: 24000,
+      pending_claim_amount_paise: null,
+      remaining_amount_paise: 0,
+      remaining_amount_display: "0.00",
       currency: "INR",
       payee_vpa: "receiptsplit.test@upi",
       payee_name: "AJ",
@@ -101,8 +105,9 @@ const settlement: SettlementSummary = {
     claimed_paid_count: 0,
     payer_confirmed_count: 1,
     disputed_count: 0,
-    total_due_paise: 24000,
-    total_confirmed_paise: 24000
+    total_due_paise: 0,
+    total_confirmed_paise: 24000,
+    total_original_paise: 24000
   }
 };
 

@@ -29,8 +29,8 @@ claimed manually. Allocation remains deterministic and conserves integer paise.
 ## Ledger Meaning
 
 - `all bills`: sum of locked bill grand totals;
-- `pending`: sum of locked non-payer participant totals minus payer-confirmed settlements;
-- `cleared`: sum of settlement requests in `payer_confirmed` state.
+- `pending`: sum of locked non-payer participant totals minus all payer-confirmed amounts;
+- `cleared`: sum of confirmed full or partial settlement amounts.
 
 Opening UPI, marking paid, and payer confirmation remain manual coordinator states. ReceiptSplit
 does not inspect bank transfers or claim that a payment is verified.

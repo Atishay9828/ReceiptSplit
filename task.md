@@ -16,12 +16,15 @@ Implemented in the current working tree:
 - multiple persistent rooms with different friend membership;
 - multiple bills per room, each retaining its own lifecycle;
 - room-level all-bills, pending, and payer-confirmed cleared totals;
+- partial settlement claims so someone can clear any amount now and leave the rest pending;
+- cumulative per-bill and per-room cleared/pending totals after every payer confirmation;
+- amount-specific payer confirmation with durable settlement event metadata;
 - JWT-linked room membership and participant-scoped settlement privacy;
 - database migration, API schemas, frontend dashboard, tests, and deployment configuration.
 
 ## Remaining Closeout
 
-- Review the final diff, commit, and push the branch.
+- Review, commit, and publish the partial-settlement follow-up branch.
 - Configure a real Google OAuth web client ID in Vercel as
   `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and in Render as
   `RECEIPTSPLIT_AUTH_OIDC_AUDIENCE`.
