@@ -19,8 +19,11 @@ export function getSplitPreviewReadiness(summary: RoomSummary): SplitPreviewRead
     return blocked("room_closed", "This room is no longer available for split preview.");
   }
 
-  if (summary.participants.length === 0) {
-    return blocked("no_participants", "Add at least one participant to preview the split.");
+  if (summary.participants.length < 2) {
+    return blocked(
+      "no_participants",
+      "Invite at least one other person to preview and lock the split."
+    );
   }
 
   if (summary.items.length === 0) {

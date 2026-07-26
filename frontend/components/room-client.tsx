@@ -2088,7 +2088,7 @@ export function CreatorLockControls({
   onUnlock: () => void;
 }) {
   const helper = !readiness.ready
-    ? "Complete all claims before locking the split."
+    ? readiness.message
     : "Preview totals before locking the split.";
 
   return (

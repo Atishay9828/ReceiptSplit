@@ -25,6 +25,14 @@ const summary: RoomSummary = {
       color: "#2f7a55",
       role: "creator",
       joined_at: "2026-07-01T00:00:00Z"
+    },
+    {
+      id: "participant-2",
+      room_id: "room-1",
+      nickname: "Kunal",
+      color: "#6f5bd3",
+      role: "participant",
+      joined_at: "2026-07-01T00:01:00Z"
     }
   ],
   items: [
@@ -64,7 +72,11 @@ describe("split preview UI states", () => {
   });
 
   it("renders disabled lock helper when preview is not ready", () => {
-    const readiness = getSplitPreviewReadiness(summary);
+    const payerOnlySummary = {
+      ...summary,
+      participants: [summary.participants[0]]
+    };
+    const readiness = getSplitPreviewReadiness(payerOnlySummary);
 
     render(
       <CreatorLockControls
@@ -77,6 +89,8 @@ describe("split preview UI states", () => {
     );
 
     expect(screen.getByRole("button", { name: /^lock$/i })).toBeDisabled();
-    expect(screen.getByText("Complete all claims before locking the split.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Invite at least one other person to preview and lock the split.")
+    ).toBeInTheDocument();
   });
 });

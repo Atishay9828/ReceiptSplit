@@ -33,7 +33,7 @@
 | M014.1 Real-World UX Bug Bash & Payment Flow Repair | FULL PASS | `2e14478` | Participant removal, quantity claiming, payment status visibility, settlement auto-transition |
 | M015 Dark Mode + Pilot Readiness QA | CONDITIONAL PASS | pending | Dark theme system, persisted toggle, pilot QA docs, mocked local browser screenshots; audit/backend/real-device UPI checks pending |
 | M015.1 Flow Architecture, Adjustment Math, Theme Identity & Completion UX Repair | CONDITIONAL PASS | closeout commit | Creator identity, discount/percentage adjustment math, step-based creator views, settled completion UX, navy/cyan/violet theme repair; screenshots under `docs/reports/screenshots/M015.1/`; audit has 2 moderate advisories |
-| M016 Persistent Rooms, Friends, Multi-Bill Ledger & Mixed Item Splits | IN PROGRESS | pending | Persistent groups with multiple bills, usernames/friends, partial settlement claims, cumulative pending/cleared ledger, and per-item individual/equal allocation; Render rollout and live Google sign-in still require hosting configuration |
+| M016 Persistent Rooms, Friends, Multi-Bill Ledger & Mixed Item Splits | CONDITIONAL PASS | `b444a54`, `a50fad6`, `d37af6f` | Persistent groups with multiple bills, usernames/friends, partial settlement claims, cumulative pending/cleared ledger, and mixed individual/equal items are deployed. Live public-bill smoke passed through partial settlement; Google OAuth is configured and published. Remaining condition: user-consent sign-in and signed-in dashboard smoke. |
 
 ## Deferred Baselines
 

@@ -28,6 +28,14 @@ const baseSummary: RoomSummary = {
       color: "#2f7a55",
       role: "creator",
       joined_at: "2026-07-01T00:00:00Z"
+    },
+    {
+      id: "participant-2",
+      room_id: "room-1",
+      nickname: "Kunal",
+      color: "#6f5bd3",
+      role: "participant",
+      joined_at: "2026-07-01T00:01:00Z"
     }
   ],
   items: [],
@@ -142,7 +150,21 @@ describe("split preview readiness", () => {
     expect(getSplitPreviewReadiness(equal).ready).toBe(false);
   });
 
-  it("treats equal split with participant and items as ready", () => {
+  it("asks the payer to invite someone before requesting a preview", () => {
+    const payerOnly = summary({
+      participants: [baseSummary.participants[0]],
+      items: [item({ allocation_mode: "equal" })]
+    });
+
+    expect(getSplitPreviewReadiness(payerOnly)).toMatchObject({
+      ready: false,
+      code: "no_participants",
+      message: "Invite at least one other person to preview and lock the split."
+    });
+    expect(shouldRequestSplitPreview(payerOnly)).toBe(false);
+  });
+
+  it("treats equal split with two participants and items as ready", () => {
     const equal = summary({
       room: { split_mode: "equal" },
       items: [item()]

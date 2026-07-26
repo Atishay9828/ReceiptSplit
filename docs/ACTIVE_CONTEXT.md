@@ -54,8 +54,10 @@ See `docs/MILESTONE_INDEX.md` for compact milestone history and evidence paths.
 
 ## Current Immediate Task
 
-Finish M016 deployment configuration and publish the validated branch. A real Google OAuth web
-client ID is still required in Vercel and Render before account sign-in can work on the live site.
+Finish the signed-in production smoke for M016. The validated branch, database migrations, Render
+backend, Vercel frontend, and Google OAuth web client are live. The remaining browser check needs a
+real user-consent click in Google's account chooser before the persistent rooms/friends dashboard
+can be exercised with that account.
 
 - Settlement requests support partial payments: a participant chooses any positive amount up to
   the remaining balance, the payer confirms or disputes that single pending claim, and confirmed
@@ -78,9 +80,10 @@ client ID is still required in Vercel and Render before account sign-in can work
   through `008` successfully.
 - Full backend pytest passed with three expected skips and one Starlette deprecation warning;
   backend Ruff and focused strict mypy passed.
-- Frontend lint, typecheck, 18 files / 75 tests, and production build passed.
-- Google Identity Services is wired end to end through server-side ID-token verification. The UI
-  exposes an honest configuration fallback until the real OAuth client ID is supplied.
+- Frontend lint, typecheck, 18 files / 76 tests, and production build passed.
+- Google Identity Services is wired end to end through server-side ID-token verification. The
+  production OAuth client is configured for `https://receiptsplit-web.vercel.app`, the external
+  consent screen is published, and the live dashboard renders the Google sign-in button.
 - Architecture details: `docs/architecture/persistent-rooms.md`.
 
 M016 validation in this working tree:
@@ -89,15 +92,23 @@ M016 validation in this working tree:
 - Focused strict mypy passed for the new community, auth, and mixed-split scope.
 - PostgreSQL integration tests passed for accounts, usernames, friends, persistent rooms,
   multi-bill membership, pending/cleared totals, authorization, and settlement privacy.
-- Frontend lint and typecheck passed; 18 files / 75 tests passed; production build passed.
-- Browser smoke passed for the dashboard configuration fallback and mixed item creation. It also
-  found and drove a fix for stale live-sync responses overwriting newer item state.
+- Frontend lint and typecheck passed; 18 files / 76 tests passed; production build passed.
+- Browser smoke passed for the live dashboard Google button plus a production mixed-item bill:
+  a ₹600 equally shared pizza and ₹120 individually claimed drink produced ₹420/₹300 participant
+  totals with no numbered claim labels.
+- The same production smoke verified a manual partial settlement: ₹125.50 moved to cleared while
+  ₹174.50 remained pending for a later payment. The bill stayed open in `settling`.
+- A production-smoke UX gap was fixed afterward: payer-only rooms now ask the creator to invite
+  another person instead of calling preview and showing a misleading retry error.
 - Full backend pytest passed after the compatibility fix, with three expected skips and one
   Starlette deprecation warning.
 - The final privacy regression also passed against PostgreSQL after Docker Desktop was restored;
   friend and group responses do not expose Google email addresses.
-- Live Google sign-in remains blocked on a real OAuth web client ID; production deployment still
-  needs the validated branch published through the connected hosting pipeline.
+- Render is live at migration `008_partial_settlements`, including the persistent group/friend
+  tables and cumulative settlement fields. A legacy database ownership mismatch was repaired by
+  transferring the ReceiptSplit schema objects to the application role before redeploying.
+- The production branch is deployed through Render and Vercel. The only outstanding M016 browser
+  proof is the user-consent step and signed-in persistent rooms/friends dashboard smoke.
 
 ## M014.1 Current Implementation
 
