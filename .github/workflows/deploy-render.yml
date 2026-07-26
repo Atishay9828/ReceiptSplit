@@ -21,9 +21,37 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deployment
+      - name: Trigger exact Render deployment
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          DEPLOY_REF: ${{ github.sha }}
         run: |
           test -n "$RENDER_DEPLOY_HOOK"
-          curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK"
+          case "$RENDER_DEPLOY_HOOK" in
+            *\?*) DEPLOY_URL="${RENDER_DEPLOY_HOOK}&ref=${DEPLOY_REF}" ;;
+            *) DEPLOY_URL="${RENDER_DEPLOY_HOOK}?ref=${DEPLOY_REF}" ;;
+          esac
+          curl --fail --silent --show-error --request POST "$DEPLOY_URL"
+
+      - name: Verify current API is live
+        env:
+          API_URL: https://receiptsplit-api.onrender.com
+        run: |
+          for attempt in $(seq 1 90); do
+            health_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 20 "$API_URL/health" || true)"
+            groups_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 20 "$API_URL/api/groups" || true)"
+
+            if [ "$health_status" = "200" ] && \
+              { [ "$groups_status" = "401" ] || [ "$groups_status" = "403" ]; }; then
+              echo "Current API routes are live."
+              exit 0
+            fi
+
+            echo "Waiting for Render (attempt $attempt/90): health=$health_status groups=$groups_status"
+            sleep 10
+          done
+
+          echo "Render did not activate the current API within 15 minutes."
+          exit 1
