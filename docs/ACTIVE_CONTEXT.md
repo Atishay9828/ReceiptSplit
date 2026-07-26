@@ -80,7 +80,7 @@ can be exercised with that account.
   through `008` successfully.
 - Full backend pytest passed with three expected skips and one Starlette deprecation warning;
   backend Ruff and focused strict mypy passed.
-- Frontend lint, typecheck, 18 files / 76 tests, and production build passed.
+- Frontend lint, typecheck, 19 files / 79 tests, and production build passed.
 - Google Identity Services is wired end to end through server-side ID-token verification. The
   production OAuth client is configured for `https://receiptsplit-web.vercel.app`, the external
   consent screen is published, and the live dashboard renders the Google sign-in button.
@@ -92,7 +92,7 @@ M016 validation in this working tree:
 - Focused strict mypy passed for the new community, auth, and mixed-split scope.
 - PostgreSQL integration tests passed for accounts, usernames, friends, persistent rooms,
   multi-bill membership, pending/cleared totals, authorization, and settlement privacy.
-- Frontend lint and typecheck passed; 18 files / 76 tests passed; production build passed.
+- Frontend lint and typecheck passed; 19 files / 79 tests passed; production build passed.
 - Browser smoke passed for the live dashboard Google button plus a production mixed-item bill:
   a ₹600 equally shared pizza and ₹120 individually claimed drink produced ₹420/₹300 participant
   totals with no numbered claim labels.
@@ -100,6 +100,9 @@ M016 validation in this working tree:
   ₹174.50 remained pending for a later payment. The bill stayed open in `settling`.
 - A production-smoke UX gap was fixed afterward: payer-only rooms now ask the creator to invite
   another person instead of calling preview and showing a misleading retry error.
+- Authenticated dashboard regressions cover Google credential exchange, the persisted account
+  session, friends added by username, room creation with selected friends, multi-bill rendering,
+  and original/pending/cleared ledger totals.
 - Full backend pytest passed after the compatibility fix, with three expected skips and one
   Starlette deprecation warning.
 - The final privacy regression also passed against PostgreSQL after Docker Desktop was restored;
