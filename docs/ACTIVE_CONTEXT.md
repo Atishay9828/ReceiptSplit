@@ -121,6 +121,8 @@ M016 validation in this working tree:
 - The production branch is deployed through Render and Vercel. M016 has signed-in browser proof
   for Google auth, usernames, friends, multiple persistent rooms, multiple bills in one room,
   mixed equal/individual items, and a pending settlement that remains open for later clearing.
+- Render deployed API commit `7f6ff5e`; the final live dashboard showed `Goa Demo Trip` at ₹1,520
+  across its ₹720 and ₹800 bills, with ₹300 pending and ₹0 payer-confirmed as cleared.
 
 ## M014.1 Current Implementation
 
