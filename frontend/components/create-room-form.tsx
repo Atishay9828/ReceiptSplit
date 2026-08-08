@@ -37,7 +37,7 @@ export function CreateRoomForm({ onCreate, submitLabel = "Create room" }: Create
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
+    <form className="rs-form grid gap-4" onSubmit={submit}>
       <Select
         label="Split mode"
         value={splitMode}

@@ -113,15 +113,17 @@ describe("M015 dark mode and pilot readiness UI", () => {
     expect(screen.getByRole("button", { name: /create split room/i })).toBeEnabled();
   });
 
-  it("join page stays nickname-first in dark mode", () => {
+  it("join page keeps the required account gate usable in dark mode", async () => {
     document.documentElement.classList.add("dark");
     params = { inviteToken: encodeInviteParam("room-1", "invite-demo") };
 
     render(<JoinPage />);
 
-    expect(screen.getByRole("heading", { name: /join this split/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
-    expect(screen.getByText(/no account needed/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /create your account to join/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/account is created automatically/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/name shown on this bill/i)).not.toBeInTheDocument();
   });
 
   it("payment card keeps QR and copy fallbacks visible in dark mode", async () => {

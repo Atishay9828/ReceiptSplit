@@ -107,9 +107,11 @@ class Settings(BaseSettings):
     ocr_max_height: int = 5000
     ocr_timeout_seconds: int = 30
     tesseract_cmd: str = "tesseract"
+    tesseract_language: str | None = None
+    tesseract_psm: int = 6
     ocr_storage_backend: Literal["local"] = "local"
     ocr_local_storage_dir: str = ".local/ocr"
-    ocr_store_raw_text: bool = True
+    ocr_store_raw_text: bool = False
 
     # ── Development helpers ───────────────────────────────────────────────────
     @property

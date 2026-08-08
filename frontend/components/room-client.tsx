@@ -167,13 +167,17 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   }, [refresh, roomId, session]);
 
   if (error) {
-    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+    return (
+      <main className="rs-page-shell mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <ErrorState message={error} onRetry={() => window.location.reload()} />
+      </main>
+    );
   }
 
   if (!sessionLoaded) {
     return (
-      <main className="mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
-        <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+      <main className="rs-page-shell mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <section className="rs-panel rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
           <div className="flex items-center gap-3 text-sm font-medium text-[#63706b]">
             <Loader2 size={18} className="animate-spin text-leaf" aria-hidden="true" />
             Loading room...
@@ -185,16 +189,19 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
 
   if (!session) {
     return (
-      <ErrorState
-        message={mode === "creator" ? "Creator session not found" : "Participant session not found"}
-      />
+      <main className="rs-page-shell mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <ErrorState
+          message={mode === "creator" ? "Creator session not found" : "Participant session not found"}
+          detail="Open the invite link again or create a new split room."
+        />
+      </main>
     );
   }
 
   if (!summary) {
     return (
-      <main className="mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
-        <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+      <main className="rs-page-shell mx-auto grid min-h-dvh max-w-md content-center px-4 py-6 text-ink">
+        <section className="rs-panel rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
           <div className="flex items-center gap-3 text-sm font-medium text-[#63706b]">
             <Loader2 size={18} className="animate-spin text-leaf" aria-hidden="true" />
             Loading room...
@@ -207,7 +214,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   const readiness = getSplitPreviewReadiness(summary);
 
   return (
-    <main className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 overflow-x-clip px-4 py-5 pb-20 text-ink sm:px-6">
+    <main className="room-workbench-shell overflow-x-clip text-ink">
       <RoomHeader summary={summary} connected={connected} />
       {mode === "creator" && session.role === "creator" ? (
         <CreatorTools
@@ -242,11 +249,11 @@ function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: b
   const splitLabel = summary.room.split_mode === "item_wise" ? "Mixed items" : "Everything equal";
   const statusLabel =
     summary.room.status === "active"
-      ? "Claiming"
+      ? "Choosing items"
       : summary.room.status.charAt(0).toUpperCase() + summary.room.status.slice(1);
 
   return (
-    <header className="sticky top-0 z-40 rounded-md border border-border bg-surface/95 px-4 py-3 pr-14 shadow-soft backdrop-blur-xl sm:px-5 sm:pr-16">
+    <header className="room-workbench-header">
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-leaf">ReceiptSplit</p>
@@ -271,10 +278,10 @@ function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: b
 
 function LifecycleIndicator({ status }: { status: RoomSummary["room"]["status"] }) {
   const steps = [
-    { key: "draft", label: "Draft" },
-    { key: "active", label: "Claiming" },
-    { key: "settling", label: "Locked" },
-    { key: "settled", label: "Settled" }
+    { key: "draft", label: "Build bill" },
+    { key: "active", label: "Choose items" },
+    { key: "settling", label: "Review & pay" },
+    { key: "settled", label: "Complete" }
   ];
   const activeIndex = Math.max(
     0,
@@ -282,15 +289,12 @@ function LifecycleIndicator({ status }: { status: RoomSummary["room"]["status"] 
   );
 
   return (
-    <div className="mt-4 grid grid-cols-4 gap-2 text-[11px] font-semibold text-[#63706b]" aria-label="Room lifecycle">
+    <div className="room-lifecycle" aria-label="Room lifecycle">
       {steps.map((step, index) => (
         <div
           key={step.key}
-          className={
-            index <= activeIndex
-              ? "rounded-full bg-mint px-2 py-1 text-center text-leaf"
-              : "rounded-full bg-cloud px-2 py-1 text-center"
-          }
+          className="room-lifecycle-step"
+          data-active={index <= activeIndex}
         >
           {step.label}
         </div>
@@ -339,19 +343,19 @@ function getCreatorNextAction(
       };
     }
     return {
-      title: "Open claiming",
-      description: "Items are ready. Share the link so friends can join and claim what they had."
+      title: "Let everyone choose items",
+      description: "The bill is ready. Start item selection, then share the invite."
     };
   }
   if (roomStatus === "active") {
     return canLock
       ? {
-          title: "Lock bill",
-          description: "Everyone has claimed their items. Lock when ready to settle."
+          title: "Review and lock the bill",
+          description: "Every item has a share. Review the totals, then lock the bill."
         }
       : {
-          title: "Share and collect claims",
-          description: "Share the invite link. Lock the bill once everyone has claimed their items."
+          title: "Share the bill and collect choices",
+          description: "Send the invite. Lock the bill once every item has been added to a share."
         };
   }
   if (roomStatus === "settling") {
@@ -451,198 +455,192 @@ function CreatorTools({
   }
 
   return (
-    <>
-      {actionError ? <ErrorState message={actionError} onRetry={() => setActionError(null)} /> : null}
-      <CreatorNextActionCard
-        roomStatus={summary.room.status}
-        canLock={lockReady}
-        itemCount={itemCount}
-      />
-      <RoomStepHeader step={creatorStep} />
-      {creatorStep === "claiming" ? (
-        <>
-          {session.inviteToken ? (
-            <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
-          ) : null}
-          <Participants
-            participants={summary.participants}
-            mode="creator"
-            roomStatus={summary.room.status}
-            payerName={summary.room.payer_name}
-            confirmRemoveId={removeConfirm}
-            onRequestRemove={(id) => setRemoveConfirm(id)}
-            onCancelRemove={() => setRemoveConfirm(null)}
-            onConfirmRemove={removeParticipant}
-          />
-        </>
+    <div className="room-workbench-grid">
+      {actionError ? (
+        <div className="room-workbench-alert">
+          <ErrorState message={actionError} onRetry={() => setActionError(null)} />
+        </div>
       ) : null}
-      {creatorStep === "draft" ? (
-      <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
-        <h2 className="text-lg font-bold">Items</h2>
-        {!locked ? (
-          <div className="mt-3 grid gap-4">
-            <ReceiptUpload
-              roomId={summary.room.id}
-              token={session.token}
-              onConfirmed={onRefresh}
-            />
-            <ItemForm
-              onSubmit={(payload) => run(() => api.addItem(summary.room.id, session.token, payload))}
-            />
-          </div>
-        ) : null}
-        {summary.room.status === "draft" ? (
-          <div className="mt-4">
-            <Button
-              type="button"
-              disabled={itemCount === 0}
-              onClick={() =>
-                run(() =>
-                  api.updateRoom(summary.room.id, session.token, {
-                    version: summary.room.version,
-                    status: "active"
-                  })
-                )
-              }
-            >
-              <Check size={16} aria-hidden="true" />
-              Open claiming
-            </Button>
-            {itemCount === 0 ? (
-              <p className="mt-2 text-sm text-[#63706b]">Add at least one item before opening claims.</p>
-            ) : null}
-          </div>
-        ) : null}
-        <ItemList
-          summary={summary}
-          locked={locked}
-          creatorToken={session.token}
-          onRefresh={onRefresh}
-        />
-      </section>
-      ) : null}
-      {/* Creator self-claim — available in active mode */}
-      {summary.room.status === "active" && creatorParticipant ? (
-        <CreatorClaimSection
-          summary={summary}
-          creatorParticipantId={creatorParticipant.id}
-          onClaim={(itemId, payload) =>
-            run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
-          }
-          onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
-        />
-      ) : null}
-      {creatorStep === "draft" ? (
-        <AdjustmentForm
-          roomId={summary.room.id}
-          token={session.token}
-          onSaved={onRefresh}
-          onError={setActionError}
-        />
-      ) : null}
-      {creatorStep === "draft" || creatorStep === "claiming" || creatorStep === "locked" ? (
-        <SplitPreviewCard
-          preview={preview}
-          previewError={previewError}
-          readiness={readiness}
-          summary={summary}
-          onRetry={onPreviewRetry}
-        />
-      ) : null}
-      {creatorStep === "claiming" || creatorStep === "locked" ? (
-        <CreatorLockControls
+
+      <div className="room-workbench-column">
+        <CreatorNextActionCard
+          roomStatus={summary.room.status}
           canLock={lockReady}
-          locked={locked}
-          readiness={readiness}
-          onLock={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
-          onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
+          itemCount={itemCount}
         />
-      ) : null}
-      {creatorStep === "locked" || creatorStep === "settling" ? (
-        <CreatorSettlementPanel
-          settlement={settlement}
-          participantsById={participantsById}
-          locked={locked}
-          onSavePayer={(payload) =>
-            run(() => api.savePayerDetails(summary.room.id, session.token, payload))
-          }
-          onPrepare={() => run(() => api.prepareSettlement(summary.room.id, session.token))}
-          onConfirm={(requestId) =>
-            run(() => api.confirmSettlement(summary.room.id, requestId, session.token))
-          }
-          onDispute={(requestId, reason) =>
-            run(() =>
-              api.disputeSettlement(summary.room.id, requestId, session.token, {
-                reason: reason || null
-              })
-            )
-          }
+        <RoomStepHeader step={creatorStep} />
+        {creatorStep === "claiming" ? (
+          <>
+            {session.inviteToken ? (
+              <InvitePanel roomId={summary.room.id} inviteToken={session.inviteToken} />
+            ) : null}
+            <Participants
+              participants={summary.participants}
+              mode="creator"
+              roomStatus={summary.room.status}
+              payerName={summary.room.payer_name}
+              confirmRemoveId={removeConfirm}
+              onRequestRemove={(id) => setRemoveConfirm(id)}
+              onCancelRemove={() => setRemoveConfirm(null)}
+              onConfirmRemove={removeParticipant}
+            />
+          </>
+        ) : null}
+        {creatorStep === "draft" ? (
+          <AdjustmentForm
+            roomId={summary.room.id}
+            token={session.token}
+            onSaved={onRefresh}
+            onError={setActionError}
+          />
+        ) : null}
+      </div>
+
+      <div className="room-workbench-column">
+        {creatorStep === "draft" ? (
+          <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
+            <h2 className="text-lg font-bold">Items</h2>
+            {!locked ? (
+              <div className="mt-3 grid gap-4">
+                <ReceiptUpload
+                  roomId={summary.room.id}
+                  token={session.token}
+                  onConfirmed={onRefresh}
+                />
+                <ItemForm
+                  onSubmit={(payload) => run(() => api.addItem(summary.room.id, session.token, payload))}
+                />
+              </div>
+            ) : null}
+            {summary.room.status === "draft" ? (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  disabled={itemCount === 0}
+                  onClick={() =>
+                    run(() =>
+                      api.updateRoom(summary.room.id, session.token, {
+                        version: summary.room.version,
+                        status: "active"
+                      })
+                    )
+                  }
+                >
+                  <Check size={16} aria-hidden="true" />
+                  Start item selection
+                </Button>
+                {itemCount === 0 ? (
+                  <p className="mt-2 text-sm text-[#63706b]">Add at least one item before opening claims.</p>
+                ) : null}
+              </div>
+            ) : null}
+            <ItemList
+              summary={summary}
+              locked={locked}
+              creatorToken={session.token}
+              onRefresh={onRefresh}
+            />
+          </section>
+        ) : null}
+        {summary.room.status === "active" && creatorParticipant ? (
+          <CreatorClaimSection
+            summary={summary}
+            creatorParticipantId={creatorParticipant.id}
+            onClaim={(itemId, payload) =>
+              run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
+            }
+            onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
+          />
+        ) : null}
+        {creatorStep === "draft" || creatorStep === "claiming" || creatorStep === "locked" ? (
+          <SplitPreviewCard
+            preview={preview}
+            previewError={previewError}
+            readiness={readiness}
+            summary={summary}
+            onRetry={onPreviewRetry}
+          />
+        ) : null}
+        {creatorStep === "claiming" || creatorStep === "locked" ? (
+          <CreatorLockControls
+            canLock={lockReady}
+            locked={locked}
+            readiness={readiness}
+            onLock={() => run(() => api.lockSplit(summary.room.id, session.token, summary.room.version))}
+            onUnlock={() => run(() => api.unlockSplit(summary.room.id, session.token, summary.room.version))}
+          />
+        ) : null}
+      </div>
+
+      <div className="room-workbench-column">
+        {creatorStep === "locked" || creatorStep === "settling" ? (
+          <CreatorSettlementPanel
+            settlement={settlement}
+            participantsById={participantsById}
+            locked={locked}
+            onSavePayer={(payload) =>
+              run(() => api.savePayerDetails(summary.room.id, session.token, payload))
+            }
+            onPrepare={() => run(() => api.prepareSettlement(summary.room.id, session.token))}
+            onConfirm={(requestId) =>
+              run(() => api.confirmSettlement(summary.room.id, requestId, session.token))
+            }
+            onDispute={(requestId, reason) =>
+              run(() =>
+                api.disputeSettlement(summary.room.id, requestId, session.token, {
+                  reason: reason || null
+                })
+              )
+            }
+          />
+        ) : null}
+        {creatorStep === "settled" ? (
+          <CreatorSettledView
+            summary={summary}
+            preview={preview}
+            settlement={settlement}
+            participantsById={participantsById}
+          />
+        ) : null}
+        <AbuseReportPanel
+          onReport={async (payload) => {
+            await api.reportAbuse(summary.room.id, session.token, payload);
+          }}
         />
-      ) : null}
-      {creatorStep === "settled" ? (
-        <CreatorSettledView
-          summary={summary}
-          preview={preview}
-          settlement={settlement}
-          participantsById={participantsById}
-        />
-      ) : null}
-      <AbuseReportPanel
-        onReport={async (payload) => {
-          await api.reportAbuse(summary.room.id, session.token, payload);
-        }}
-      />
-    </>
+      </div>
+    </div>
   );
 }
 
 export function RoomStepHeader({ step }: { step: CreatorStep }) {
   const copy = {
     draft: {
-      title: "Draft",
-      description: "Build the receipt, add adjustments, and preview the split before inviting friends."
+      title: "Build the bill",
+      description: "Review the receipt, add any tax or discount, then start item selection."
     },
     claiming: {
-      title: "Claiming",
-      description: "Share the invite, let friends claim items, and lock once the bill is ready."
+      title: "Choose items",
+      description: "Share the invite and let everyone add what they had to their share."
     },
     locked: {
-      title: "Locked",
-      description: "Review final totals, save payer details, then prepare manual settlement requests."
+      title: "Review totals",
+      description: "Check every share, save payer details, then create payment requests."
     },
     settling: {
-      title: "Settling",
-      description: "Track UPI opens, marked-paid requests, disputes, and manual payer confirmations."
+      title: "Collect payments",
+      description: "Track direct UPI payments and manually confirm or dispute each marked-paid request."
     },
     settled: {
-      title: "Settled",
+      title: "Complete",
       description: "Everyone's share has been manually confirmed by the payer."
     }
   }[step];
 
   return (
     <section className="rounded-md border border-border bg-surface p-4 shadow-soft sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase text-info">Current step</p>
-          <h2 className="mt-1 text-2xl font-bold">{copy.title}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{copy.description}</p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          {(["draft", "claiming", "locked", "settling", "settled"] as CreatorStep[]).map((entry) => (
-            <span
-              key={entry}
-              className={
-                entry === step
-                  ? "rounded-full bg-info-soft px-3 py-1 text-info"
-                  : "rounded-full bg-cloud px-3 py-1 text-muted"
-              }
-            >
-              {entry}
-            </span>
-          ))}
-        </div>
-      </div>
+      <p className="text-xs font-semibold uppercase text-info">Current step</p>
+      <h2 className="mt-1 text-2xl font-bold">{copy.title}</h2>
+      <p className="mt-1 text-sm leading-6 text-muted">{copy.description}</p>
     </section>
   );
 }
@@ -790,61 +788,74 @@ function ParticipantTools({
   }
 
   return (
-    <>
-      {actionError ? <ErrorState message={actionError} onRetry={() => setActionError(null)} /> : null}
-      <ParticipantTotalCard
-        amountPaise={totalPaise}
-        status={participantStatus}
-        participantName={session.nickname}
-      />
-      <Participants
-        participants={summary.participants}
-        mode="participant"
-        roomStatus={summary.room.status}
-        payerName={summary.room.payer_name}
-      />
-      <ParticipantClaimList
-        summary={summary}
-        participantId={session.participantId}
-        locked={locked}
-        onClaim={(itemId, payload) =>
-          run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
-        }
-        onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
-      />
-      <SplitPreviewCard
-        preview={preview}
-        previewError={previewError}
-        readiness={readiness}
-        summary={summary}
-        onRetry={onPreviewRetry}
-      />
-      {locked ? (
-        <ParticipantSettlementPanel
-          settlement={settlement}
-          participantId={session.participantId}
-          onOpenPayment={(requestId, amountPaise) =>
-            api.openPayment(summary.room.id, requestId, session.token, amountPaise).then(async (result) => {
-              await onRefresh();
-              try {
-                window.open(result.upi_uri, "_self");
-              } catch {
-                // UPI navigation is best-effort; QR and copy fallback remain available.
-              }
-              return result;
-            })
-          }
-          onClaimPaid={(requestId, amountPaise) =>
-            run(() => api.claimPaid(summary.room.id, requestId, session.token, amountPaise))
-          }
-        />
+    <div className="room-workbench-grid">
+      {actionError ? (
+        <div className="room-workbench-alert">
+          <ErrorState message={actionError} onRetry={() => setActionError(null)} />
+        </div>
       ) : null}
-      <AbuseReportPanel
-        onReport={async (payload) => {
-          await api.reportAbuse(summary.room.id, session.token, payload);
-        }}
-      />
-    </>
+
+      <div className="room-workbench-column">
+        <ParticipantTotalCard
+          amountPaise={totalPaise}
+          status={participantStatus}
+          participantName={session.nickname}
+        />
+        <Participants
+          participants={summary.participants}
+          mode="participant"
+          roomStatus={summary.room.status}
+          payerName={summary.room.payer_name}
+        />
+      </div>
+
+      <div className="room-workbench-column">
+        <ParticipantClaimList
+          summary={summary}
+          participantId={session.participantId}
+          locked={locked}
+          onClaim={(itemId, payload) =>
+            run(() => api.claimItem(summary.room.id, session.token, itemId, payload))
+          }
+          onUnclaim={(itemId) => run(() => api.unclaimItem(summary.room.id, session.token, itemId))}
+        />
+        <SplitPreviewCard
+          preview={preview}
+          previewError={previewError}
+          readiness={readiness}
+          summary={summary}
+          onRetry={onPreviewRetry}
+        />
+      </div>
+
+      <div className="room-workbench-column">
+        {locked ? (
+          <ParticipantSettlementPanel
+            settlement={settlement}
+            participantId={session.participantId}
+            onOpenPayment={(requestId, amountPaise) =>
+              api.openPayment(summary.room.id, requestId, session.token, amountPaise).then(async (result) => {
+                await onRefresh();
+                try {
+                  window.open(result.upi_uri, "_self");
+                } catch {
+                  // UPI navigation is best-effort; QR and copy fallback remain available.
+                }
+                return result;
+              })
+            }
+            onClaimPaid={(requestId, amountPaise) =>
+              run(() => api.claimPaid(summary.room.id, requestId, session.token, amountPaise))
+            }
+          />
+        ) : null}
+        <AbuseReportPanel
+          onReport={async (payload) => {
+            await api.reportAbuse(summary.room.id, session.token, payload);
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -888,9 +899,9 @@ function getParticipantTotalCopy(status: ParticipantTotalStatus) {
   switch (status) {
     case "claim_items":
       return {
-        label: "Claim your items",
-        title: "Claim what you had.",
-        description: "Tap the food or drinks you shared. Your total updates when the split is ready.",
+        label: "Choose your items",
+        title: "Add what you had to your share.",
+        description: "Select each item you had. Your total appears when every item has a share.",
         tone: "info" as const
       };
     case "ready_to_pay":
@@ -966,8 +977,8 @@ export function ParticipantClaimList({
     <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold">Claim your items</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Tap what you had. No awkward maths.</p>
+          <h2 className="text-lg font-bold">Choose your items</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Add what you had to your share. You can remove it until the bill is locked.</p>
         </div>
         <ReceiptText size={22} className="text-leaf" aria-hidden="true" />
       </div>
@@ -1033,7 +1044,7 @@ export function ParticipantClaimList({
                       type="button"
                       variant="ghost"
                       disabled={locked}
-                      aria-label={`Unclaim ${item.name}`}
+                      aria-label={`Remove ${item.name} from my share`}
                       onClick={() => onUnclaim(item.id)}
                     >
                       Remove
@@ -1640,7 +1651,10 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
     <section className="rounded-md bg-white p-4 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold">Invite</h2>
+          <h2 className="text-lg font-bold">Invite people</h2>
+          <p className="mt-1 text-sm text-[#63706b]">
+            Anyone opening this link will sign in or create an account before joining.
+          </p>
           <p className="break-all text-sm text-[#63706b]">{link}</p>
         </div>
         {qr ? (
@@ -1776,14 +1790,14 @@ function CreatorClaimSection({
     <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold">Your items</h2>
-          <p className="mt-1 text-sm text-[#63706b]">Claim what you had too.</p>
+          <h2 className="text-lg font-bold">Your share</h2>
+          <p className="mt-1 text-sm text-[#63706b]">Add the items you had to your own share.</p>
         </div>
         <StatusBadge tone="info">Creator</StatusBadge>
       </div>
       <div className="mt-4 grid gap-3">
         {summary.items.length === 0 ? (
-          <EmptyState title="No items yet." description="Add items above before claiming." />
+          <EmptyState title="No items yet." description="Add receipt items before choosing shares." />
         ) : null}
         {summary.items.map((item) => {
           const itemAssignments = summary.assignments.filter(
@@ -1823,7 +1837,7 @@ function CreatorClaimSection({
                   <Button
                     type="button"
                     variant="ghost"
-                    aria-label={`Unclaim ${item.name}`}
+                    aria-label={`Remove ${item.name} from my share`}
                     onClick={() => onUnclaim(item.id)}
                   >
                     Remove

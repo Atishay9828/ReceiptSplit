@@ -11,7 +11,7 @@ from app.models.ocr_result import OcrResult
 from app.models.parsed_receipt import ParsedReceipt
 from app.models.receipt_image import ReceiptImage
 from app.models.split_adjustment import SplitAdjustment
-from app.ocr.contracts import OcrImageInput, ParsedReceiptDraft
+from app.ocr.contracts import OcrImageInput, OcrProviderResult, ParsedReceiptDraft
 from app.ocr.errors import OcrJobNotFound, ParsedReceiptNotFound
 from app.ocr.redaction import redact_sensitive_ocr_text
 from app.shared.errors import DomainError, RoomNotFound
@@ -59,6 +59,7 @@ class ReceiptOcrService:
         actor_id: UUID,
         content: bytes,
         content_type: str,
+        candidate_result: OcrProviderResult | None = None,
     ) -> tuple[OcrJob, ParsedReceipt | None]:
         room = await self._room_repo.get_by_id(db, room_id)
         if room is None:
@@ -84,7 +85,11 @@ class ReceiptOcrService:
         db.add(image)
         await db.flush()
 
-        provider_name = self._provider.__class__.__name__.removesuffix("OcrProvider").lower()
+        provider_name = (
+            candidate_result.provider
+            if candidate_result is not None
+            else self._provider.__class__.__name__.removesuffix("OcrProvider").lower()
+        )
         job = OcrJob(
             room_id=room_id,
             receipt_id=receipt.id,
@@ -96,14 +101,16 @@ class ReceiptOcrService:
         await db.flush()
 
         try:
-            result = await self._provider.extract_text(
-                OcrImageInput(
-                    content=preprocessed.content,
-                    content_type=preprocessed.content_type,
-                    width=preprocessed.width,
-                    height=preprocessed.height,
+            result = candidate_result
+            if result is None:
+                result = await self._provider.extract_text(
+                    OcrImageInput(
+                        content=preprocessed.content,
+                        content_type=preprocessed.content_type,
+                        width=preprocessed.width,
+                        height=preprocessed.height,
+                    )
                 )
-            )
             parsed_draft = self._parser.parse(result.raw_text)
         except DomainError as exc:
             job.status = "failed"

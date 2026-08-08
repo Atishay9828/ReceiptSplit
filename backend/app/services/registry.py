@@ -213,6 +213,8 @@ def get_ocr_service() -> ReceiptOcrService:
         else TesseractOcrProvider(
             tesseract_cmd=settings.tesseract_cmd,
             timeout_seconds=settings.ocr_timeout_seconds,
+            language=settings.tesseract_language,
+            psm=settings.tesseract_psm,
         )
     )
     return ReceiptOcrService(

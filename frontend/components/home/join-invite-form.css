@@ -1,15 +1,16 @@
 .join-invite-panel {
-  padding: clamp(1.2rem, 3vw, 2rem);
-  border: 1px solid #31425b;
-  background: #0f1a2d;
-  box-shadow: 0.5rem 0.5rem 0 rgba(56, 189, 248, 0.12);
+  padding: 1.5rem;
+  border: 1px solid var(--home-line-strong);
+  border-radius: 0.5rem;
+  background: var(--home-panel);
+  box-shadow: 0 1rem 2.2rem rgba(32, 48, 37, 0.08);
 }
 
 .join-invite-heading {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  margin-bottom: 1.55rem;
+  margin-bottom: 1.4rem;
 }
 
 .join-invite-icon {
@@ -18,9 +19,10 @@
   height: 2.55rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(56, 189, 248, 0.38);
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
+  border: 1px solid var(--home-line-strong);
+  border-radius: 0.4rem;
+  background: var(--home-green-soft);
+  color: var(--home-green);
 }
 
 .join-invite-heading p,
@@ -29,25 +31,23 @@
 }
 
 .join-invite-heading p {
-  color: #8ea0b8;
-  font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 0.58rem;
+  color: var(--home-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
 }
 
 .join-invite-heading h3 {
   margin-top: 0.2rem;
-  font-family: Bahnschrift, "Arial Narrow", sans-serif;
   font-size: 1.25rem;
-  letter-spacing: -0.03em;
+  font-weight: 800;
 }
 
 .join-invite-panel > label {
   display: block;
   margin-bottom: 0.5rem;
-  color: #dfe9f6;
-  font-size: 0.75rem;
+  color: var(--home-ink);
+  font-size: 0.8rem;
   font-weight: 750;
 }
 
@@ -62,17 +62,16 @@
   min-width: 0;
   min-height: 3rem;
   padding: 0.75rem 0.8rem;
-  border: 1px solid #3a4b65;
-  border-radius: 0.25rem;
+  border: 1px solid var(--home-line-strong);
+  border-radius: 0.4rem;
   outline: 0;
-  background: #091221;
-  color: #f5f9ff;
-  font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 0.72rem;
+  background: var(--home-panel-strong);
+  color: var(--home-ink);
+  font-size: 0.85rem;
 }
 
 .join-invite-control input::placeholder {
-  color: #71839c;
+  color: var(--home-muted);
 }
 
 .join-invite-control button {
@@ -81,27 +80,27 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.72rem 0.85rem;
-  border: 1px solid #38bdf8;
-  border-radius: 0.25rem;
-  background: #38bdf8;
-  color: #03111b;
-  font-weight: 850;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid var(--home-green);
+  border-radius: 0.4rem;
+  background: var(--home-green);
+  color: #f7fff9;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .join-invite-help,
 .join-invite-error {
   margin: 0.65rem 0 0;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   line-height: 1.5;
 }
 
 .join-invite-help {
-  color: #8ea0b8;
+  color: var(--home-muted);
 }
 
 .join-invite-error {
-  color: #fda4af;
+  color: var(--home-accent-strong);
   font-weight: 750;
 }

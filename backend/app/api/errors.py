@@ -45,6 +45,7 @@ def domain_error_status(exc: DomainError) -> int:
         "SETTLEMENT_AMOUNT_ERROR": 400,
         "INVALID_SETTLEMENT_TRANSITION": 400,
         "INVALID_RECEIPT_IMAGE": 400,
+        "INVALID_OCR_CANDIDATE": 400,
         "CLAIM_NOT_FOUND": 404,
         "ROOM_NOT_FOUND": 404,
         "ITEM_NOT_FOUND": 404,

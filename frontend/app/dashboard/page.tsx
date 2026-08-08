@@ -84,17 +84,17 @@ export default function DashboardPage() {
   if (!loaded) return null;
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-6xl px-4 py-8 sm:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+    <main className="rs-page-shell rs-dashboard-page mx-auto min-h-dvh w-full max-w-6xl px-4 py-8 sm:px-6">
+      <header className="rs-topbar flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
         <Link className="flex items-center gap-2 text-lg font-bold" href="/"><ReceiptText size={22} /> ReceiptSplit</Link>
         {session ? <Button type="button" variant="ghost" onClick={() => { clearAccountSession(); setSession(null); setGroups([]); setFriends([]); }}><LogOut size={16} /> Sign out</Button> : null}
       </header>
 
       {!session ? (
-        <section className="mx-auto mt-16 max-w-lg rounded-lg border border-border bg-surface p-6 shadow-soft">
+        <section className="rs-panel mx-auto mt-16 max-w-lg rounded-lg border border-border bg-surface p-6 shadow-soft">
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-info">Your account</p>
           <h1 className="mt-2 text-3xl font-bold">Keep rooms, friends, and bills together.</h1>
-          <p className="mt-3 text-sm leading-6 text-muted">Sign in to create persistent trip or friend rooms. Individual bill links still work without an account.</p>
+          <p className="mt-3 text-sm leading-6 text-muted">Sign in to create rooms, join bill invites, keep friends, and return to your bills on any device.</p>
           <div className="mt-6"><GoogleSignIn onSignedIn={(next) => { setSession(next); if (next.user.username) void refresh(next); }} /></div>
         </section>
       ) : !session.user.username ? (
@@ -124,7 +124,7 @@ function ProfileSetup({ session, onSave }: { session: AccountSession; onSave: (u
   const [displayName, setDisplayName] = useState(session.user.email?.split("@")[0] ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  return <form className="mx-auto mt-16 grid max-w-lg gap-4 rounded-lg border border-border bg-surface p-6 shadow-soft" onSubmit={async (event) => { event.preventDefault(); setBusy(true); setError(null); try { await onSave(username.trim().toLowerCase(), displayName.trim()); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save profile"); } finally { setBusy(false); } }}>
+  return <form className="rs-panel rs-form mx-auto mt-16 grid max-w-lg gap-4 rounded-lg border border-border bg-surface p-6 shadow-soft" onSubmit={async (event) => { event.preventDefault(); setBusy(true); setError(null); try { await onSave(username.trim().toLowerCase(), displayName.trim()); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save profile"); } finally { setBusy(false); } }}>
     <h1 className="text-3xl font-bold">Choose how friends find you</h1><p className="text-sm text-muted">Usernames use lowercase letters, numbers, and underscores.</p>
     <Input label="Display name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
     <Input label="Username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="aj_98" />
@@ -135,7 +135,7 @@ function ProfileSetup({ session, onSave }: { session: AccountSession; onSave: (u
 function FriendsPanel({ friends, onAdd }: { friends: CommunityUser[]; onAdd: (username: string) => Promise<void> }) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
-  return <section className="rounded-lg border border-border bg-surface p-5 shadow-soft"><h2 className="flex items-center gap-2 text-xl font-bold"><UserPlus size={19} /> Friends</h2>
+  return <section className="rs-panel rounded-lg border border-border bg-surface p-5 shadow-soft"><h2 className="flex items-center gap-2 text-xl font-bold"><UserPlus size={19} /> Friends</h2>
     <form className="mt-4 grid gap-3" onSubmit={async (event) => { event.preventDefault(); setError(null); try { await onAdd(username.trim().toLowerCase()); setUsername(""); } catch (addError) { setError(addError instanceof Error ? addError.message : "Could not add friend"); } }}>
       <Input label="Add by username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="friend_username" /><Button type="submit" variant="secondary" disabled={!username.trim()}>Add friend</Button>
     </form>{error ? <p className="mt-2 text-sm font-semibold text-coral">{error}</p> : null}
@@ -146,7 +146,7 @@ function FriendsPanel({ friends, onAdd }: { friends: CommunityUser[]; onAdd: (us
 function CreateGroupPanel({ friends, onCreate }: { friends: CommunityUser[]; onCreate: (name: string, members: string[]) => Promise<void> }) {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  return <form className="rounded-lg border border-border bg-surface p-5 shadow-soft" onSubmit={async (event) => { event.preventDefault(); await onCreate(name.trim(), selected); setName(""); setSelected([]); }}>
+  return <form className="rs-panel rs-form rounded-lg border border-border bg-surface p-5 shadow-soft" onSubmit={async (event) => { event.preventDefault(); await onCreate(name.trim(), selected); setName(""); setSelected([]); }}>
     <h2 className="text-xl font-bold">New room</h2><p className="mt-1 text-sm text-muted">For a trip, flat, team, or recurring group.</p><div className="mt-4"><Input label="Room name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Goa trip" /></div>
     <fieldset className="mt-4 grid gap-2"><legend className="text-sm font-semibold">Friends in this room</legend>{friends.map((friend) => <label className="flex min-h-11 items-center gap-3 rounded-md bg-cloud px-3" key={friend.id}><input type="checkbox" checked={Boolean(friend.username && selected.includes(friend.username))} onChange={() => friend.username && setSelected((current) => current.includes(friend.username!) ? current.filter((entry) => entry !== friend.username) : [...current, friend.username!])} /><span>{friend.display_name ?? friend.username}</span></label>)}</fieldset>
     <Button className="mt-4 w-full" type="submit" disabled={!name.trim()}><Plus size={16} /> Create room</Button>
@@ -155,7 +155,7 @@ function CreateGroupPanel({ friends, onCreate }: { friends: CommunityUser[]; onC
 
 function GroupCard({ group, session, onOpenBill, onChanged }: { group: Group; session: AccountSession; onOpenBill: (bill: GroupBillSummary) => void; onChanged: () => Promise<void> }) {
   const [adding, setAdding] = useState(false);
-  return <article className="rounded-lg border border-border bg-surface p-5 shadow-soft">
+  return <article className="rs-panel rounded-lg border border-border bg-surface p-5 shadow-soft">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-2xl font-bold">{group.name}</h2><p className="mt-1 text-sm text-muted">{group.members.map((member) => member.display_name ?? member.username).join(", ")}</p></div>{group.role === "owner" ? <Button type="button" onClick={() => setAdding((value) => !value)}><Plus size={16} /> Add bill</Button> : null}</div>
     <div className="mt-4 grid grid-cols-3 gap-2"><Stat label="All bills" value={formatPaise(group.total_paise)} /><Stat label="Pending" value={formatPaise(group.pending_paise)} icon={<Clock3 size={14} />} /><Stat label="Cleared" value={formatPaise(group.cleared_paise)} icon={<CheckCircle2 size={14} />} /></div>
     {adding ? <NewBillForm onCreate={async (payload) => { const created = await api.createGroupBill(session.token, group.id, payload); saveCreatorSession({ roomId: created.bill.room.id, role: "creator", token: session.token, inviteToken: created.bill.invite_token, lastSequence: 0 }); setAdding(false); await onChanged(); }} /> : null}

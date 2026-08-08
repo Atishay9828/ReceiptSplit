@@ -1,33 +1,29 @@
 .page {
-  --story-bg: #eef4fa;
-  --story-panel: #f8fbff;
+  --story-bg: #f7f7f4;
+  --story-panel: #f0f1ed;
   --story-panel-strong: #ffffff;
-  --story-ink: #07111f;
-  --story-muted: #4b5f73;
-  --story-line: #c7d4e2;
-  --story-line-strong: #8296ab;
-  --story-cyan: #007fae;
-  --story-violet: #6d45c6;
+  --story-ink: #18201b;
+  --story-muted: #52605a;
+  --story-line: #e0e4de;
+  --story-line-strong: #bec7bf;
+  --story-cyan: #e95631;
+  --story-violet: #7650a7;
 
   min-height: 100dvh;
-  background:
-    linear-gradient(color-mix(in srgb, var(--story-line) 24%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--story-line) 24%, transparent) 1px, transparent 1px),
-    var(--story-bg);
-  background-size: 40px 40px;
+  background: var(--story-bg);
   color: var(--story-ink);
 }
 
 :global(.dark) .page {
-  --story-bg: #070b12;
-  --story-panel: #0d1625;
-  --story-panel-strong: #111d2e;
+  --story-bg: #1b1e1b;
+  --story-panel: #20241f;
+  --story-panel-strong: #242824;
   --story-ink: #f5f9ff;
-  --story-muted: #a9b7c9;
-  --story-line: #203048;
-  --story-line-strong: #3a4d68;
-  --story-cyan: #42c7f5;
-  --story-violet: #b59cff;
+  --story-muted: #c5c9c0;
+  --story-line: #414941;
+  --story-line-strong: #5d685d;
+  --story-cyan: #ef8a67;
+  --story-violet: #c1a3e6;
 }
 
 .page * {
@@ -196,12 +192,13 @@
 .primaryAction {
   border-color: var(--story-cyan);
   background: var(--story-cyan);
-  color: #03111b;
-  box-shadow: 0.35rem 0.35rem 0 var(--story-ink);
+  color: #fffaf6;
+  box-shadow: 0 0.35rem 0.9rem rgba(147, 59, 42, 0.18);
 }
 
 :global(.dark) .primaryAction {
-  box-shadow: 0.35rem 0.35rem 0 #f5f9ff;
+  color: #27100b;
+  box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.22);
 }
 
 .secondaryAction {
@@ -213,7 +210,7 @@
   padding: 2rem 1.65rem;
   border: 1px solid var(--story-line-strong);
   background: var(--story-panel-strong);
-  box-shadow: 0.75rem 0.75rem 0 color-mix(in srgb, var(--story-cyan) 18%, transparent);
+  box-shadow: 0 1.25rem 2.8rem rgba(32, 48, 37, 0.12);
   transform: rotate(1.2deg);
 }
 
@@ -223,7 +220,7 @@
   right: 0;
   left: 0;
   height: 0.6rem;
-  background: repeating-linear-gradient(135deg, transparent 0 0.45rem, var(--story-bg) 0.45rem 0.9rem);
+  background: var(--story-bg);
   content: "";
 }
 

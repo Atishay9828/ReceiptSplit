@@ -280,6 +280,20 @@ export type ReceiptUploadResponse = {
   parsed_receipt_id: string | null;
 };
 
+export type BrowserOcrCandidateLine = {
+  text: string;
+  poly: Array<{ x: number; y: number }>;
+  score: number;
+};
+
+export type BrowserOcrCandidate = {
+  provider: "paddleocr-js";
+  model: string;
+  language: string;
+  raw_text: string;
+  lines: BrowserOcrCandidateLine[];
+};
+
 export type OcrJobResponse = {
   id: string;
   room_id: string;

@@ -45,6 +45,7 @@ async def test_auth_me_rejects_participant_token(api_client: Any) -> None:
         await api_client.post(
             f"/api/rooms/{room['room']['id']}/join",
             json={"invite_token": room["invite_token"], "nickname": "Bob"},
+            headers=bearer(_dev_jwt("participant-bob")),
         )
     ).json()
 
@@ -138,6 +139,7 @@ async def test_participant_token_rejected_from_creator_route(api_client: Any) ->
         await api_client.post(
             f"/api/rooms/{created['room']['id']}/join",
             json={"invite_token": created["invite_token"], "nickname": "Bob"},
+            headers=bearer(_dev_jwt("participant-bob-creator-check")),
         )
     ).json()
 

@@ -32,6 +32,7 @@ class PostgresParticipantRepository(PostgresRepository[RoomParticipant], Partici
         nickname: str,
         color: str,
         new_token_hash: str,
+        user_id: UUID | None = None,
     ) -> RoomParticipant:
         # Step 1: Acquire per-room advisory lock. (TXN-3)
         await db.execute(
@@ -50,7 +51,23 @@ class PostgresParticipantRepository(PostgresRepository[RoomParticipant], Partici
         if not invite:
             raise DomainError(code="INVALID_TOKEN", message="This link is invalid or has expired.")
 
-        # Step 3: Count active participants
+        # Step 3: Make account-backed re-entry idempotent. The account JWT remains the
+        # primary frontend credential, while rotating the capability preserves the API contract.
+        if user_id is not None:
+            existing_stmt = select(RoomParticipant).where(
+                RoomParticipant.room_id == room_id,
+                RoomParticipant.user_id == user_id,
+                RoomParticipant.left_at.is_(None),
+            )
+            existing_result = await db.execute(existing_stmt)
+            existing = existing_result.scalars().first()
+            if existing is not None:
+                existing.token_hash = new_token_hash
+                if existing.role == "participant":
+                    existing.nickname = nickname
+                return existing
+
+        # Step 4: Count active participants
         count_stmt = text("""
             SELECT COUNT(*) FROM room_participants
             WHERE room_id = :room_id AND left_at IS NULL
@@ -62,10 +79,11 @@ class PostgresParticipantRepository(PostgresRepository[RoomParticipant], Partici
                 code="ROOM_FULL", message="This bill has reached the max of 20 people."
             )
 
-        # Step 4: Insert participant
+        # Step 5: Insert participant
         participant = RoomParticipant(
             room_id=room_id,
             invite_id=invite.id,
+            user_id=user_id,
             nickname=nickname,
             color=color,
             role="participant",
@@ -93,6 +111,10 @@ class PostgresParticipantRepository(PostgresRepository[RoomParticipant], Partici
     async def list_active(self, db: AsyncSession, room_id: UUID) -> list[RoomParticipant]:
         stmt = select(RoomParticipant).where(
             RoomParticipant.room_id == room_id, RoomParticipant.left_at.is_(None)
+        ).order_by(
+            (RoomParticipant.role == "creator").desc(),
+            RoomParticipant.joined_at,
+            RoomParticipant.id,
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())

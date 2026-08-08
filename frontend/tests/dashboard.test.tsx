@@ -53,15 +53,13 @@ describe("persistent rooms dashboard", () => {
     window.localStorage.clear();
   });
 
-  it("explains account-backed rooms without removing quick anonymous bills", async () => {
+  it("explains that accounts cover room creation and invite access", async () => {
     render(<DashboardPage />);
 
     expect(
       await screen.findByRole("heading", { name: /keep rooms, friends, and bills together/i })
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/individual bill links still work without an account/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/sign in to create rooms, join bill invites/i)).toBeInTheDocument();
     expect(screen.getByText(/google sign-in is not configured yet/i)).toBeInTheDocument();
   });
 

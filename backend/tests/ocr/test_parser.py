@@ -64,3 +64,30 @@ def test_parser_never_uses_float_money() -> None:
     assert isinstance(parsed.items[0].total_paise, int)
     assert isinstance(parsed.items[0].unit_price_paise, int | type(None))
     assert isinstance(parser._parse_money("12.35"), Decimal)
+
+
+def test_parser_handles_rupee_symbol_and_x_quantity_line_totals_conservatively() -> None:
+    parser = IndianRestaurantReceiptParser()
+    parsed = parser.parse(
+        """SAMPLE RESTAURANT
+123 Test Street
+Date: 01/01/2024
+Butter Chicken x1 ₹350.00
+Garlic Naan x2 ₹120.00
+Dal Tadka x1 ₹180.00
+Lassi x2 ₹100.00
+Subtotal: ₹750.00
+Tax (5%): ₹37.50
+Total: ₹787.50"""
+    )
+
+    assert [(item.name, item.quantity, item.total_paise) for item in parsed.items] == [
+        ("Butter Chicken", 1, 35000),
+        ("Garlic Naan", 2, 12000),
+        ("Dal Tadka", 1, 18000),
+        ("Lassi", 2, 10000),
+    ]
+    assert parsed.tax_paise == 3750
+    assert parsed.total_paise == 78750
+    assert "quantity_total_inferred" in parsed.warnings
+    assert parsed.needs_review is True

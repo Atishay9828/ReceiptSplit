@@ -9,10 +9,16 @@ type JoinFormProps = {
   onJoin: (nickname: string) => Promise<void> | void;
   inputLabel?: string;
   submitLabel?: string;
+  initialNickname?: string;
 };
 
-export function JoinForm({ onJoin, inputLabel = "Nickname", submitLabel = "Join room" }: JoinFormProps) {
-  const [nickname, setNickname] = useState("");
+export function JoinForm({
+  onJoin,
+  inputLabel = "Nickname",
+  submitLabel = "Join room",
+  initialNickname = ""
+}: JoinFormProps) {
+  const [nickname, setNickname] = useState(initialNickname);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,7 +42,7 @@ export function JoinForm({ onJoin, inputLabel = "Nickname", submitLabel = "Join 
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
+    <form className="rs-form grid gap-4" onSubmit={submit}>
       <Input
         label={inputLabel}
         name="nickname"

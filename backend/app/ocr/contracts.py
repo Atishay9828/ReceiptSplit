@@ -24,10 +24,28 @@ class PreprocessedImage:
 
 
 @dataclass(frozen=True, slots=True)
+class OcrTextToken:
+    """One recognized word and its image-space geometry."""
+
+    text: str
+    confidence: float | None
+    page_num: int
+    block_num: int
+    paragraph_num: int
+    line_num: int
+    word_num: int
+    left: int
+    top: int
+    width: int
+    height: int
+
+
+@dataclass(frozen=True, slots=True)
 class OcrProviderResult:
     provider: str
     raw_text: str
     confidence: float | None = None
+    tokens: tuple[OcrTextToken, ...] = ()
     provider_metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -62,7 +80,7 @@ class ParsedReceiptDraft(BaseModel):
 
 class OcrProvider(Protocol):
     async def extract_text(self, image: OcrImageInput) -> OcrProviderResult:
-        """Extract raw text from a normalized receipt image."""
+        """Extract ordered text and optional layout evidence from a receipt image."""
         ...
 
 

@@ -27,7 +27,7 @@ tested on the named device/browser with fake demo data only.
 - [ ] Add Cold Coffee, quantity 3, total INR 360.
 - [ ] Add Paneer Tikka, quantity 1, total INR 240.
 - [ ] Add Masala Dosa, quantity 1, total INR 180.
-- [ ] Open claiming.
+- [ ] Start item selection.
 - [ ] Creator claims 1 Cold Coffee.
 - [ ] Kunal claims 2 Cold Coffee.
 - [ ] SHV_BOLT claims Paneer Tikka.

@@ -18,7 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatPaise, parseRupeesToPaise } from "@/lib/money";
+import {
+  isBrowserReceiptOcrEnabled,
+  runBrowserReceiptOcr,
+  type BrowserOcrProgress
+} from "@/lib/ocr/browser";
 import type {
+  BrowserOcrCandidate,
   ParsedReceiptDraftResponse,
   ParsedReceiptLine
 } from "@/types/api";
@@ -26,10 +32,18 @@ import type {
 // --- Constants ---
 
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/jpg"]);
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB conservative frontend limit
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // Must match backend ImageValidationConfig.max_bytes.
 const OCR_POLL_INTERVAL_MS = 2000;
 
-type OcrStage = "idle" | "uploading" | "processing" | "draft" | "confirming" | "confirmed" | "error";
+type OcrStage =
+  | "idle"
+  | "local-processing"
+  | "uploading"
+  | "processing"
+  | "draft"
+  | "confirming"
+  | "confirmed"
+  | "error";
 
 type ReceiptUploadProps = {
   roomId: string;
@@ -82,7 +96,7 @@ function validateFile(file: File): string | null {
     return "Only PNG and JPEG images are supported.";
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`;
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MiB). Maximum is 5 MiB.`;
   }
   return null;
 }
@@ -111,6 +125,8 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
   const [parsedReceiptId, setParsedReceiptId] = useState<string | null>(null);
   const [serverDraft, setServerDraft] = useState<ParsedReceiptDraftResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localOcrAbortRef = useRef<AbortController | null>(null);
+  const [localOcrProgress, setLocalOcrProgress] = useState<BrowserOcrProgress>("loading-model");
 
   // Local editable draft state
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -154,18 +170,56 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
     }
   }, []);
 
-  useEffect(() => clearPoll, [clearPoll]);
+  const abortLocalOcr = useCallback(() => {
+    localOcrAbortRef.current?.abort();
+    localOcrAbortRef.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearPoll();
+      abortLocalOcr();
+    },
+    [abortLocalOcr, clearPoll]
+  );
 
   // --- Upload ---
 
   async function handleUpload() {
     if (!selectedFile) return;
 
+    setError(null);
+    let browserCandidate: BrowserOcrCandidate | undefined;
+
+    if (isBrowserReceiptOcrEnabled()) {
+      const controller = new AbortController();
+      localOcrAbortRef.current = controller;
+      setLocalOcrProgress("loading-model");
+      setStage("local-processing");
+
+      try {
+        browserCandidate = await runBrowserReceiptOcr(selectedFile, {
+          signal: controller.signal,
+          onProgress: setLocalOcrProgress
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          setStage("idle");
+          return;
+        }
+        setError("Local OCR was unavailable; trying the server OCR fallback.");
+      } finally {
+        if (localOcrAbortRef.current === controller) {
+          localOcrAbortRef.current = null;
+        }
+      }
+    }
+
     setStage("uploading");
     setError(null);
 
     try {
-      const result = await api.uploadReceipt(roomId, token, selectedFile);
+      const result = await api.uploadReceipt(roomId, token, selectedFile, browserCandidate);
       setJobId(result.job_id);
 
       if (result.parsed_receipt_id) {
@@ -359,6 +413,7 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
 
   function handleReset() {
     clearPoll();
+    abortLocalOcr();
     setStage("idle");
     setError(null);
     setFileError(null);
@@ -373,12 +428,13 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
     setRawText(null);
     setShowRawText(false);
     setConfirmedCount(0);
+    setLocalOcrProgress("loading-model");
   }
 
   // --- Render ---
 
   return (
-    <section id="receipt-upload" className="rounded-md border border-border bg-surface p-4 shadow-soft">
+    <section id="receipt-upload" className="rs-receipt-panel rounded-md border border-border bg-surface p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">
@@ -408,14 +464,14 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
       {stage === "idle" && (
         <div className="mt-3 grid gap-3">
           <label
-            className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border-strong bg-cloud p-4 text-sm text-muted transition hover:border-leaf hover:bg-mint/40"
+            className="rs-receipt-picker flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border-strong bg-cloud p-4 text-sm text-muted transition hover:border-leaf hover:bg-mint/40"
             htmlFor="receipt-file-input"
           >
             <Upload size={24} aria-hidden="true" />
             {selectedFile ? (
               <span className="font-semibold text-ink">{selectedFile.name}</span>
             ) : (
-              <span>Tap to select a receipt image (PNG or JPEG, max 10 MB)</span>
+              <span>Tap to select a receipt image (PNG or JPEG, max 5 MiB)</span>
             )}
           </label>
           <input
@@ -429,6 +485,16 @@ export function ReceiptUpload({ roomId, token, onConfirmed }: ReceiptUploadProps
             <Camera size={16} aria-hidden="true" />
             Scan receipt
           </Button>
+        </div>
+      )}
+
+      {/* Uploading */}
+      {stage === "local-processing" && (
+        <div className="mt-4 flex items-center gap-3 text-sm text-muted">
+          <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+          {localOcrProgress === "loading-model"
+            ? "Loading the local receipt reader…"
+            : "Reading receipt text on this device…"}
         </div>
       )}
 

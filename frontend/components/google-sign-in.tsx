@@ -79,7 +79,9 @@ export function GoogleSignIn({ onSignedIn }: { onSignedIn: (session: AccountSess
         <p className="flex items-center gap-2 font-semibold text-ink">
           <LogIn size={17} aria-hidden="true" /> Google sign-in is not configured yet.
         </p>
-        <p className="mt-1">Quick one-off receipt rooms still work without an account.</p>
+        <p className="mt-1">
+          Account sign-in is required to join bill invites. Ask the host to retry after configuration.
+        </p>
       </div>
     );
   }

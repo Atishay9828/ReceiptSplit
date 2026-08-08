@@ -10,6 +10,7 @@ from app.api.errors import ERROR_RESPONSES
 from app.api.schemas.participant import JoinRoomRequest, JoinRoomResponse, ParticipantResponse
 from app.auth.dependencies import (
     AuthorizedRoomActor,
+    require_authenticated_user,
     require_room_access,
     require_room_owner_or_creator,
 )
@@ -23,7 +24,7 @@ from app.shared.errors import DomainError
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.auth.models import AuthContext
+    from app.auth.models import AuthContext, AuthenticatedUser
     from app.services.audit_service import AuditService
     from app.services.participant_service import ParticipantService
 
@@ -37,13 +38,17 @@ router = APIRouter(prefix="/api/rooms/{room_id}", tags=["participants"], respons
     "/join",
     status_code=status.HTTP_201_CREATED,
     summary="Join room",
-    description="Join a room using an invite token and receive a participant capability token.",
+    description=(
+        "Join a room using an invite token and an authenticated account, then receive a "
+        "participant capability token."
+    ),
     response_model=JoinRoomResponse,
 )
 async def join_room(
     room_id: UUID,
     payload: JoinRoomRequest,
     request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated_user),
     db: AsyncSession = Depends(get_db),
     service: ParticipantService = Depends(get_participant_service),
     audit: AuditService = Depends(get_audit_service),
@@ -65,6 +70,7 @@ async def join_room(
             invite_token_hash=hash_token(payload.invite_token),
             nickname=payload.nickname,
             color=payload.color,
+            user_id=user.id,
         )
     except DomainError as exc:
         if exc.code != "INVALID_TOKEN":

@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
+from pydantic import ValidationError
 
 from app.api.errors import ERROR_RESPONSES
 from app.api.schemas.ocr import (
+    BrowserOcrCandidateRequest,
     OcrJobResponse,
     ParsedReceiptConfirmResponse,
     ParsedReceiptDraftResponse,
@@ -15,10 +17,12 @@ from app.api.schemas.ocr import (
     parsed_receipt_response_from_model,
 )
 from app.auth.dependencies import AuthorizedRoomActor, require_room_owner_or_creator
+from app.config import settings
 from app.database import get_db
-from app.ocr.contracts import ParsedReceiptDraft
+from app.ocr.contracts import OcrProviderResult, ParsedReceiptDraft
 from app.security.rate_limit import RateLimitRule, client_host, enforce_rate_limit
 from app.services.registry import get_audit_service, get_ocr_service
+from app.shared.errors import DomainError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +45,7 @@ async def upload_receipt_image(
     room_id: UUID,
     request: Request,
     file: UploadFile = File(...),
+    ocr_candidate: str | None = Form(default=None),
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: ReceiptOcrService = Depends(get_ocr_service),
@@ -52,13 +57,15 @@ async def upload_receipt_image(
         key_parts=[str(room_id), str(actor.actor_id), client_host(request)],
         rule=RateLimitRule(limit=20, window_seconds=3600),
     )
-    content = await file.read()
+    candidate_result = _parse_browser_candidate(ocr_candidate)
+    content = await file.read(settings.ocr_max_image_bytes + 1)
     job, parsed = await service.upload_and_process(
         db,
         room_id=room_id,
         actor_id=actor.actor_id,
         content=content,
         content_type=file.content_type or "application/octet-stream",
+        candidate_result=candidate_result,
     )
     await audit.record(
         db,
@@ -67,7 +74,10 @@ async def upload_receipt_image(
         actor_participant_id=actor.participant.participant_id if actor.participant else None,
         actor_user_id=actor.user.id if actor.user else None,
         actor_type="creator",
-        metadata={"content_type": file.content_type or "application/octet-stream"},
+        metadata={
+            "content_type": file.content_type or "application/octet-stream",
+            "ocr_source": candidate_result.provider if candidate_result else "server_provider",
+        },
         request=request,
     )
     return ReceiptUploadResponse(
@@ -217,3 +227,21 @@ async def _parsed_for_job(
         )
     )
     return result.scalars().first()
+
+
+def _parse_browser_candidate(value: str | None) -> OcrProviderResult | None:
+    if value is None:
+        return None
+    if len(value) > 120_000:
+        raise DomainError(
+            code="INVALID_OCR_CANDIDATE",
+            message="Browser OCR candidate is too large.",
+        )
+    try:
+        candidate = BrowserOcrCandidateRequest.model_validate_json(value)
+    except ValidationError:
+        raise DomainError(
+            code="INVALID_OCR_CANDIDATE",
+            message="Browser OCR candidate is invalid.",
+        ) from None
+    return candidate.to_provider_result()

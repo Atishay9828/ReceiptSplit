@@ -7,6 +7,7 @@ import type {
   ApiErrorShape,
   Assignment,
   AuthUser,
+  BrowserOcrCandidate,
   ClaimPayload,
   CommunityUser,
   DisputeInput,
@@ -111,9 +112,10 @@ export class ReceiptSplitApi {
     return this.request<RoomSummary>(`/api/rooms/${roomId}/summary`, { token });
   }
 
-  joinRoom(roomId: string, inviteToken: string, nickname: string): Promise<JoinRoomResponse> {
+  joinRoom(roomId: string, inviteToken: string, nickname: string, accountToken: string): Promise<JoinRoomResponse> {
     return this.request<JoinRoomResponse>(`/api/rooms/${roomId}/join`, {
       method: "POST",
+      token: accountToken,
       body: { invite_token: inviteToken, nickname }
     });
   }
@@ -322,9 +324,17 @@ export class ReceiptSplitApi {
 
   // --- OCR ---
 
-  async uploadReceipt(roomId: string, token: string, file: File): Promise<ReceiptUploadResponse> {
+  async uploadReceipt(
+    roomId: string,
+    token: string,
+    file: File,
+    candidate?: BrowserOcrCandidate
+  ): Promise<ReceiptUploadResponse> {
     const form = new FormData();
     form.append("file", file);
+    if (candidate) {
+      form.append("ocr_candidate", JSON.stringify(candidate));
+    }
 
     const response = await fetch(`${this.baseUrl}/api/rooms/${roomId}/receipts/upload`, {
       method: "POST",

@@ -10,6 +10,8 @@ const mockGetOcrJob = vi.fn();
 const mockGetParsedReceipt = vi.fn();
 const mockUpdateParsedReceipt = vi.fn();
 const mockConfirmParsedReceipt = vi.fn();
+const mockBrowserOcrEnabled = vi.fn(() => false);
+const mockRunBrowserReceiptOcr = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -20,6 +22,11 @@ vi.mock("@/lib/api", () => ({
     updateParsedReceipt: (...args: unknown[]) => mockUpdateParsedReceipt(...args),
     confirmParsedReceipt: (...args: unknown[]) => mockConfirmParsedReceipt(...args)
   }
+}));
+
+vi.mock("@/lib/ocr/browser", () => ({
+  isBrowserReceiptOcrEnabled: () => mockBrowserOcrEnabled(),
+  runBrowserReceiptOcr: (...args: unknown[]) => mockRunBrowserReceiptOcr(...args)
 }));
 
 const ROOM_ID = "room-1";
@@ -53,6 +60,7 @@ describe("ReceiptUpload", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockBrowserOcrEnabled.mockReturnValue(false);
     // Provide crypto.randomUUID for jsdom
     if (!globalThis.crypto?.randomUUID) {
       Object.defineProperty(globalThis, "crypto", {
@@ -84,12 +92,12 @@ describe("ReceiptUpload", () => {
     expect(screen.getByText("Only PNG and JPEG images are supported.")).toBeTruthy();
   });
 
-  it("rejects files over 10 MB", () => {
+  it("rejects files over 5 MiB", () => {
     render(<ReceiptUpload roomId={ROOM_ID} token={TOKEN} onConfirmed={onConfirmed} />);
     const input = document.getElementById("receipt-file-input") as HTMLInputElement;
 
-    // Create a fake large file (11 MB)
-    const bigContent = new Uint8Array(11 * 1024 * 1024);
+    // Match the backend's 5 MiB upload ceiling.
+    const bigContent = new Uint8Array(5 * 1024 * 1024 + 1);
     const bigFile = new File([bigContent], "big.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [bigFile] } });
 
@@ -138,6 +146,58 @@ describe("ReceiptUpload", () => {
 
     // Merchant
     expect(screen.getByDisplayValue("Test Restaurant")).toBeTruthy();
+  });
+
+  it("can send a browser OCR candidate while keeping the draft review gate", async () => {
+    const browserCandidate = {
+      provider: "paddleocr-js" as const,
+      model: "PP-OCRv5",
+      language: "en",
+      raw_text: "Test Restaurant\nTea 120.00",
+      lines: [
+        {
+          text: "Test Restaurant",
+          poly: [
+            { x: 10, y: 10 },
+            { x: 120, y: 10 },
+            { x: 120, y: 30 },
+            { x: 10, y: 30 }
+          ],
+          score: 0.98
+        }
+      ]
+    };
+    mockBrowserOcrEnabled.mockReturnValue(true);
+    mockRunBrowserReceiptOcr.mockResolvedValue(browserCandidate);
+    mockUploadReceipt.mockResolvedValue({
+      receipt_id: "receipt-1",
+      image_id: "img-1",
+      job_id: "job-1",
+      status: "succeeded",
+      parsed_receipt_id: "parsed-1"
+    });
+    mockGetParsedReceipt.mockResolvedValue(MOCK_DRAFT);
+
+    render(<ReceiptUpload roomId={ROOM_ID} token={TOKEN} onConfirmed={onConfirmed} />);
+    const input = document.getElementById("receipt-file-input") as HTMLInputElement;
+    const pngFile = new File(["fake-png"], "receipt.png", { type: "image/png" });
+    fireEvent.change(input, { target: { files: [pngFile] } });
+    fireEvent.click(screen.getByRole("button", { name: /Scan receipt/ }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ocr-draft-review")).toBeTruthy();
+    });
+
+    expect(mockRunBrowserReceiptOcr).toHaveBeenCalledWith(
+      pngFile,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(mockUploadReceipt).toHaveBeenCalledWith(
+      ROOM_ID,
+      TOKEN,
+      pngFile,
+      browserCandidate
+    );
   });
 
   it("allows adding and deleting draft lines", async () => {

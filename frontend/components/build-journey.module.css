@@ -5,10 +5,8 @@
   margin-inline: auto;
   overflow: hidden;
   border: 1px solid var(--rs-border);
-  border-radius: 1.25rem;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--rs-accent-soft) 42%, transparent), transparent 42%),
-    var(--rs-surface-muted);
+  border-radius: 4px;
+  background: var(--rs-surface-muted);
   padding: clamp(1.25rem, 4vw, 2.5rem);
   color: var(--rs-text-primary);
 }
@@ -17,14 +15,9 @@
   position: absolute;
   z-index: -1;
   inset: 0;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--rs-border) 32%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--rs-border) 32%, transparent) 1px, transparent 1px);
-  background-size: 2.5rem 2.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--rs-border) 44%, transparent);
   content: "";
-  -webkit-mask-image: linear-gradient(to bottom, black, transparent 42%);
-  mask-image: linear-gradient(to bottom, black, transparent 42%);
-  opacity: 0.32;
+  opacity: 0.18;
 }
 
 .header {
@@ -120,7 +113,7 @@
   bottom: -1.15rem;
   left: 1.35rem;
   width: 1px;
-  background: linear-gradient(var(--stage-accent), var(--rs-border));
+  background: var(--stage-accent);
   content: "";
   opacity: 0.72;
 }
@@ -146,7 +139,7 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--rs-border);
-  border-radius: 0.85rem;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--rs-surface) 96%, var(--stage-accent));
   box-shadow: 0 0 0 1px transparent;
   transition:
@@ -158,10 +151,11 @@
 .entry::after {
   position: absolute;
   inset: 0 auto 0 -0.25rem;
-  width: 0.5rem;
-  background: radial-gradient(circle, var(--rs-surface-muted) 0.13rem, transparent 0.15rem) center 0.35rem / 0.5rem 0.85rem repeat-y;
+  width: 0.25rem;
+  background: var(--stage-accent);
   content: "";
   pointer-events: none;
+  opacity: 0.16;
 }
 
 .entry[open] {
@@ -234,7 +228,7 @@
   height: 2.75rem;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--stage-accent) 38%, var(--rs-border));
-  border-radius: 0.65rem;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--stage-accent) 9%, var(--rs-surface-elevated));
   color: var(--stage-accent);
   transition: transform 180ms ease;

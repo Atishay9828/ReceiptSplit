@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import pytest
 
-from tests.api.conftest import bearer
+from tests.api.conftest import bearer, dev_jwt
 
 pytestmark = pytest.mark.asyncio
 
@@ -26,6 +26,7 @@ async def _locked_room(api_client: Any) -> dict[str, Any]:
         await api_client.post(
             f"/api/rooms/{room_id}/join",
             json={"invite_token": created["invite_token"], "nickname": "Bob"},
+            headers=bearer(dev_jwt("participant-bob")),
         )
     ).json()
     item_response = await api_client.post(

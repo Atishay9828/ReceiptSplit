@@ -6,12 +6,12 @@ architecture note. Archived milestone reports are under `docs/archive/milestones
 ## Purpose
 
 M010 adds a mobile-first Next.js frontend for the manual receipt-first ReceiptSplit flow. It
-supports anonymous creator capability sessions and accountless participant sessions. M011.1 adds OCR
+supports legacy creator capability sessions and account-backed participant sessions. M011.1 adds OCR
 draft review. M012 adds coordinator-safe UPI settlement coordination. M014 adds pilot polish for the
 mobile-first room experience. M015 adds a dark-mode-first theme system and pilot readiness docs.
 M015.1 repairs creator identity, adjustment math, step-based room views, settled completion UX, and
 the ReceiptSplit theme identity.
-Payment verification, wallet, escrow, deployment, and production auth UI remain deferred.
+Payment verification, wallet, escrow, and payment-gateway behavior remain out of scope.
 
 ## App Structure
 
@@ -36,12 +36,13 @@ Key directories:
 
 - `/` redirects to `/create`.
 - `/create` creates a room and stores the creator capability token locally.
-- `/join/[inviteToken]` decodes a frontend invite parameter containing `{room_id}:{invite_token}`.
+- `/join/[inviteToken]` requires Google sign-in, then decodes a frontend invite parameter
+  containing `{room_id}:{invite_token}`.
 - `/rooms/[roomId]` is the participant room.
 - `/rooms/[roomId]/creator` is the creator room.
 
-The backend join contract requires `room_id` in the path and `invite_token` in the body, so the
-frontend invite URL encodes both values into the dynamic route parameter.
+The backend join contract requires an account JWT, `room_id` in the path, and `invite_token` in
+the body, so the frontend invite URL encodes both values into the dynamic route parameter.
 
 ## API Client
 
@@ -63,15 +64,17 @@ The frontend sends money only as integer paise fields.
 - `receiptsplit:creator:{room_id}`.
 - `receiptsplit:participant:{room_id}`.
 
-Stored values are room id, role, raw capability token, invite token for creators, participant id and
-nickname for participants, and last seen event sequence. Token hashes are never stored or displayed.
+Stored values are room id, role, the active bearer credential, invite token for creators,
+participant id and nickname for participants, and last seen event sequence. Account-backed
+participants use their account JWT for room access. Token hashes are never stored or displayed.
 
 ## M014 Experience Layer
 
 M014 keeps the product scope unchanged and improves the experience layer:
 
 - `/create` now explains the flow quickly and uses a direct `Create split room` CTA.
-- `/join/[inviteToken]` is nickname-first with no account-needed copy.
+- `/join/[inviteToken]` leads with a create-account/sign-in gate, then asks for the display name
+  used on the bill.
 - Participant room starts with a large `You owe` summary and a status-specific next action.
 - Item claim cards show `Available`, `Claimed by you`, or `Claimed`.
 - Creator room has a simple lifecycle strip and a `Next step` card.
@@ -131,11 +134,12 @@ M015.1 status colors:
 ## Creator Flow
 
 The creator creates a room from `/create`, optionally setting payer metadata. Because backend rooms
-start in `draft` and claims require `active`, the creator room exposes an explicit `Open claiming`
-action. M015.1 renders the creator room as distinct state views:
+start in `draft` and item selection requires `active`, the creator room exposes an explicit
+`Start item selection` action. M015.1 renders the creator room as distinct state views:
 
-- Draft: item/OCR input, adjustments, draft preview, and open-claiming CTA.
-- Claiming: invite link/QR, participants, creator self-claim, item claims, preview, and lock CTA.
+- Build bill: item/OCR input, adjustments, draft preview, and start-item-selection CTA.
+- Choose items: invite link/QR, participants, creator share selection, participant choices,
+  preview, and lock CTA.
 - Locked: final preview, unlock option, payer details, and prepare-settlement CTA.
 - Settling: settlement dashboard only.
 - Settled: completion screen, final totals, payer-confirmed participant list, copy summary, and
@@ -156,10 +160,11 @@ participant claim and split-preview flow still controls settlement readiness.
 
 ## Participant Flow
 
-Participants join with nickname only through `/join/[inviteToken]`; no login is required. Their
-participant capability token is stored locally. The participant room shows a large participant total
-first, then participants, item claims, split preview, payment state, and safety reporting. Claim
-conflicts are shown as visible errors and trigger a room refresh.
+Participants must sign in through `/join/[inviteToken]`. First-time Google sign-in creates the
+ReceiptSplit account automatically; joining links `room_participants.user_id` to that account.
+The participant room uses the account JWT, shows a large participant total first, then participants,
+item choices, split preview, payment state, and safety reporting. Selection conflicts are shown as
+visible errors and trigger a room refresh.
 
 After settlement requests exist, the participant room shows `Pay your share`, amount due, payer
 name, payer UPI ID, payment reference, status, `Open UPI app`, `Copy UPI ID`, QR fallback, and `I

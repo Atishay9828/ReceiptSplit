@@ -8,7 +8,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants = {
-  primary: "bg-leaf text-[var(--rs-primary-foreground)] hover:bg-[var(--rs-primary-hover)]",
+  primary: "border border-transparent bg-leaf text-[var(--rs-primary-foreground)] hover:bg-[var(--rs-primary-hover)]",
   secondary: "border border-border bg-surface-elevated text-ink hover:bg-[var(--rs-secondary-hover)]",
   danger: "bg-coral text-white hover:bg-[var(--rs-danger-hover)]",
   ghost: "bg-transparent text-ink hover:bg-cloud"
@@ -23,7 +23,7 @@ export function Button({ className, variant = "primary", size = "md", ...props }
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-leaf/25",
+        "inline-flex items-center justify-center gap-2 rounded-[3px] font-semibold transition duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-leaf/25",
         variants[variant],
         sizes[size],
         className

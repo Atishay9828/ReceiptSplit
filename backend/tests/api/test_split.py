@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from tests.api.conftest import bearer
+from tests.api.conftest import bearer, dev_jwt
 
 pytestmark = pytest.mark.asyncio
 
@@ -23,6 +23,7 @@ async def _settlement_room(api_client: Any) -> Any:
             "invite_token": created["invite_token"],
             "nickname": "Bob",
         },
+        headers=bearer(dev_jwt("participant-bob")),
     )
     assert join_response.status_code == 201
     item_response = await api_client.post(

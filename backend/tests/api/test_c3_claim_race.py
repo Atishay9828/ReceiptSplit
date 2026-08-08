@@ -26,6 +26,7 @@ from sqlalchemy.pool import NullPool
 
 from app.database import get_db
 from app.main import create_app
+from tests.api.conftest import dev_jwt
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -113,6 +114,7 @@ async def _add_participant(
             "invite_token": invite_token,
             "nickname": nickname,
         },
+        headers=_bearer(dev_jwt(f"participant-{nickname}")),
     )
     assert resp.status_code == 201
     return resp.json()

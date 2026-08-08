@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import CreatePage from "@/app/create/page";
 import JoinPage from "@/app/join/[inviteToken]/page";
@@ -13,6 +13,8 @@ import {
   ParticipantTotalCard,
   SettlementStatusBadge
 } from "@/components/room-client";
+import { api } from "@/lib/api";
+import { saveAccountSession } from "@/lib/auth-session";
 import { encodeInviteParam } from "@/lib/invite";
 import type {
   Assignment,
@@ -31,6 +33,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
   useParams: () => params
 }));
+
+afterEach(() => {
+  window.localStorage.clear();
+});
 
 const participant: Participant = {
   id: "participant-2",
@@ -146,15 +152,49 @@ describe("M014 frontend polish", () => {
     expect(screen.getByText(/direct UPI payment/i)).toBeInTheDocument();
   });
 
-  it("join page shows a nickname-first WhatsApp flow", () => {
+  it("requires an account before opening the invited bill", async () => {
     params = { inviteToken: encodeInviteParam("room-1", "invite-demo") };
 
+    const accountGate = render(<JoinPage />);
+    expect(
+      await screen.findByRole("heading", { name: /create your account to join/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/account is created automatically/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/name shown on this bill/i)).not.toBeInTheDocument();
+    accountGate.unmount();
+
+    saveAccountSession({
+      token: "google-account-token",
+      user: {
+        id: "user-sam",
+        provider: "google",
+        subject: "google-sam",
+        email: "sam@example.com",
+        username: "sam",
+        display_name: "Sam"
+      }
+    });
+    const joinRoom = vi.spyOn(api, "joinRoom").mockResolvedValue({
+      participant: { ...participant, id: "participant-sam", user_id: "user-sam", nickname: "Sam" },
+      participant_token: "legacy-participant-token"
+    });
     render(<JoinPage />);
 
-    expect(screen.getByRole("heading", { name: /join this split/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /join split/i })).toBeInTheDocument();
-    expect(screen.getByText(/no account needed/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /choose your share/i })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/name shown on this bill/i)).toHaveValue("Sam");
+    await userEvent.click(screen.getByRole("button", { name: /open bill/i }));
+
+    await waitFor(() =>
+      expect(joinRoom).toHaveBeenCalledWith(
+        "room-1",
+        "invite-demo",
+        "Sam",
+        "google-account-token"
+      )
+    );
+    expect(push).toHaveBeenCalledWith("/rooms/room-1");
   });
 
   it("participant summary makes amount and next action obvious", () => {
@@ -162,7 +202,7 @@ describe("M014 frontend polish", () => {
 
     expect(screen.getByText(/you owe/i)).toBeInTheDocument();
     expect(screen.getByText("₹160.00")).toBeInTheDocument();
-    expect(screen.getByText(/claim what you had/i)).toBeInTheDocument();
+    expect(screen.getByText(/add what you had to your share/i)).toBeInTheDocument();
   });
 
   it("participant claim list exposes clear item actions and statuses", async () => {
@@ -197,7 +237,7 @@ describe("M014 frontend polish", () => {
     );
 
     expect(screen.getByText(/in your share/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /unclaim paneer roll/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove paneer roll from my share/i })).toBeInTheDocument();
   });
 
   it("payment card shows all trust-critical payment details and safe status copy", async () => {
@@ -238,8 +278,8 @@ describe("M014 frontend polish", () => {
     render(<CreatorNextActionCard roomStatus="active" canLock itemCount={2} />);
 
     expect(screen.getByRole("heading", { name: /next step/i })).toBeInTheDocument();
-    expect(screen.getByText(/lock bill/i)).toBeInTheDocument();
-    expect(screen.getByText(/everyone has claimed their items/i)).toBeInTheDocument();
+    expect(screen.getByText(/review and lock the bill/i)).toBeInTheDocument();
+    expect(screen.getByText(/every item has a share/i)).toBeInTheDocument();
   });
 
   it("creator settlement dashboard shows confirm and dispute without verification language", () => {

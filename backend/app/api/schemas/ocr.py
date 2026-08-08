@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, Field
 
 from app.api.schemas.common import ORMModel
-from app.ocr.contracts import ParsedReceiptAdjustment, ParsedReceiptLine
+from app.ocr.contracts import (
+    OcrProviderResult,
+    OcrTextToken,
+    ParsedReceiptAdjustment,
+    ParsedReceiptLine,
+)
 
 
 class ReceiptUploadResponse(BaseModel):
@@ -16,6 +21,65 @@ class ReceiptUploadResponse(BaseModel):
     job_id: UUID
     status: str
     parsed_receipt_id: UUID | None = None
+
+
+class BrowserOcrPoint(BaseModel):
+    x: float = Field(ge=0, le=5000)
+    y: float = Field(ge=0, le=5000)
+
+
+class BrowserOcrLine(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+    poly: list[BrowserOcrPoint] = Field(min_length=4, max_length=4)
+    score: float = Field(ge=0, le=1)
+
+
+class BrowserOcrCandidateRequest(BaseModel):
+    """Untrusted browser OCR evidence; the backend still parses and reviews it."""
+
+    provider: Literal["paddleocr-js"] = "paddleocr-js"
+    model: str = Field(pattern=r"^[A-Za-z0-9._-]{1,80}$")
+    language: str = Field(pattern=r"^[A-Za-z0-9._-]{1,20}$")
+    raw_text: str = Field(min_length=1, max_length=100_000)
+    lines: list[BrowserOcrLine] = Field(min_length=1, max_length=2000)
+
+    def to_provider_result(self) -> OcrProviderResult:
+        tokens: list[OcrTextToken] = []
+        for line_number, line in enumerate(self.lines, start=1):
+            xs = [point.x for point in line.poly]
+            ys = [point.y for point in line.poly]
+            left = int(min(xs))
+            top = int(min(ys))
+            right = int(max(xs))
+            bottom = int(max(ys))
+            tokens.append(
+                OcrTextToken(
+                    text=line.text,
+                    confidence=line.score,
+                    page_num=1,
+                    block_num=1,
+                    paragraph_num=1,
+                    line_num=line_number,
+                    word_num=1,
+                    left=left,
+                    top=top,
+                    width=max(0, right - left),
+                    height=max(0, bottom - top),
+                )
+            )
+
+        return OcrProviderResult(
+            provider=self.provider,
+            raw_text=self.raw_text,
+            confidence=sum(line.score for line in self.lines) / len(self.lines),
+            tokens=tuple(tokens),
+            provider_metadata={
+                "source": "browser",
+                "model": self.model,
+                "language": self.language,
+                "line_count": len(self.lines),
+            },
+        )
 
 
 class OcrJobResponse(ORMModel):

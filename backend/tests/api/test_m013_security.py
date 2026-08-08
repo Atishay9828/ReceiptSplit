@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.models.abuse_report import AbuseReport
 from app.models.audit_log import AuditLog
-from tests.api.conftest import bearer
+from tests.api.conftest import bearer, dev_jwt
 from tests.api.test_settlement import _participant_request, _prepared_room
 
 if TYPE_CHECKING:
@@ -159,6 +159,7 @@ async def test_invalid_invite_token_is_audited_without_raw_token(
     response = await api_client.post(
         f"/api/rooms/{room_id}/join",
         json={"invite_token": raw_token, "nickname": "Mallory"},
+        headers=bearer(dev_jwt("participant-mallory")),
     )
 
     assert response.status_code == 403

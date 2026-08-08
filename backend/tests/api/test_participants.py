@@ -4,8 +4,21 @@ import pytest
 from sqlalchemy import text
 
 from app.shared.types import COLOR_PALETTE
+from tests.api.conftest import bearer, dev_jwt
 
 pytestmark = pytest.mark.asyncio
+
+
+async def test_join_room_requires_authenticated_account(api_client: Any) -> None:
+    room = (await api_client.post("/api/rooms", json={"split_mode": "equal"})).json()
+
+    response = await api_client.post(
+        f"/api/rooms/{room['room']['id']}/join",
+        json={"invite_token": room["invite_token"], "nickname": "Anonymous"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "NOT_AUTHORIZED"
 
 
 async def test_join_room_valid_color(api_client: Any) -> Any:
@@ -20,9 +33,11 @@ async def test_join_room_valid_color(api_client: Any) -> Any:
             "nickname": "Alice",
             "color": COLOR_PALETTE[1],
         },
+        headers=bearer(dev_jwt("participant-alice")),
     )
     assert join_resp.status_code == 201
     assert join_resp.json()["participant"]["color"] == COLOR_PALETTE[1]
+    assert join_resp.json()["participant"]["user_id"] is not None
 
 
 async def test_join_room_no_color_assigns_from_palette(api_client: Any) -> Any:
@@ -35,6 +50,7 @@ async def test_join_room_no_color_assigns_from_palette(api_client: Any) -> Any:
             "invite_token": room["invite_token"],
             "nickname": "Bob",
         },
+        headers=bearer(dev_jwt("participant-bob")),
     )
     assert join_resp.status_code == 201
     assert join_resp.json()["participant"]["color"] in COLOR_PALETTE
@@ -51,6 +67,7 @@ async def test_join_room_invalid_hex_fails(api_client: Any) -> Any:
             "nickname": "Charlie",
             "color": "not_a_hex",
         },
+        headers=bearer(dev_jwt("participant-charlie")),
     )
     assert join_resp.status_code == 400
 
@@ -66,6 +83,7 @@ async def test_join_room_arbitrary_hex_fails(api_client: Any) -> Any:
             "nickname": "Dave",
             "color": "#112233",  # valid hex, but not in COLOR_PALETTE
         },
+        headers=bearer(dev_jwt("participant-dave")),
     )
     assert join_resp.status_code == 400
 
@@ -80,6 +98,7 @@ async def test_join_room_nickname_sanitization(api_client: Any, db_session: Any)
             "invite_token": room["invite_token"],
             "nickname": "<script>alert('xss')</script>Eve\x00",
         },
+        headers=bearer(dev_jwt("participant-eve")),
     )
     assert join_resp.status_code == 201
     participant = join_resp.json()["participant"]

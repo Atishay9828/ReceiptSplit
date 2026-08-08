@@ -14,7 +14,7 @@ receiptsplit.test@upi
 4. Add Cold Coffee, quantity 3, total INR 360.
 5. Add Paneer Tikka, quantity 1, total INR 240.
 6. Add Masala Dosa, quantity 1, total INR 180.
-7. Open claiming.
+7. Start item selection.
 8. Join as Kunal.
 9. Join as SHV_BOLT.
 10. Creator claims 1 Cold Coffee.

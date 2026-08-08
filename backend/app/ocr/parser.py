@@ -10,8 +10,19 @@ from app.ocr.contracts import (
 )
 
 MONEY_RE = re.compile(r"(?<!\d)-?\d+(?:,\d{3})*(?:\.\d{1,2})?(?!\d)")
+MONEY_VALUE = r"\d+(?:\.\d{1,2})?"
+CURRENCY_PREFIX = r"(?:₹|Rs\.?|INR)?\s*"
 QTY_PRICE_RE = re.compile(
-    r"^(?P<name>.+?)\s+(?P<qty>\d{1,3})\s*[xX]\s*(?P<unit>\d+(?:\.\d{1,2})?)\s+(?P<total>\d+(?:\.\d{1,2})?)$"
+    rf"^(?P<name>.+?)\s+(?P<qty>\d{{1,3}})\s*[xX]\s*{CURRENCY_PREFIX}"
+    rf"(?P<unit>{MONEY_VALUE})\s+{CURRENCY_PREFIX}(?P<total>{MONEY_VALUE})$"
+)
+QTY_X_TOTAL_RE = re.compile(
+    rf"^(?P<name>.+?)\s+[xX]\s*(?P<qty>\d{{1,3}})\s*{CURRENCY_PREFIX}"
+    rf"(?P<total>{MONEY_VALUE})$"
+)
+QTY_TIMES_TOTAL_RE = re.compile(
+    rf"^(?P<name>.+?)\s+(?P<qty>\d{{1,3}})\s*[xX]\s*{CURRENCY_PREFIX}"
+    rf"(?P<total>{MONEY_VALUE})$"
 )
 NOISE_PATTERNS = (
     "thank you",
@@ -90,7 +101,7 @@ class IndianRestaurantReceiptParser:
                 rounding_paise = amount_paise if "-" not in amount else amount_paise * -1
                 continue
 
-            item = self._parse_item_line(line)
+            item = self._parse_item_line(line, warnings)
             if item is None:
                 self._append_once(warnings, "low_confidence_line")
             else:
@@ -106,7 +117,13 @@ class IndianRestaurantReceiptParser:
 
         needs_review = bool(
             set(warnings)
-            & {"missing_total", "items_sum_mismatch", "low_confidence_line", "ambiguous_line"}
+            & {
+                "missing_total",
+                "items_sum_mismatch",
+                "low_confidence_line",
+                "ambiguous_line",
+                "quantity_total_inferred",
+            }
         )
         if not items:
             needs_review = True
@@ -126,7 +143,7 @@ class IndianRestaurantReceiptParser:
             parser_version=self.parser_version,
         )
 
-    def _parse_item_line(self, line: str) -> ParsedReceiptLine | None:
+    def _parse_item_line(self, line: str, warnings: list[str]) -> ParsedReceiptLine | None:
         match = QTY_PRICE_RE.match(line)
         if match:
             name = self._clean_name(match.group("name"))
@@ -136,6 +153,21 @@ class IndianRestaurantReceiptParser:
                 unit_price_paise=self._money_to_paise(match.group("unit")),
                 total_paise=self._money_to_paise(match.group("total")),
             )
+
+        for quantity_total_pattern in (QTY_X_TOTAL_RE, QTY_TIMES_TOTAL_RE):
+            match = quantity_total_pattern.match(line)
+            if match:
+                quantity = int(match.group("qty"))
+                total_paise = self._money_to_paise(match.group("total"))
+                self._append_once(warnings, "quantity_total_inferred")
+                return ParsedReceiptLine(
+                    name=self._clean_name(match.group("name")),
+                    quantity=quantity,
+                    unit_price_paise=(total_paise // quantity)
+                    if total_paise % quantity == 0
+                    else None,
+                    total_paise=total_paise,
+                )
 
         amount = self._last_money(line)
         if amount is None:
@@ -180,7 +212,9 @@ class IndianRestaurantReceiptParser:
         return re.sub(r"\s+", " ", cleaned).strip(" -")
 
     def _is_noise(self, lower: str) -> bool:
-        return any(pattern in lower for pattern in NOISE_PATTERNS)
+        if any(pattern in lower for pattern in NOISE_PATTERNS):
+            return True
+        return bool(re.search(r"^\d+\s+.+\b(?:street|road|lane|avenue)\b", lower))
 
     def _is_subtotal(self, lower: str) -> bool:
         return "subtotal" in lower or "sub total" in lower

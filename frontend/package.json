@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@paddleocr/paddleocr-js": "0.4.2",
     "@tailwindcss/postcss": "^4.3.2",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
@@ -23,10 +24,10 @@
     "autoprefixer": "latest",
     "clsx": "latest",
     "eslint": "latest",
-    "eslint-config-next": "latest",
+    "eslint-config-next": "16.3.0",
     "jsdom": "latest",
     "lucide-react": "latest",
-    "next": "latest",
+    "next": "16.3.0",
     "postcss": "latest",
     "qrcode": "latest",
     "react": "latest",

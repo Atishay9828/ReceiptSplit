@@ -142,7 +142,7 @@ export default function HomePage() {
               Create a quick bill
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <Link className="home-primary-action" href="/dashboard">
+            <Link className="home-secondary-action" href="/dashboard">
               Open my rooms
               <ArrowRight size={18} aria-hidden="true" />
             </Link>

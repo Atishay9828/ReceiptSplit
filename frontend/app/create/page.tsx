@@ -35,8 +35,8 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-dvh text-ink">
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-xl">
+    <div className="rs-page-shell rs-create-page text-ink">
+      <header className="rs-topbar">
         <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 pr-16 sm:px-6 sm:pr-20">
           <Link className="inline-flex min-h-11 items-center gap-2 font-bold" href="/">
             <span className="grid h-9 w-9 place-items-center rounded-md bg-mint text-leaf">
@@ -51,7 +51,7 @@ export default function CreatePage() {
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start lg:gap-10">
+      <main className="rs-create-layout mx-auto grid w-full max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start lg:gap-10">
         <section className="grid gap-6 lg:sticky lg:top-24">
           <div className="grid gap-4">
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-leaf">Quick bill</p>
@@ -77,7 +77,7 @@ export default function CreatePage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-soft sm:p-6" aria-labelledby="create-room-title">
+        <section className="rs-panel rounded-lg border border-border bg-surface p-5 shadow-soft sm:p-6" aria-labelledby="create-room-title">
           <div className="mb-5 border-b border-border pb-5">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-info">Bill setup</p>
             <h2 className="mt-2 text-2xl font-bold" id="create-room-title">Create split room</h2>

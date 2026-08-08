@@ -56,6 +56,7 @@ class ParticipantService:
         invite_token_hash: str,
         nickname: str,
         color: str | None,
+        user_id: UUID | None = None,
     ) -> tuple[RoomParticipant, str]:
         """
         Join a participant to a room.
@@ -85,6 +86,7 @@ class ParticipantService:
                 nickname=nickname,
                 color=color,
                 new_token_hash=token_hash,
+                user_id=user_id,
             )
             await db.flush()
 
@@ -102,6 +104,7 @@ class ParticipantService:
                     room_id=room_id,
                     participant_id=participant.id,
                     actor_participant_id=participant.id,
+                    actor_user_id=user_id,
                     actor_type="participant",
                     metadata={"color": color},
                 )

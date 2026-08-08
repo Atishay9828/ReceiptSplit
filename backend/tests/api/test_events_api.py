@@ -18,7 +18,7 @@ from uuid import uuid4
 import pytest
 
 from app.services.registry import get_broker, get_event_publisher
-from tests.api.conftest import bearer
+from tests.api.conftest import bearer, dev_jwt
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -54,6 +54,7 @@ async def active_room(api_client: AsyncClient) -> ActiveRoom:
     join_r = await api_client.post(
         f"/api/rooms/{room_id}/join",
         json={"invite_token": invite_token, "nickname": "TestUser", "color": "#4F46E5"},
+        headers=bearer(dev_jwt("participant-events")),
     )
     assert join_r.status_code == 201
     participant_token = join_r.json()["participant_token"]

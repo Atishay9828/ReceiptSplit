@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from tests.api.conftest import bearer
+from tests.api.conftest import bearer, dev_jwt
 
 pytestmark = pytest.mark.asyncio
 
@@ -45,6 +45,7 @@ async def test_get_room_summary(api_client: Any) -> Any:
         await api_client.post(
             f"/api/rooms/{room_id}/join",
             json={"invite_token": created["invite_token"], "nickname": "Bob"},
+            headers=bearer(dev_jwt("participant-bob")),
         )
     ).json()
     item = (

@@ -169,13 +169,15 @@ describe("M015.1 flow and adjustment repair", () => {
     );
   });
 
-  it("renders distinct locked and settled step headers", () => {
+  it("renders only the active step inside the current-step card", () => {
     const { rerender } = render(<RoomStepHeader step="locked" />);
-    expect(screen.getByRole("heading", { name: "Locked" })).toBeInTheDocument();
-    expect(screen.getByText(/Review final totals/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Review totals" })).toBeInTheDocument();
+    expect(screen.getByText(/Check every share/i)).toBeInTheDocument();
+    expect(screen.queryByText("draft")).not.toBeInTheDocument();
+    expect(screen.queryByText("settling")).not.toBeInTheDocument();
 
     rerender(<RoomStepHeader step="settled" />);
-    expect(screen.getByRole("heading", { name: "Settled" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Complete" })).toBeInTheDocument();
     expect(screen.getByText(/manually confirmed by the payer/i)).toBeInTheDocument();
   });
 

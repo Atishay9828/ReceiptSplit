@@ -19,9 +19,11 @@ class ParticipantRepository(Protocol):
         nickname: str,
         color: str,
         new_token_hash: str,
+        user_id: UUID | None = None,
     ) -> RoomParticipant:
         """
-        Atomically joins a participant. Serializes concurrent joins via advisory lock.
+        Atomically joins an account-backed participant. Serializes concurrent joins via
+        advisory lock and refreshes the capability token when the same account rejoins.
         Must be called within a transaction.
         """
         ...

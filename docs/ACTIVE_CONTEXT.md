@@ -72,6 +72,10 @@ Next/PostCSS audit advisory and real-device UPI checks.
 - Participant controls use explicit `Add to my share` / `Remove` actions and quantity wording;
   the ambiguous `Claim 1/2` labels are gone.
 - Account profiles support unique usernames, direct friend connections, and multiple groups.
+- Invite links and QR codes now require Google sign-in before joining; the backend rejects
+  anonymous joins and persists the invited participant's `user_id`.
+- Bill UI uses `Choose items` and `Add to my share` wording. The current-step card shows only
+  the active stage because the full lifecycle remains visible in the header.
 - Partial-payment regression coverage proves overclaim rejection, one pending claim at a time,
   incremental payer confirmation, final settlement, and group-level cleared/pending totals.
 - Existing PostgreSQL schema upgraded from `007_persistent_rooms` to
