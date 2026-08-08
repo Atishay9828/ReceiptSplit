@@ -8,6 +8,12 @@ const sensitiveRouteHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    resolveAlias: {
+      "@techstark/opencv-js": "./lib/ocr/opencv-shim.ts",
+      "ort.bundle.min.mjs": "./lib/ocr/ort-bundle-shim.mjs"
+    }
+  },
   async headers() {
     return [
       { source: "/join/:inviteToken", headers: sensitiveRouteHeaders },
