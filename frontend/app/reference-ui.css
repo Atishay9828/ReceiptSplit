@@ -2718,3 +2718,25 @@
     border-bottom: 0;
   }
 }
+
+
+/* Keep wide dashboard layouts centered and proportionate on large screens. */
+@media (min-width: 1081px) {
+  .rs-dashboard-page {
+    width: 100%;
+  }
+
+  .rs-dashboard-page .rs-app-header-inner,
+  .rs-dashboard-page .rs-dashboard-main {
+    width: min(1480px, calc(100% - 3rem));
+    margin-inline: auto;
+  }
+
+  .rs-dashboard-page .rs-dashboard-main {
+    padding-block: clamp(2.5rem, 4vw, 4rem) 4rem;
+  }
+}
+
+.rs-dashboard-alert {
+  max-width: 960px;
+}
