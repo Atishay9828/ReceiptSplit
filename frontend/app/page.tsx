@@ -1,12 +1,12 @@
 import {
   ArrowRight,
-  Check,
+  ArrowUpRight,
   CheckCircle2,
-  IndianRupee,
-  LockKeyhole,
-  ScanLine,
-  UsersRound
+  FileText,
+  UsersRound,
+  WalletCards
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { JoinInviteForm } from "@/components/home/join-invite-form";
@@ -14,33 +14,33 @@ import { JoinInviteForm } from "@/components/home/join-invite-form";
 import "./homepage-artifacts.css";
 import "./homepage.css";
 
-const roomSteps = [
+const receiptRows = [
+  { item: "Margherita Pizza", person: "Alex", amount: "Rs 18.00", tone: "coral" },
+  { item: "Truffle Fries", person: "Bella", amount: "Rs 7.50", tone: "gold" },
+  { item: "Grilled Salmon", person: "Chris", amount: "Rs 24.00", tone: "blue" },
+  { item: "Sparkling Water", person: "Dana", amount: "Rs 4.50", tone: "lilac" }
+];
+
+const workflow = [
   {
-    label: "Draft",
-    description: "Scan or enter the receipt, then correct the draft.",
-    icon: ScanLine
+    number: "1",
+    label: "Add the receipt",
+    detail: "Upload a photo of your receipt. We will read the items and amounts.",
+    icon: FileText
   },
   {
-    label: "Claiming",
-    description: "Share one link. Everyone claims exactly what they had.",
+    number: "2",
+    label: "Choose who had what",
+    detail: "Assign each item to the person who ordered it.",
     icon: UsersRound
   },
   {
-    label: "Locked",
-    description: "Freeze the bill only when every claim and total is ready.",
-    icon: LockKeyhole
-  },
-  {
-    label: "Settling",
-    description: "Each friend pays the payer directly through their UPI app.",
-    icon: IndianRupee
-  },
-  {
-    label: "Settled",
-    description: "The payer confirms each share; the bill clears while the room stays open.",
-    icon: CheckCircle2
+    number: "3",
+    label: "Settle up",
+    detail: "See who owes what and settle up however works for you.",
+    icon: WalletCards
   }
-] as const;
+];
 
 export default function HomePage() {
   return (
@@ -50,79 +50,126 @@ export default function HomePage() {
       </a>
 
       <header className="home-header">
-        <Link className="home-wordmark" href="/" aria-label="ReceiptSplit home">
-          <span className="home-wordmark-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          <span>ReceiptSplit</span>
+        <Link className="home-brand" href="/" aria-label="ReceiptSplit home">
+          ReceiptSplit
         </Link>
 
         <nav className="home-nav" aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
           <Link href="/dashboard">My rooms</Link>
-          <Link className="home-nav-action" href="/create">
+        </nav>
+
+        <div className="home-header-actions">
+          <a className="home-open-invite" href="#invite">
+            Open invite
+            <ArrowRight size={15} aria-hidden="true" />
+          </a>
+          <Link className="home-header-cta" href="/create">
             Create a split
           </Link>
-        </nav>
+        </div>
       </header>
 
       <main id="main-content">
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-hero-copy">
-            <p className="home-kicker">
-              <span className="home-live-dot" aria-hidden="true" />
-              Receipt-first splitting for real groups
-            </p>
-            <h1 id="home-title">
-              A receipt should end the debate.
-              <span>Not start one.</span>
+            <p className="home-eyebrow">Receipt-first bill splitting</p>
+            <h1 id="home-title" aria-label="Split the bill without the group chat maths.">
+              Split the bill
+              <br />
+              without the
+              <br />
+              group chat maths.
             </h1>
             <p className="home-hero-summary">
-              Scan one bill, let friends claim what they had, see exact totals, and settle directly
-              with the payer. No shared wallet. No mystery maths.
+              Upload a receipt, assign items, and see who owes what.
+              <br className="home-desktop-break" /> Settle up in seconds.
             </p>
 
             <div className="home-hero-actions">
               <Link className="home-primary-action" href="/create">
                 Create a split
-                <ArrowRight size={18} aria-hidden="true" />
+                <ArrowRight size={17} aria-hidden="true" />
               </Link>
+              <a className="home-text-action" href="#invite">
+                Open invite
+                <ArrowRight size={16} aria-hidden="true" />
+              </a>
             </div>
 
-            <ul className="home-trust-line" aria-label="Product facts">
-              <li><Check size={15} aria-hidden="true" /> Accounts for recurring groups</li>
-              <li>
-                <Check size={15} aria-hidden="true" /> Integer-paise totals
-              </li>
-              <li>
-                <Check size={15} aria-hidden="true" /> Direct UPI handoff
-              </li>
-            </ul>
+            <p className="home-trust-line">
+              <CheckCircle2 size={16} aria-hidden="true" />
+              Free to use. No sign up required.
+            </p>
           </div>
 
-          <SplitReceiptArtifact />
+          <div className="home-ledger-preview" aria-label="Example of a settled bill">
+            <div className="home-ledger-card">
+              <div className="home-ledger-header">
+                <div>
+                  <strong>Riverside Bistro</strong>
+                  <span>Sat, 18 May 2024 - 7:42 PM</span>
+                </div>
+                <div className="home-ledger-meta">
+                  <span>Receipt #1847</span>
+                  <span>4 items</span>
+                </div>
+              </div>
+
+              <div className="home-ledger-columns" aria-hidden="true">
+                <span>Item</span>
+                <span>Paid by</span>
+                <span>Amount</span>
+              </div>
+
+              <div className="home-ledger-rows">
+                {receiptRows.map((row) => (
+                  <div className="home-ledger-row" key={row.item}>
+                    <span>{row.item}</span>
+                    <span className="home-ledger-person">
+                      <i className={`home-person-dot ${row.tone}`} aria-hidden="true" />
+                      {row.person}
+                    </span>
+                    <strong>{row.amount}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="home-ledger-total">
+                <span>Total</span>
+                <strong>Rs 54.00</strong>
+              </div>
+
+              <div className="home-ledger-settled">
+                <span>You owe</span>
+                <strong>Rs 13.50</strong>
+                <CheckCircle2 size={17} aria-hidden="true" />
+              </div>
+
+              <p className="home-ledger-note">
+                <CheckCircle2 size={14} aria-hidden="true" /> All set! Everyone&apos;s balances are up to date.
+              </p>
+            </div>
+          </div>
         </section>
 
-        <section className="home-section home-flow" id="how-it-works" aria-labelledby="flow-title">
-          <div className="home-section-heading">
-            <p className="home-section-label">Many bills, one room</p>
-            <h2 id="flow-title">Each bill moves forward. The trip history stays together.</h2>
+        <section className="home-how" id="how-it-works" aria-labelledby="how-title">
+          <div className="home-how-heading">
+            <p className="home-section-label">How it works</p>
+            <h2 id="how-title">From receipt to resolved.</h2>
           </div>
-
-          <ol className="room-step-list">
-            {roomSteps.map((step, index) => {
+          <ol className="home-workflow">
+            {workflow.map((step) => {
               const Icon = step.icon;
               return (
-                <li key={step.label}>
-                  <div className="room-step-index" aria-hidden="true">
-                    <Icon size={17} />
-                    <span>{String(index + 1).padStart(2, "0")}</span>
+                <li key={step.number}>
+                  <div className="home-workflow-icon" aria-hidden="true">
+                    <Icon size={23} strokeWidth={1.8} />
                   </div>
-                  <div>
+                  <div className="home-workflow-copy">
+                    <span className="home-workflow-number">{step.number}</span>
                     <h3>{step.label}</h3>
-                    <p>{step.description}</p>
+                    <p>{step.detail}</p>
                   </div>
                 </li>
               );
@@ -130,115 +177,48 @@ export default function HomePage() {
           </ol>
         </section>
 
-        <section className="home-section home-start" id="start" aria-labelledby="start-title">
-          <div className="home-start-copy">
-            <p className="home-section-label">Run the next bill</p>
-            <h2 id="start-title">Start with the receipt already on your table.</h2>
+        <section className="home-proof" aria-labelledby="proof-title">
+          <div className="home-proof-copy">
+            <p className="home-section-label">Built for real receipts</p>
+            <h2 id="proof-title">The receipt stays visible while the maths gets sorted.</h2>
             <p>
-              Create a quick bill with a private link, or sign in to keep multiple rooms, friends,
-              pending shares, and cleared bills together.
+              OCR creates an editable draft, not a payment claim. Check item names and amounts before
+              anyone settles.
             </p>
-            <Link className="home-primary-action" href="/create">
-              Create a quick bill
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link className="home-secondary-action" href="/dashboard">
-              Open my rooms
-              <ArrowRight size={18} aria-hidden="true" />
+            <Link className="home-text-action" href="/create">
+              Start with a receipt
+              <ArrowUpRight size={16} aria-hidden="true" />
             </Link>
           </div>
+          <div className="home-proof-media">
+            <Image
+              src="/assets/receipt-riverside.png"
+              alt="A restaurant receipt ready to review"
+              width={888}
+              height={1776}
+              priority
+            />
+            <span className="home-proof-tag">Editable draft</span>
+          </div>
+        </section>
 
+        <section className="home-invite" id="invite" aria-labelledby="invite-title">
+          <div>
+            <p className="home-section-label">Have an invite?</p>
+            <h2 id="invite-title">Open the bill your friend sent.</h2>
+            <p>Join with your private link and choose only what belongs in your share.</p>
+          </div>
           <JoinInviteForm />
         </section>
       </main>
 
       <footer className="home-footer">
-        <Link className="home-wordmark" href="/" aria-label="ReceiptSplit home">
+        <Link className="home-brand" href="/" aria-label="ReceiptSplit home">
           ReceiptSplit
         </Link>
         <p>One receipt. Shared context. Direct settlement.</p>
-        <a href="#main-content">Back to top ↑</a>
+        <Link href="#main-content">Back to top</Link>
       </footer>
-    </div>
-  );
-}
-function SplitReceiptArtifact() {
-  return (
-    <div className="split-artifact" aria-label="Example item-wise receipt split">
-      <div className="receipt-paper">
-        <div className="receipt-heading">
-          <div>
-            <span>ROOM / AJ&apos;S TABLE</span>
-            <strong>RECEIPT 018</strong>
-          </div>
-          <span className="receipt-live">
-            <span aria-hidden="true" /> live
-          </span>
-        </div>
-
-        <div className="receipt-rule" aria-hidden="true" />
-
-        <div className="receipt-item">
-          <div className="receipt-item-line">
-            <span>Cold Coffee × 3</span>
-            <strong>₹360.00</strong>
-          </div>
-          <div className="claim-row">
-            <span className="claim claim-aj">AJ · 1</span>
-            <span className="claim claim-kunal">Kunal · 2</span>
-            <small>3 / 3 claimed</small>
-          </div>
-        </div>
-
-        <div className="receipt-item">
-          <div className="receipt-item-line">
-            <span>Masala Fries × 2</span>
-            <strong>₹240.00</strong>
-          </div>
-          <div className="claim-row">
-            <span className="claim claim-aj">AJ · 1</span>
-            <span className="claim claim-kunal">Kunal · 1</span>
-            <small>2 / 2 claimed</small>
-          </div>
-        </div>
-
-        <div className="receipt-item">
-          <div className="receipt-item-line">
-            <span>Lime Soda × 2</span>
-            <strong>₹180.00</strong>
-          </div>
-          <div className="claim-row">
-            <span className="claim claim-aj">AJ · 1</span>
-            <span className="claim claim-kunal">Kunal · 1</span>
-            <small>2 / 2 claimed</small>
-          </div>
-        </div>
-
-        <div className="receipt-rule receipt-rule-double" aria-hidden="true" />
-
-        <div className="receipt-total">
-          <span>TOTAL / 7 ITEMS CLAIMED</span>
-          <strong>₹780.00</strong>
-        </div>
-
-        <div className="receipt-splits">
-          <div>
-            <span className="split-person-dot split-person-aj" aria-hidden="true" />
-            <p>AJ owes</p>
-            <strong>₹330.00</strong>
-          </div>
-          <div>
-            <span className="split-person-dot split-person-kunal" aria-hidden="true" />
-            <p>Kunal owes</p>
-            <strong>₹450.00</strong>
-          </div>
-        </div>
-
-        <div className="receipt-footer-line">
-          <span>ITEM-WISE / EXACT IN PAISE</span>
-          <span>LOCK READY ✓</span>
-        </div>
-      </div>
     </div>
   );
 }

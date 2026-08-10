@@ -84,7 +84,7 @@ describe("persistent rooms dashboard", () => {
     expect(within(room).getByText("Cleared")).toBeInTheDocument();
     expect(within(room).getByText("₹5.00")).toBeInTheDocument();
     expect(within(room).getByText("Dinner day 1")).toBeInTheDocument();
-    expect(within(room).getByRole("button", { name: "Add bill" })).toBeInTheDocument();
+    expect(within(room).getByRole("button", { name: "Add a bill" })).toBeInTheDocument();
   });
 
   it("adds friends by username and creates a room with selected friends", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { LogIn } from "lucide-react";
+import { ArrowRight, LogIn, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
@@ -27,10 +28,11 @@ declare global {
 export function GoogleSignIn({ onSignedIn }: { onSignedIn: (session: AccountSession) => void }) {
   const target = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signin" | "invite">("signin");
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (!clientId || !target.current) return;
+    if (!clientId || mode !== "signin" || !target.current) return;
     const render = () => {
       if (!window.google || !target.current) return;
       window.google.accounts.id.initialize({
@@ -71,25 +73,39 @@ export function GoogleSignIn({ onSignedIn }: { onSignedIn: (session: AccountSess
     script.dataset.googleIdentity = "true";
     script.addEventListener("load", render, { once: true });
     document.head.appendChild(script);
-  }, [clientId, onSignedIn]);
-
-  if (!clientId) {
-    return (
-      <div className="rounded-md border border-border bg-cloud p-4 text-sm text-muted">
-        <p className="flex items-center gap-2 font-semibold text-ink">
-          <LogIn size={17} aria-hidden="true" /> Google sign-in is not configured yet.
-        </p>
-        <p className="mt-1">
-          Account sign-in is required to join bill invites. Ask the host to retry after configuration.
-        </p>
-      </div>
-    );
-  }
+  }, [clientId, mode, onSignedIn]);
 
   return (
-    <div>
-      <div ref={target} className="min-h-11" aria-label="Sign in with Google" />
-      {error ? <p className="mt-2 text-sm font-semibold text-coral">{error}</p> : null}
-    </div>
+    <section className="auth-swap-card" aria-label="Account access">
+      <div className="auth-swap-tabs" role="tablist" aria-label="Account access options">
+        <button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "is-active" : ""} onClick={() => setMode("signin")}>
+          <LogIn size={15} aria-hidden="true" /> Sign in
+        </button>
+        <button type="button" role="tab" aria-selected={mode === "invite"} className={mode === "invite" ? "is-active" : ""} onClick={() => setMode("invite")}>
+          Have an invite?
+        </button>
+      </div>
+      {mode === "invite" ? (
+        <div className="auth-swap-panel">
+          <span className="auth-swap-icon"><ArrowRight size={17} aria-hidden="true" /></span>
+          <div><strong>Open a private invite</strong><p>Use the invite form first. Account sign-in is still required before joining a room.</p></div>
+          <Link href="/#invite" className="auth-swap-link">Open invite form <ArrowRight size={14} aria-hidden="true" /></Link>
+        </div>
+      ) : (
+        <div className="auth-swap-panel auth-swap-signin">
+          <span className="auth-swap-icon"><ShieldCheck size={17} aria-hidden="true" /></span>
+          <div className="auth-swap-signin-body">
+            <strong>One account for rooms and invites</strong>
+            <p>Your room list stays private to your account.</p>
+            {!clientId ? (
+              <div className="auth-swap-config-warning"><LogIn size={15} aria-hidden="true" /><span>Google sign-in is not configured yet.</span></div>
+            ) : (
+              <div ref={target} className="auth-swap-google" aria-label="Sign in with Google" />
+            )}
+          </div>
+        </div>
+      )}
+      {error ? <p className="auth-swap-error" role="alert">{error}</p> : null}
+    </section>
   );
 }

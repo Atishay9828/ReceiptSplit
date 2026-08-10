@@ -18,11 +18,11 @@ describe("ReceiptSplit public homepage", () => {
   it("leads into the product flow without publishing the engineering learning story", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { name: /a receipt should end the debate/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /split the bill without the group chat maths/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /create a split/i })[0]).toHaveAttribute("href", "/create");
     expect(screen.queryByText(/what I learned by shipping it/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /build story|see how I built it/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/3 \/ 3 claimed/i)).toBeInTheDocument();
+    expect(screen.getByText(/all set! everyone's balances are up to date/i)).toBeInTheDocument();
     expect(screen.queryByText(/verified paid|payment verified|bank confirmed/i)).not.toBeInTheDocument();
   });
 

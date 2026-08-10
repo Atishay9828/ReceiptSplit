@@ -23,33 +23,33 @@
 }
 
 :root {
-  --rs-background: #f7f7f4;
+  --rs-background: #fdfcf9;
   --rs-surface: #ffffff;
   --rs-surface-elevated: #fffefa;
-  --rs-surface-muted: #f0f1ed;
-  --rs-border: #e0e4de;
-  --rs-border-strong: #bec7bf;
-  --rs-text-primary: #18201b;
-  --rs-text-secondary: #52605a;
-  --rs-text-muted: #75817a;
-  --rs-primary: #e95631;
-  --rs-primary-hover: #c94425;
-  --rs-primary-foreground: #fffaf6;
-  --rs-primary-soft: #fff0eb;
-  --rs-secondary-hover: #eef1ed;
-  --rs-success: #2f7b54;
-  --rs-success-soft: #e5f2e9;
-  --rs-warning: #926707;
-  --rs-warning-soft: #fff7d7;
-  --rs-danger: #bd3e31;
-  --rs-danger-hover: #9f3026;
-  --rs-danger-soft: #ffebe7;
-  --rs-info: #2166c2;
-  --rs-info-soft: #eaf2ff;
+  --rs-surface-muted: #f7f6f2;
+  --rs-border: #deded9;
+  --rs-border-strong: #c9c9c2;
+  --rs-text-primary: #1e1e1d;
+  --rs-text-secondary: #777774;
+  --rs-text-muted: #989893;
+  --rs-primary: #ef5a49;
+  --rs-primary-hover: #d7493a;
+  --rs-primary-foreground: #ffffff;
+  --rs-primary-soft: #fff0ec;
+  --rs-secondary-hover: #f0efeb;
+  --rs-success: #4c8b5a;
+  --rs-success-soft: #edf5eb;
+  --rs-warning: #a7781c;
+  --rs-warning-soft: #fff8e5;
+  --rs-danger: #c9483c;
+  --rs-danger-hover: #ad392f;
+  --rs-danger-soft: #fff0ec;
+  --rs-info: #2f62d2;
+  --rs-info-soft: #edf2ff;
   --rs-accent: #7650a7;
   --rs-accent-soft: rgba(118, 80, 167, 0.12);
   --rs-qr-surface: #ffffff;
-  --rs-shadow-soft: 0 12px 28px rgba(24, 32, 27, 0.07);
+  --rs-shadow-soft: 0 18px 44px rgba(30, 30, 29, 0.09);
   color-scheme: light;
   background: var(--rs-background);
 }
@@ -99,8 +99,7 @@ body {
   margin: 0;
   background: var(--rs-background);
   color: var(--rs-text-primary);
-  font-family:
-    Inter, Aptos, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, Aptos, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 a {
@@ -164,6 +163,11 @@ button:not(:disabled):active {
   border-radius: 4px;
   background: var(--rs-surface);
   box-shadow: none;
+}
+
+.rs-theme-toggle {
+  border-color: var(--rs-border) !important;
+  box-shadow: none !important;
 }
 
 .rs-kicker {

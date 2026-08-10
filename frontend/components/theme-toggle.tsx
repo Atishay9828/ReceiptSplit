@@ -47,7 +47,7 @@ export function ThemeToggle() {
       type="button"
       aria-label="Toggle theme"
       title="Toggle theme"
-      className="fixed right-3 top-3 z-50 grid h-11 w-11 place-items-center rounded-md border border-border bg-surface/90 text-ink shadow-soft backdrop-blur transition hover:bg-cloud focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-leaf/25"
+      className="rs-theme-toggle fixed right-3 top-3 z-50 grid h-10 w-10 place-items-center rounded-md border border-border bg-surface/90 text-ink shadow-soft backdrop-blur transition hover:bg-cloud focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-leaf/25"
       onClick={toggleTheme}
     >
       {theme === "light" ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}

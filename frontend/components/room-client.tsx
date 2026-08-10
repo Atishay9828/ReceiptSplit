@@ -2,9 +2,12 @@
 
 import {
   Check,
+  CircleHelp,
   Copy,
+  LayoutDashboard,
   Loader2,
   Lock,
+  MoreHorizontal,
   ReceiptText,
   RotateCcw,
   Share2,
@@ -13,6 +16,7 @@ import {
   Unlock
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 
@@ -214,7 +218,7 @@ export function RoomClient({ roomId, mode }: RoomClientProps) {
   const readiness = getSplitPreviewReadiness(summary);
 
   return (
-    <main className="room-workbench-shell overflow-x-clip text-ink">
+    <main className="room-workbench-shell room-reference-app overflow-x-clip text-ink">
       <RoomHeader summary={summary} connected={connected} />
       {mode === "creator" && session.role === "creator" ? (
         <CreatorTools
@@ -254,25 +258,100 @@ function RoomHeader({ summary, connected }: { summary: RoomSummary; connected: b
 
   return (
     <header className="room-workbench-header">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-leaf">ReceiptSplit</p>
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="truncate text-xl font-bold sm:text-2xl">
-              {summary.room.title || summary.room.payer_name || "ReceiptSplit bill"}
-            </h1>
-            <p className="text-xs font-semibold text-muted">{splitLabel} split</p>
-          </div>
+      <div className="room-appbar">
+        <Link className="rs-reference-brand" href="/">
+          ReceiptSplit
+        </Link>
+        <nav className="room-app-nav" aria-label="Room navigation">
+          <Link href="/dashboard"><LayoutDashboard size={15} aria-hidden="true" /> Dashboard</Link>
+          <Link className="is-active" href="/dashboard"><ReceiptText size={15} aria-hidden="true" /> Rooms</Link>
+          <Link href="/dashboard"><span className="room-nav-activity-dot" aria-hidden="true" /> Activity</Link>
+        </nav>
+        <div className="room-app-actions">
+          <button className="room-icon-action" type="button" aria-label="Help">
+            <CircleHelp size={17} aria-hidden="true" />
+          </button>
+          <span className="room-user-avatar" aria-hidden="true">{(summary.room.payer_name || "A").slice(0, 1).toUpperCase()}</span>
+          <span className="room-user-name">{summary.room.payer_name || "You"}</span>
+          <button className="room-icon-action" type="button" aria-label="More room actions">
+            <MoreHorizontal size={18} aria-hidden="true" />
+          </button>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full bg-info-soft px-3 py-1 text-xs font-bold text-info">{statusLabel}</span>
-          <span className="hidden rounded-full bg-cloud px-3 py-1 text-xs font-semibold text-muted sm:inline-flex">
-            {connected ? "Live" : "Syncing"}
-          </span>
+      </div>
+      <div className="room-titlebar">
+        <nav className="room-breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/dashboard">Rooms</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{summary.room.title || "Bill"}</span>
+        </nav>
+        <div className="room-title-row">
+          <div>
+            <div className="room-title-line">
+              <h1>{summary.room.title || summary.room.payer_name || "ReceiptSplit bill"}</h1>
+              <span className="room-status-chip">{statusLabel}</span>
+            </div>
+            <div className="room-member-stack" aria-label="Room participants">
+              {summary.participants.slice(0, 5).map((participant) => (
+                <span className="room-member-avatar" key={participant.id} title={participant.nickname}>
+                  {participant.nickname.slice(0, 1).toUpperCase()}
+                </span>
+              ))}
+              {summary.participants.length > 5 ? <span className="room-member-more">+{summary.participants.length - 5}</span> : null}
+            </div>
+          </div>
+          <div className="room-header-meta">
+            <span>{splitLabel}</span>
+            <span className={connected ? "is-connected" : ""}>{connected ? "Live" : "Syncing"}</span>
+          </div>
         </div>
       </div>
       <LifecycleIndicator status={summary.room.status} />
     </header>
+  );
+}
+
+function ReceiptReferencePreview({ summary }: { summary: RoomSummary }) {
+  const itemTotal = summary.items.reduce((total, item) => total + item.total_paise, 0);
+
+  return (
+    <section className="room-receipt-preview" aria-label="Receipt preview">
+      <div className="room-receipt-preview-heading">
+        <div>
+          <span>Source receipt</span>
+          <strong>{summary.room.title || "Dinner at Riverside Bistro"}</strong>
+        </div>
+        <span className="room-draft-chip">Draft view</span>
+      </div>
+      <div className="room-receipt-photo">
+        <div className="room-receipt-paper">
+          <div className="room-receipt-paper-top">
+            <span>RECEIPTSPLIT</span>
+            <strong>{summary.room.title || "Shared bill"}</strong>
+            <small>Source and draft stay side by side</small>
+          </div>
+          <div className="room-receipt-rule" />
+          {summary.items.length === 0 ? (
+            <div className="room-receipt-empty">
+              <ReceiptText size={21} aria-hidden="true" />
+              <strong>Upload a receipt to begin</strong>
+              <span>The source image will remain visible here while you review the extracted draft.</span>
+            </div>
+          ) : (
+            <>
+              <div className="room-receipt-paper-items">
+                {summary.items.slice(0, 9).map((item) => (
+                  <div key={item.id}><span>{item.quantity} x {item.name}</span><strong>{formatPaise(item.total_paise)}</strong></div>
+                ))}
+              </div>
+              <div className="room-receipt-rule" />
+              <div className="room-receipt-paper-total"><span>ITEM SUBTOTAL</span><strong>{formatPaise(itemTotal)}</strong></div>
+            </>
+          )}
+          <div className="room-receipt-paper-footer">Review names and amounts before opening claims.</div>
+        </div>
+      </div>
+      <p className="room-receipt-preview-note">OCR is a draft. Confirm item names and amounts before opening claims.</p>
+    </section>
   );
 }
 
@@ -315,7 +394,7 @@ export function CreatorNextActionCard({
   const copy = getCreatorNextAction(roomStatus, canLock, itemCount);
 
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+    <section className="room-next-action rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-mint text-leaf">
           <Sparkles size={20} aria-hidden="true" />
@@ -455,7 +534,7 @@ function CreatorTools({
   }
 
   return (
-    <div className="room-workbench-grid">
+    <div className="room-workbench-grid room-creator-grid">
       {actionError ? (
         <div className="room-workbench-alert">
           <ErrorState message={actionError} onRetry={() => setActionError(null)} />
@@ -484,6 +563,7 @@ function CreatorTools({
               onCancelRemove={() => setRemoveConfirm(null)}
               onConfirmRemove={removeParticipant}
             />
+            <RoomCommunityCard summary={summary} currentParticipantId={creatorParticipant?.id} />
           </>
         ) : null}
         {creatorStep === "draft" ? (
@@ -497,8 +577,9 @@ function CreatorTools({
       </div>
 
       <div className="room-workbench-column">
+        <ReceiptReferencePreview summary={summary} />
         {creatorStep === "draft" ? (
-          <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
+          <section className="room-items-panel rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
             <h2 className="text-lg font-bold">Items</h2>
             {!locked ? (
               <div className="mt-3 grid gap-4">
@@ -637,10 +718,64 @@ export function RoomStepHeader({ step }: { step: CreatorStep }) {
   }[step];
 
   return (
-    <section className="rounded-md border border-border bg-surface p-4 shadow-soft sm:p-5">
+    <section className="room-step-header rounded-md border border-border bg-surface p-4 shadow-soft sm:p-5">
       <p className="text-xs font-semibold uppercase text-info">Current step</p>
       <h2 className="mt-1 text-2xl font-bold">{copy.title}</h2>
       <p className="mt-1 text-sm leading-6 text-muted">{copy.description}</p>
+    </section>
+  );
+}
+
+function RoomCommunityCard({ summary, currentParticipantId }: { summary: RoomSummary; currentParticipantId?: string }) {
+  const roomStates: Record<string, string> = {
+    draft: "Preparing receipt",
+    active: "Choosing items",
+    settling: "Payment open",
+    settled: "Payer confirmed",
+    archived: "Archived",
+    expired: "Invite expired"
+  };
+  const roomState = roomStates[summary.room.status] ?? "Room active";
+  const equalItems = summary.items.some((item) => item.allocation_mode === "equal");
+
+  return (
+    <section className="room-community-card" aria-label="Community status">
+      <div className="room-community-heading">
+        <div>
+          <p className="room-community-label">People in this split</p>
+          <h2>Community pulse</h2>
+        </div>
+        <span className={`room-community-state room-community-state-${summary.room.status}`}>{roomState}</span>
+      </div>
+      <div className="room-community-list">
+        {summary.participants.map((participant) => {
+          const claimCount = summary.assignments
+            .filter((assignment) => assignment.participant_id === participant.id)
+            .reduce((sum, assignment) => sum + assignment.claimed_qty, 0);
+          const status = summary.room.status === "draft"
+            ? "Waiting for receipt"
+            : summary.room.status === "settling"
+              ? "Payment open"
+              : summary.room.status === "settled"
+                ? "Payer confirmed"
+                : participant.role === "creator"
+                  ? "Host"
+                  : equalItems
+                    ? "Shared equally"
+                    : claimCount > 0
+                      ? `${claimCount} ${claimCount === 1 ? "item" : "items"} selected`
+                      : "Choosing items";
+          const name = participantDisplayName(participant, summary.room.payer_name);
+          return (
+            <div className="room-community-row" data-current={participant.id === currentParticipantId} key={participant.id}>
+              <span className="room-community-avatar" style={{ backgroundColor: participant.color }}>{name.slice(0, 1).toUpperCase()}</span>
+              <span className="room-community-person"><strong>{name}</strong><small>{status}</small></span>
+              {participant.id === currentParticipantId ? <span className="room-community-you">You</span> : null}
+            </div>
+          );
+        })}
+      </div>
+      <p className="room-community-note">Everyone sees the same receipt and split state. Payment confirmation still belongs to the payer.</p>
     </section>
   );
 }
@@ -788,7 +923,7 @@ function ParticipantTools({
   }
 
   return (
-    <div className="room-workbench-grid">
+    <div className="room-workbench-grid room-participant-grid">
       {actionError ? (
         <div className="room-workbench-alert">
           <ErrorState message={actionError} onRetry={() => setActionError(null)} />
@@ -807,6 +942,7 @@ function ParticipantTools({
           roomStatus={summary.room.status}
           payerName={summary.room.payer_name}
         />
+        <RoomCommunityCard summary={summary} currentParticipantId={session.participantId} />
       </div>
 
       <div className="room-workbench-column">
@@ -879,7 +1015,7 @@ export function ParticipantTotalCard({
   const copy = getParticipantTotalCopy(status);
 
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
+    <section className="room-your-total-card rounded-md border border-[#dbe5df] bg-white p-5 shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-[#63706b]">{participantName ? `${participantName}, you owe` : "You owe"}</p>
@@ -974,7 +1110,7 @@ export function ParticipantClaimList({
   onUnclaim: (itemId: string) => Promise<void> | void;
 }) {
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+    <section className="room-claim-panel rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Choose your items</h2>
@@ -1648,7 +1784,7 @@ function InvitePanel({ roomId, inviteToken }: { roomId: string; inviteToken: str
   }, [link]);
 
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="room-invite-panel rounded-md bg-white p-4 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Invite people</h2>
@@ -1707,7 +1843,7 @@ export function Participants({
 }) {
   const canRemove = mode === "creator" && (roomStatus === "draft" || roomStatus === "active");
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
+    <section className="room-participants-panel rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft">
       <h2 className="text-lg font-bold">Participants</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {participants.map((participant) => {
@@ -1787,7 +1923,7 @@ function CreatorClaimSection({
   onUnclaim: (itemId: string) => Promise<void>;
 }) {
   return (
-    <section className="rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
+    <section className="room-your-share-panel rounded-md border border-[#dbe5df] bg-white p-4 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">Your share</h2>
@@ -1910,14 +2046,14 @@ function ItemList({
   }
 
   return (
-    <div className="mt-4 grid gap-3">
+    <div className="room-item-list mt-4 grid gap-3">
       {summary.items.length === 0 ? <p className="text-sm text-[#63706b]">No items yet.</p> : null}
       {summary.items.map((item) => {
         const claimed = summary.assignments
           .filter((assignment) => assignment.line_item_id === item.id)
           .reduce((sum, assignment) => sum + assignment.claimed_qty, 0);
         return (
-          <div key={item.id} className="rounded-md border border-[#dbe5df] p-3">
+          <div key={item.id} className="room-item-row rounded-md border border-[#dbe5df] p-3">
             {editing === item.id ? (
               <div className="grid gap-3">
                 <Input label="Item name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
@@ -2141,7 +2277,7 @@ export function SplitPreviewCard({
   );
 
   return (
-    <section className="rounded-md bg-white p-4 shadow-soft">
+    <section className="room-preview-panel rounded-md bg-white p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Split Preview</h2>
         <strong>{formatPaise(preview?.grand_total_paise ?? 0)}</strong>
