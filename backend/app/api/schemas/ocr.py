@@ -21,6 +21,9 @@ class ReceiptUploadResponse(BaseModel):
     job_id: UUID
     status: str
     parsed_receipt_id: UUID | None = None
+    provider: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
 
 
 class BrowserOcrPoint(BaseModel):
@@ -107,6 +110,9 @@ class ParsedReceiptDraftResponse(ORMModel):
     tax_paise: int | None
     discount_paise: int | None
     total_paise: int | None
+    calculated_total_paise: int
+    difference_paise: int | None
+    review_fingerprint: str
     items: list[ParsedReceiptLine]
     adjustments: list[ParsedReceiptAdjustment]
     warnings: list[str]
@@ -123,10 +129,14 @@ class ParsedReceiptDraftUpdateRequest(BaseModel):
     tax_paise: int | None = Field(default=None, ge=0)
     discount_paise: int | None = None
     total_paise: int | None = Field(default=None, ge=0)
-    items: list[ParsedReceiptLine] | None = None
-    adjustments: list[ParsedReceiptAdjustment] | None = None
-    warnings: list[str] | None = None
-    needs_review: bool | None = None
+    items: list[ParsedReceiptLine] | None = Field(default=None, max_length=100)
+    adjustments: list[ParsedReceiptAdjustment] | None = Field(default=None, max_length=10)
+    review_fingerprint: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+
+class ParsedReceiptConfirmRequest(BaseModel):
+    accept_unreconciled_total: bool = False
+    review_fingerprint: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class ParsedReceiptConfirmResponse(BaseModel):
@@ -141,6 +151,9 @@ class ParsedReceiptConfirmResponse(BaseModel):
 def parsed_receipt_response_from_model(
     parsed: Any, redacted_raw_text: str | None = None
 ) -> ParsedReceiptDraftResponse:
+    from app.ocr.review import review_values
+
+    calculated_total, difference, fingerprint = review_values(parsed)
     return ParsedReceiptDraftResponse(
         id=parsed.id,
         room_id=parsed.room_id,
@@ -151,6 +164,9 @@ def parsed_receipt_response_from_model(
         tax_paise=parsed.tax_paise,
         discount_paise=parsed.discount_paise,
         total_paise=parsed.total_paise,
+        calculated_total_paise=calculated_total,
+        difference_paise=difference,
+        review_fingerprint=fingerprint,
         items=[ParsedReceiptLine.model_validate(item) for item in parsed.items],
         adjustments=[ParsedReceiptAdjustment.model_validate(adj) for adj in parsed.adjustments],
         warnings=list(parsed.warnings),

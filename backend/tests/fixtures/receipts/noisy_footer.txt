@@ -4,6 +4,7 @@ Vada 30.00
 GSTIN 29ABCDE1234F1Z5
 FSSAI 12345678901234
 Thank you visit again
+We hope to see you again soon
 Phone 9876543210
 Card **** 4242
 Grand Total 100.00

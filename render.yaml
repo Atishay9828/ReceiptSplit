@@ -1,17 +1,15 @@
 services:
   - type: web
     name: receiptsplit-api
-    runtime: python
+    runtime: docker
     plan: free
     region: singapore
     rootDir: backend
-    buildCommand: uv sync --frozen --no-dev
-    startCommand: uv run --no-dev alembic upgrade head && uv run --no-dev uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
-    autoDeployTrigger: commit
+    autoDeployTrigger: off
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.11
       - key: RECEIPTSPLIT_ENV
         value: production
       - key: RECEIPTSPLIT_DATABASE_URL
@@ -29,7 +27,15 @@ services:
       - key: RECEIPTSPLIT_AUTH_OIDC_AUDIENCE
         sync: false
       - key: RECEIPTSPLIT_OCR_PROVIDER
-        value: mock
+        value: tesseract
+      - key: RECEIPTSPLIT_TESSERACT_LANGUAGE
+        value: eng
+      - key: RECEIPTSPLIT_TESSERACT_PSM
+        value: "4"
+      - key: RECEIPTSPLIT_OCR_TIMEOUT_SECONDS
+        value: "30"
+      - key: RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR
+        value: /tmp/receiptsplit-ocr
       - key: RECEIPTSPLIT_OCR_STORE_RAW_TEXT
         value: "false"
       - key: RECEIPTSPLIT_LOG_LEVEL

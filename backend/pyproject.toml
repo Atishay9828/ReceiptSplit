@@ -11,27 +11,23 @@ dependencies = [
     # Web framework
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
-
     # Database
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
     "alembic>=1.14.0",
     "psycopg2-binary>=2.9.10",
-
     # Configuration
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
-
     # Supabase (Realtime broadcasting)
     "supabase>=2.10.0",
-
     # Security
     "python-multipart>=0.0.12",   # for form uploads (Phase 2)
     "google-auth[requests]>=2.40.0",
-
     # Utilities
     "python-dateutil>=2.9.0",
     "bleach>=6.2.0",              # HTML sanitization
+    "pillow>=12.3.0",
 ]
 
 [project.optional-dependencies]

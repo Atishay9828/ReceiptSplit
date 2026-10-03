@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -58,10 +58,21 @@ class ParsedReceiptLine(BaseModel):
 
 
 class ParsedReceiptAdjustment(BaseModel):
-    type: str
-    label: str
-    amount_paise: int
-    allocation_method: str = "proportional"
+    type: Literal[
+        "tax",
+        "service_charge",
+        "delivery_fee",
+        "packaging_fee",
+        "tip",
+        "discount",
+        "coupon",
+        "offer",
+        "adjustment",
+        "rounding",
+    ]
+    label: str = Field(min_length=1, max_length=100)
+    amount_paise: int = Field(gt=-10_000_000, le=10_000_000)
+    allocation_method: Literal["proportional", "equal"] = "proportional"
 
 
 class ParsedReceiptDraft(BaseModel):

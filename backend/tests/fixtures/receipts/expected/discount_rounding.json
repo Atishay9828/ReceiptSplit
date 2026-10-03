@@ -8,6 +8,10 @@
     {"name": "Veg Thali", "quantity": 1, "unit_price_paise": null, "total_paise": 18000, "confidence": 1.0},
     {"name": "Lassi", "quantity": 1, "unit_price_paise": null, "total_paise": 6000, "confidence": 1.0}
   ],
+  "adjustments": [
+    {"type": "discount", "amount_paise": -2000},
+    {"type": "rounding", "amount_paise": 50}
+  ],
   "warnings": ["discount_detected"],
   "needs_review": false
 }

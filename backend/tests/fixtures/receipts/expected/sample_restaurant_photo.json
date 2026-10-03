@@ -1,0 +1,16 @@
+{
+  "merchant_name": "SAMPLE RESTAURANT",
+  "subtotal_paise": 75000,
+  "tax_paise": 3750,
+  "discount_paise": null,
+  "total_paise": 78750,
+  "items": [
+    {"name": "Butter Chicken", "quantity": 1, "unit_price_paise": 35000, "total_paise": 35000, "confidence": 1.0},
+    {"name": "Garlic Naan", "quantity": 2, "unit_price_paise": 6000, "total_paise": 12000, "confidence": 1.0},
+    {"name": "Dal Tadka", "quantity": 1, "unit_price_paise": 18000, "total_paise": 18000, "confidence": 1.0},
+    {"name": "Lassi", "quantity": 2, "unit_price_paise": 5000, "total_paise": 10000, "confidence": 1.0}
+  ],
+  "adjustments": [{"type": "tax", "amount_paise": 3750}],
+  "warnings": ["quantity_total_inferred", "tax_detected"],
+  "needs_review": true
+}

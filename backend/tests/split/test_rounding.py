@@ -3,8 +3,8 @@ Tests for RoundingPolicy.
 
 Covers:
   - Already-round amounts (no-op)
-  - Floor rounding behavior
-  - Payer absorbs rounding remainder (always positive)
+  - Exact paise preservation
+  - Payer absorbs only the allocated remainder
   - All-zero totals
   - Single non-payer
   - Many non-payers (19)
@@ -40,73 +40,64 @@ class TestRoundingPolicy:
         assert result == {payer: 5000, others[0]: 3000, others[1]: 2000}
         assert sum(result.values()) == 10000
 
-    # ── Floor rounding ───────────────────────────────────────────────────
+    # ── Exact paise preservation ────────────────────────────────────────
 
-    def test_floor_rounds_down(self):
-        """149 paise floors to 100. Payer absorbs the 49 paise."""
+    def test_149_paise_is_preserved(self):
         payer, others = _payer_and_others(1)
         raw = {payer: 851, others[0]: 149}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 100  # 149 -> 100
-        assert result[payer] == 900  # absorbs 49 paise remainder
+        assert result[others[0]] == 149
+        assert result[payer] == 851
         assert sum(result.values()) == 1000
 
-    def test_floor_151_to_100(self):
-        """151 paise floors to 100, not 200."""
+    def test_151_paise_is_preserved(self):
         payer, others = _payer_and_others(1)
         raw = {payer: 849, others[0]: 151}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 100  # floor, not round up
-        assert result[payer] == 900  # absorbs 51 paise remainder
+        assert result[others[0]] == 151
+        assert result[payer] == 849
         assert sum(result.values()) == 1000
 
-    def test_midpoint_floors_to_0(self):
-        """50 paise floors to 0 (not 100 like round-half-up)."""
+    def test_midpoint_paise_is_preserved(self):
         payer, others = _payer_and_others(1)
         raw = {payer: 950, others[0]: 50}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 0  # floor: 50 -> 0
-        assert result[payer] == 1000
+        assert result[others[0]] == 50
+        assert result[payer] == 950
         assert sum(result.values()) == 1000
 
-    def test_250_floors_to_200(self):
-        """250 paise: (250 // 100) * 100 = 200."""
+    def test_250_paise_is_preserved(self):
         payer, others = _payer_and_others(1)
         raw = {payer: 750, others[0]: 250}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 200  # floor: 250 -> 200
-        assert result[payer] == 800
+        assert result[others[0]] == 250
+        assert result[payer] == 750
         assert sum(result.values()) == 1000
 
-    def test_99_floors_to_0(self):
-        """99 paise floors to 0."""
+    def test_99_paise_is_preserved(self):
         payer, others = _payer_and_others(1)
         raw = {payer: 901, others[0]: 99}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        assert result[others[0]] == 0
-        assert result[payer] == 1000
+        assert result[others[0]] == 99
+        assert result[payer] == 901
         assert sum(result.values()) == 1000
 
     # ── Payer absorbs rounding remainder ─────────────────────────────────
 
-    def test_payer_absorbs_floor_remainder(self):
-        """Floor rounding always gives payer MORE (absorbs positive error)."""
+    def test_payer_absorbs_only_allocator_remainder(self):
         payer, others = _payer_and_others(3)
         raw = {payer: 697, others[0]: 101, others[1]: 101, others[2]: 101}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        # 101 -> 100 (floor), so others_sum = 300
-        assert all(result[o] == 100 for o in others)
-        assert result[payer] == 700  # 1000 - 300 = 700
+        assert all(result[o] == 101 for o in others)
+        assert result[payer] == 697
         assert sum(result.values()) == 1000
 
-    def test_payer_absorbs_large_remainder(self):
-        """All non-payers have 99 paise each, all floor to 0."""
+    def test_payer_preserves_sub_rupee_non_payer_totals(self):
         payer, others = _payer_and_others(3)
         raw = {payer: 703, others[0]: 99, others[1]: 99, others[2]: 99}
         result = RoundingPolicy.apply(raw, 1000, payer)
-        # 99 -> 0 (floor), so others_sum = 0
-        assert all(result[o] == 0 for o in others)
-        assert result[payer] == 1000  # absorbs everything
+        assert all(result[o] == 99 for o in others)
+        assert result[payer] == 703
         assert sum(result.values()) == 1000
 
     # ── Edge cases ───────────────────────────────────────────────────────
@@ -120,12 +111,12 @@ class TestRoundingPolicy:
         assert sum(result.values()) == 0
 
     def test_single_non_payer(self):
-        """Only one non-payer. 2467 -> 2400 (floor)."""
+        """Only one non-payer; all allocated paise are preserved."""
         payer, others = _payer_and_others(1)
         raw = {payer: 7533, others[0]: 2467}
         result = RoundingPolicy.apply(raw, 10000, payer)
-        assert result[others[0]] == 2400  # floor: 2467 -> 2400
-        assert result[payer] == 7600  # 10000 - 2400
+        assert result[others[0]] == 2467
+        assert result[payer] == 7533
         assert sum(result.values()) == 10000
 
     def test_19_non_payers(self):
@@ -140,12 +131,12 @@ class TestRoundingPolicy:
         assert all(result[o] == 500 for o in others)
 
     def test_very_small_amounts(self):
-        """1 paise for non-payer floors to 0."""
+        """1 paise for non-payer remains 1 paise."""
         payer, others = _payer_and_others(1)
         raw = {payer: 99, others[0]: 1}
         result = RoundingPolicy.apply(raw, 100, payer)
-        assert result[others[0]] == 0
-        assert result[payer] == 100
+        assert result[others[0]] == 1
+        assert result[payer] == 99
         assert sum(result.values()) == 100
 
     def test_payer_total_zero_is_valid(self):
@@ -159,13 +150,13 @@ class TestRoundingPolicy:
 
     def test_150_paise_3_people(self):
         """The falsifying example: 150 paise / 3 people.
-        Each gets 50 raw, floor to 0, payer absorbs 150."""
+        Each gets 50 paise, with no rounding loss."""
         payer, others = _payer_and_others(2)
         raw = {payer: 50, others[0]: 50, others[1]: 50}
         result = RoundingPolicy.apply(raw, 150, payer)
-        assert result[others[0]] == 0  # floor: 50 -> 0
-        assert result[others[1]] == 0  # floor: 50 -> 0
-        assert result[payer] == 150  # absorbs all
+        assert result[others[0]] == 50
+        assert result[others[1]] == 50
+        assert result[payer] == 50
         assert sum(result.values()) == 150
 
     # ── Sum conservation (parametrized) ──────────────────────────────────
@@ -191,11 +182,9 @@ class TestRoundingPolicy:
     # ── Invariant assertions ─────────────────────────────────────────────
 
     def test_negative_payer_total_raises(self):
-        """If non-payer values are already rounded and exceed grand, payer goes negative.
-        With floor rounding, this can only happen if the raw non-payer values
-        are already > grand_total at the 100-paise boundary."""
+        """Reject inputs whose non-payer allocations exceed the grand total."""
         payer, others = _payer_and_others(1)
-        # Non-payer has 1100 raw (floors to 1100). Grand = 1000.
+        # Non-payer has 1100 raw. Grand = 1000.
         # Payer = 1000 - 1100 = -100.
         raw = {payer: -100, others[0]: 1100}
         with pytest.raises(NegativePayerTotalViolation):

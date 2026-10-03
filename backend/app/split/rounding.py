@@ -1,13 +1,8 @@
 """
 ReceiptSplit - Rounding Policy
 
-Rounds non-payer totals down to the nearest rupee (100 paise).
-The payer absorbs all rounding error as a residual.
-
-Floor rounding (not round-half-up) is used to guarantee the payer's
-residual is always non-negative. Round-half-up can push the sum of
-non-payer totals above grand_total when multiple non-payers hit the
-50-paise midpoint simultaneously.
+Preserves allocated non-payer totals at exact paise precision.
+The payer absorbs any allocator remainder as a residual.
 
 Post-conditions (enforced — violation raises SplitInvariantFailed):
   1. sum(result.values()) == grand_total_paise
@@ -36,28 +31,16 @@ if True:
 
 
 class RoundingPolicy:
-    """Rounds split totals to the nearest rupee (floor).
+    """Preserves paise and derives the payer's share as a residual.
 
     Algorithm:
-      1. For each non-payer: floor raw total to nearest 100 paise (₹1).
+      1. Preserve each non-payer's allocated raw total in paise.
       2. Payer total = grand_total - sum(all non-payer rounded totals).
       3. Assert sum == grand_total.
       4. Assert payer_total >= 0.
 
-    Floor rounding formula (integer-only, no floats):
-      rounded = (raw // 100) * 100
-
-    Examples:
-      - 150 paise -> 100 paise (floor)
-      - 149 paise -> 100 paise (floor)
-      - 50  paise -> 0   paise (floor)
-      - 99  paise -> 0   paise (floor)
-      - 100 paise -> 100 paise (exact)
-      - 0   paise -> 0   paise (exact)
-
-    Floor rounding guarantees: sum(rounded_non_payers) <= sum(raw_non_payers).
-    Since raw totals are derived from the allocators which conserve sum,
-    and payer = grand_total - sum(others), the payer total is always >= 0.
+    Allocators operate on integer paise and conserve their allocated totals.
+    Retaining those values avoids silently shifting costs between participants.
     """
 
     @staticmethod
@@ -66,7 +49,7 @@ class RoundingPolicy:
         grand_total_paise: int,
         payer_id: UUID,
     ) -> dict[UUID, int]:
-        """Rounds totals and derives payer's share as residual.
+        """Preserves allocated totals and derives payer's share as residual.
 
         Args:
             raw_totals:       participant_id -> raw total in paise (pre-rounding).
@@ -86,11 +69,8 @@ class RoundingPolicy:
         for pid, raw in raw_totals.items():
             if pid == payer_id:
                 continue
-            # Floor to nearest 100 paise (₹1). Always rounds down.
-            # This guarantees others_sum <= grand_total.
-            r = (raw // 100) * 100
-            rounded[pid] = r
-            others_sum += r
+            rounded[pid] = raw
+            others_sum += raw
 
         # Payer total is the residual — never computed independently.
         # This guarantees sum conservation trivially.

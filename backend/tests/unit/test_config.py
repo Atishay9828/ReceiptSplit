@@ -65,5 +65,5 @@ def test_ocr_raw_text_storage_is_opt_in_by_default() -> None:
     settings = Settings()
 
     assert settings.ocr_store_raw_text is False
-    assert settings.tesseract_language is None
-    assert settings.tesseract_psm == 6
+    assert settings.tesseract_language == "eng"
+    assert settings.tesseract_psm == 4

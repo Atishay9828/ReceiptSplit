@@ -34,6 +34,10 @@ class PostgresRoomRepository(PostgresRepository[Room], RoomRepository):
     async def get_by_id(self, db: AsyncSession, room_id: UUID) -> Room | None:
         return await self.fetch_optional(db, room_id)
 
+    async def get_for_update(self, db: AsyncSession, room_id: UUID) -> Room | None:
+        result = await db.execute(select(Room).where(Room.id == room_id).with_for_update())
+        return result.scalars().first()
+
     async def attach_creator(self, db: AsyncSession, room_id: UUID, user_id: UUID) -> bool:
         stmt = (
             update(Room)

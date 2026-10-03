@@ -1,0 +1,8 @@
+SAMPLE RESTAURANT
+Butter Chicken x1 350.00
+Garlic Naan x2 120.00
+Dal Tadka x1 180.00
+Lassi x2 100.00
+Subtotal 750.00
+Tax (5%) 37.50
+Grand Total 787.50

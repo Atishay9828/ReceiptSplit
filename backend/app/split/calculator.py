@@ -136,10 +136,20 @@ class SplitCalculator:
 
         # ── Step 5: Pre-tax subtotals ────────────────────────────────────
         pretax: dict[UUID, int] = dict(items_share)
+        # Rotate paise remainders from equal item shares through later bill-level
+        # adjustments. This keeps several odd tax/charge components from all
+        # landing on the same participant.
+        remainder_cursor = [subtotal % len(round_robin)] if inp.mode == "equal" else None
 
         # ── Step 6: Allocate bill-level discounts ────────────────────────
         discount_alloc = _allocate_adjustments_by_type(
-            "discount", inp.adjustments, pretax, round_robin, subtotal, amount_base_paise=subtotal
+            "discount",
+            inp.adjustments,
+            pretax,
+            round_robin,
+            subtotal,
+            amount_base_paise=subtotal,
+            remainder_cursor=remainder_cursor,
         )
 
         # ── Step 7: Post-discount subtotals ──────────────────────────────
@@ -158,7 +168,13 @@ class SplitCalculator:
 
         # ── Step 8: Allocate taxes proportionally ────────────────────────
         tax_alloc = _allocate_adjustments_by_type(
-            "tax", inp.adjustments, postdisc, round_robin, postdisc_subtotal, amount_base_paise=subtotal
+            "tax",
+            inp.adjustments,
+            postdisc,
+            round_robin,
+            postdisc_subtotal,
+            amount_base_paise=subtotal,
+            remainder_cursor=remainder_cursor,
         )
 
         # ── Step 9: Allocate service charge proportionally ───────────────
@@ -169,6 +185,7 @@ class SplitCalculator:
             round_robin,
             postdisc_subtotal,
             amount_base_paise=subtotal,
+            remainder_cursor=remainder_cursor,
         )
 
         # ── Step 10: Allocate delivery fee equally ───────────────────────
@@ -179,6 +196,7 @@ class SplitCalculator:
             round_robin,
             postdisc_subtotal,
             amount_base_paise=subtotal,
+            remainder_cursor=remainder_cursor,
         )
 
         # ── Step 10b: Allocate generic adjustments ───────────────────────
@@ -190,6 +208,7 @@ class SplitCalculator:
             round_robin,
             postdisc_subtotal,
             amount_base_paise=subtotal,
+            remainder_cursor=remainder_cursor,
         )
 
         # ── Compute grand total ──────────────────────────────────────────
@@ -375,6 +394,7 @@ def _allocate_adjustments_by_type(
     round_robin: list[UUID],
     shares_subtotal: int,
     amount_base_paise: int | None = None,
+    remainder_cursor: list[int] | None = None,
 ) -> dict[UUID, int]:
     """Allocate all adjustments of a given type across participants.
 
@@ -406,6 +426,12 @@ def _allocate_adjustments_by_type(
     if total_amount == 0:
         return dict.fromkeys(round_robin, 0)
 
+    allocation_order = (
+        _rotate_participant_order(round_robin, remainder_cursor[0])
+        if remainder_cursor is not None
+        else round_robin
+    )
+
     # Determine allocation method. If mixed methods exist for the same type,
     # split into proportional and equal portions separately.
     proportional_total = sum(
@@ -431,22 +457,54 @@ def _allocate_adjustments_by_type(
     result: dict[UUID, int] = dict.fromkeys(round_robin, 0)
 
     if proportional_total != 0:
-        prop_alloc = ProportionalAllocator.allocate(abs(proportional_total), shares, round_robin)
+        amount = abs(proportional_total)
+        prop_alloc = ProportionalAllocator.allocate(amount, shares, allocation_order)
         check_allocation_conservation(
-            prop_alloc, abs(proportional_total), f"{adj_type}(proportional)"
+            prop_alloc, amount, f"{adj_type}(proportional)"
         )
         sign = 1 if proportional_total >= 0 else -1
         for pid in round_robin:
             result[pid] += sign * prop_alloc.get(pid, 0)
+        if remainder_cursor is not None:
+            remainder_cursor[0] = (
+                remainder_cursor[0] + _proportional_remainder(amount, shares, round_robin)
+            ) % len(round_robin)
 
     if equal_total != 0:
-        eq_alloc = EqualAllocator.allocate(abs(equal_total), round_robin)
-        check_allocation_conservation(eq_alloc, abs(equal_total), f"{adj_type}(equal)")
+        amount = abs(equal_total)
+        equal_order = (
+            _rotate_participant_order(round_robin, remainder_cursor[0])
+            if remainder_cursor is not None
+            else round_robin
+        )
+        eq_alloc = EqualAllocator.allocate(amount, equal_order)
+        check_allocation_conservation(eq_alloc, amount, f"{adj_type}(equal)")
         sign = 1 if equal_total >= 0 else -1
         for pid in round_robin:
             result[pid] += sign * eq_alloc.get(pid, 0)
+        if remainder_cursor is not None:
+            remainder_cursor[0] = (remainder_cursor[0] + amount % len(round_robin)) % len(
+                round_robin
+            )
 
     return result
+
+
+def _rotate_participant_order(round_robin: list[UUID], offset: int) -> list[UUID]:
+    offset %= len(round_robin)
+    return round_robin[offset:] + round_robin[:offset]
+
+
+def _proportional_remainder(
+    amount: int, shares: dict[UUID, int], round_robin: list[UUID]
+) -> int:
+    total_share = sum(shares.get(pid, 0) for pid in round_robin)
+    if total_share == 0:
+        return amount % len(round_robin)
+    allocated = sum(
+        (amount * shares.get(pid, 0)) // total_share for pid in round_robin
+    )
+    return amount - allocated
 
 
 def _adjustment_effect_amount(adjustment: SplitAdjustment, base_paise: int) -> int:

@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Request
@@ -20,6 +21,7 @@ from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.config import settings
 from app.security.rate_limit import limiter
+from app.services.registry import get_ocr_service
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
@@ -30,6 +32,17 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     limiter.reset()
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        application.state.ocr_ready = False
+        if settings.is_production and settings.ocr_provider != "tesseract":
+            raise RuntimeError("Production OCR provider must be Tesseract")
+        if settings.ocr_provider == "tesseract":
+            await get_ocr_service().check_provider_ready()
+            application.state.ocr_ready = True
+        yield
+
     application = FastAPI(
         title="ReceiptSplit API",
         description="UPI-native, receipt-first bill splitting for India.",
@@ -37,6 +50,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.is_development else None,
         redoc_url="/redoc" if settings.is_development else None,
         openapi_url="/openapi.json" if settings.is_development else None,
+        lifespan=lifespan,
     )
 
     application.add_middleware(

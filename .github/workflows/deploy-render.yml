@@ -1,13 +1,6 @@
 name: Deploy Render API
 
 on:
-  push:
-    branches:
-      - feat/split-engine
-    paths:
-      - "backend/**"
-      - "render.yaml"
-      - ".github/workflows/deploy-render.yml"
   workflow_dispatch:
 
 permissions:
@@ -31,25 +24,43 @@ jobs:
             *\?*) DEPLOY_URL="${RENDER_DEPLOY_HOOK}&ref=${DEPLOY_REF}" ;;
             *) DEPLOY_URL="${RENDER_DEPLOY_HOOK}?ref=${DEPLOY_REF}" ;;
           esac
-          curl --fail --silent --show-error --request POST "$DEPLOY_URL"
+          response_file="$RUNNER_TEMP/render-deploy-response.json"
+          status_code="$(curl --fail --silent --show-error --max-time 30 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "$DEPLOY_URL")"
+          deploy_id="$(jq -r '.deploy.id // empty' "$response_file")"
+          if [ -n "$deploy_id" ]; then
+            echo "Render accepted deploy $deploy_id for $DEPLOY_REF."
+          elif [ "$status_code" = "202" ]; then
+            echo "Render queued $DEPLOY_REF behind the active deployment."
+          else
+            echo "Render returned HTTP $status_code without a deploy ID for $DEPLOY_REF."
+            exit 1
+          fi
 
-      - name: Verify current API is live
+      - name: Verify exact running commit, OCR readiness, and route protection
         env:
           API_URL: https://receiptsplit-api.onrender.com
+          DEPLOY_REF: ${{ github.sha }}
         run: |
           for attempt in $(seq 1 90); do
-            health_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              --max-time 20 "$API_URL/health" || true)"
+            health="$(curl --fail --silent --show-error --max-time 20 \
+              "$API_URL/health" || true)"
+            health_status="$(test -n "$health" && echo 200 || echo 000)"
+            health_matches="$(jq -e --arg commit "$DEPLOY_REF" \
+              '.status == "ok" and .commit == $commit and .ocr_provider == "tesseract" and .ocr_ready == "true"' \
+              <<< "$health" >/dev/null 2>&1 && echo true || echo false)"
             groups_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
               --max-time 20 "$API_URL/api/groups" || true)"
 
             if [ "$health_status" = "200" ] && \
+              [ "$health_matches" = "true" ] && \
               { [ "$groups_status" = "401" ] || [ "$groups_status" = "403" ]; }; then
-              echo "Current API routes are live."
+              echo "Running API reports commit $DEPLOY_REF with Tesseract ready; protected routes reject unauthenticated requests."
               exit 0
             fi
 
-            echo "Waiting for Render (attempt $attempt/90): health=$health_status groups=$groups_status"
+            echo "Waiting for exact running commit (attempt $attempt/90): health=$health_status auth=$groups_status"
             sleep 10
           done
 

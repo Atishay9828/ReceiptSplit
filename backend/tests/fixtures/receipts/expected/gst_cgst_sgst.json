@@ -8,6 +8,10 @@
     {"name": "Paneer Tikka", "quantity": 1, "unit_price_paise": null, "total_paise": 25000, "confidence": 1.0},
     {"name": "Naan", "quantity": 2, "unit_price_paise": 4500, "total_paise": 9000, "confidence": 1.0}
   ],
+  "adjustments": [
+    {"type": "tax", "amount_paise": 850},
+    {"type": "tax", "amount_paise": 850}
+  ],
   "warnings": ["tax_detected"],
   "needs_review": false
 }

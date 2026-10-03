@@ -43,6 +43,25 @@ async def test_tesseract_provider_missing_binary_maps_to_domain_error() -> None:
         )
 
 
+async def test_tesseract_readiness_requires_selected_language(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class CompletedProcess:
+        returncode = 0
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            return b"List of available languages in \"tessdata\" (2):\neng\nosd\n", b""
+
+    async def fake_create_subprocess_exec(*_: object, **__: object) -> CompletedProcess:
+        return CompletedProcess()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    await TesseractOcrProvider(language="eng").check_ready()
+
+    with pytest.raises(RuntimeError, match="language data is missing"):
+        await TesseractOcrProvider(language="fra").check_ready()
+
+
 async def test_tesseract_provider_timeout_maps_to_domain_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -104,6 +123,39 @@ async def test_tesseract_provider_preserves_tsv_tokens_and_reconstructs_text(
     assert result.confidence == pytest.approx((0.965 + 0.91 + 0.88 + 0.9) / 4)
     assert command[-5:] == ("-l", "eng", "--psm", "4", "tsv")
     assert result.provider_metadata["output_format"] == "tsv"
+    assert result.provider_metadata["decimal_separator_reconstructed"] is False
+
+
+async def test_tesseract_provider_restores_a_geometry_supported_decimal_separator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tsv = (
+        b"level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        b"5\t1\t1\t1\t1\t1\t100\t20\t100\t20\t95.0\tGrand\n"
+        b"5\t1\t1\t1\t1\t2\t210\t20\t100\t20\t95.0\tTotal\n"
+        b"5\t1\t1\t1\t1\t3\t500\t20\t150\t20\t95.0\t<787\n"
+        b"5\t1\t1\t1\t1\t4\t665\t20\t60\t20\t95.0\t50\n"
+
+        b"5\t1\t1\t1\t2\t1\t100\t60\t50\t20\t95.0\t123\n"
+        b"5\t1\t1\t1\t2\t2\t300\t60\t50\t20\t95.0\t45\n"
+    )
+
+    class CompletedProcess:
+        returncode = 0
+
+        async def communicate(self, _: bytes) -> tuple[bytes, bytes]:
+            return tsv, b""
+
+    async def fake_create_subprocess_exec(*_: object, **__: object) -> CompletedProcess:
+        return CompletedProcess()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    result = await TesseractOcrProvider(language="eng", psm=4).extract_text(
+        OcrImageInput(content=b"image", content_type="image/png", width=200, height=100)
+    )
+
+    assert result.raw_text == "Grand Total <787.50\n123 45"
+    assert result.provider_metadata["decimal_separator_reconstructed"] is True
 
 
 def test_tesseract_provider_rejects_invalid_page_segmentation_mode() -> None:

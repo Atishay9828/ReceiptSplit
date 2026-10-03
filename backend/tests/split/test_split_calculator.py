@@ -253,6 +253,31 @@ class TestEqualSplit:
         assert result.grand_total_paise == 10000
         assert sum(t.total_paise for t in result.participant_totals) == 10000
 
+    def test_equal_split_rotates_adjustment_remainders_across_categories(self):
+        participants = _participants(2)
+        result = SplitCalculator.calculate(
+            SplitInput(
+                mode="equal",
+                items=[SplitItem(id=uuid4(), quantity=1, total_paise=13550)],
+                assignments=[],
+                adjustments=[
+                    SplitAdjustment(type="tax", amount_paise=1359, allocation="proportional"),
+                    SplitAdjustment(
+                        type="service_charge", amount_paise=2439, allocation="proportional"
+                    ),
+                ],
+                participants=participants,
+            )
+        )
+
+        assert [total.total_paise for total in result.participant_totals] == [8674, 8674]
+        assert [
+            total.items_paise + total.tax_paise + total.service_charge_paise
+            for total in result.participant_totals
+        ] == [total.total_paise for total in result.participant_totals]
+        assert sum(total.tax_paise for total in result.participant_totals) == 1359
+        assert sum(total.service_charge_paise for total in result.participant_totals) == 2439
+
 
 @pytest.mark.unit
 class TestItemWiseSplit:

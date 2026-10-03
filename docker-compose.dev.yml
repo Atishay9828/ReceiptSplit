@@ -1,4 +1,34 @@
 services:
+  receiptsplit-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: receiptsplit-api-dev
+    depends_on:
+      receiptsplit-postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8000"
+      RECEIPTSPLIT_ENV: development
+      RECEIPTSPLIT_DATABASE_URL: postgresql+asyncpg://receiptsplit:receiptsplit@receiptsplit-postgres:5432/receiptsplit_dev
+      RECEIPTSPLIT_DATABASE_POOL_SIZE: "1"
+      RECEIPTSPLIT_DATABASE_MAX_OVERFLOW: "0"
+      RECEIPTSPLIT_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      RECEIPTSPLIT_AUTH_OIDC_PROVIDER: dev
+      RECEIPTSPLIT_OCR_PROVIDER: tesseract
+      RECEIPTSPLIT_TESSERACT_LANGUAGE: eng
+      RECEIPTSPLIT_TESSERACT_PSM: "4"
+      RECEIPTSPLIT_OCR_TIMEOUT_SECONDS: "30"
+      RECEIPTSPLIT_OCR_STORE_RAW_TEXT: "false"
+      RECEIPTSPLIT_OCR_LOCAL_STORAGE_DIR: /tmp/receiptsplit-ocr
+      NEXT_PUBLIC_RECEIPTSPLIT_BROWSER_OCR: "false"
+      OMP_THREAD_LIMIT: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app:ro
+    restart: unless-stopped
+
   receiptsplit-postgres:
     image: postgres:15-alpine
     container_name: receiptsplit-postgres-dev

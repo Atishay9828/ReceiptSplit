@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import re
 
 from app.ocr.contracts import OcrImageInput, OcrProviderResult, OcrTextToken
 from app.ocr.errors import OcrProviderFailed, OcrProviderTimeout, OcrProviderUnavailable
@@ -38,7 +39,7 @@ class TesseractOcrProvider:
         tesseract_cmd: str = "tesseract",
         timeout_seconds: float = 30.0,
         language: str | None = None,
-        psm: int = 6,
+        psm: int = 4,
     ) -> None:
         if not 0 <= psm <= 13:
             raise ValueError("Tesseract page segmentation mode must be between 0 and 13")
@@ -46,6 +47,28 @@ class TesseractOcrProvider:
         self._timeout_seconds = timeout_seconds
         self._language = language
         self._psm = psm
+
+    async def check_ready(self) -> None:
+        try:
+            process = await asyncio.create_subprocess_exec(
+                self._cmd,
+                "--list-langs",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError:
+            raise RuntimeError("Tesseract executable is unavailable") from None
+        try:
+            stdout, _stderr = await asyncio.wait_for(process.communicate(), timeout=5.0)
+        except TimeoutError:
+            process.kill()
+            await process.wait()
+            raise RuntimeError("Tesseract language check timed out") from None
+        if process.returncode != 0:
+            raise RuntimeError("Tesseract language check failed")
+        languages = {line.strip() for line in stdout.decode("utf-8", errors="replace").splitlines()}
+        if self._language and self._language not in languages:
+            raise RuntimeError(f"Tesseract language data is missing: {self._language}")
 
     async def extract_text(self, image: OcrImageInput) -> OcrProviderResult:
         command = [
@@ -86,7 +109,9 @@ class TesseractOcrProvider:
         if getattr(process, "returncode", 0) not in (0, None):
             raise OcrProviderFailed("tesseract")
 
-        raw_text, tokens = _parse_tesseract_tsv(stdout)
+        raw_text, tokens, decimal_separator_reconstructed = _parse_tesseract_tsv(stdout)
+        if not raw_text.strip():
+            raise OcrProviderFailed("tesseract")
         token_confidences = [token.confidence for token in tokens if token.confidence is not None]
         return OcrProviderResult(
             provider="tesseract",
@@ -101,11 +126,14 @@ class TesseractOcrProvider:
                 "output_format": "tsv",
                 "psm": self._psm,
                 "language": self._language,
+                "decimal_separator_reconstructed": decimal_separator_reconstructed,
             },
         )
 
 
-def _parse_tesseract_tsv(output: bytes) -> tuple[str, tuple[OcrTextToken, ...]]:
+def _parse_tesseract_tsv(
+    output: bytes,
+) -> tuple[str, tuple[OcrTextToken, ...], bool]:
     """Convert Tesseract TSV into ordered text and bounded layout evidence."""
     reader = csv.DictReader(io.StringIO(output.decode("utf-8", errors="replace")), delimiter="\t")
     required_columns = {
@@ -150,19 +178,56 @@ def _parse_tesseract_tsv(output: bytes) -> tuple[str, tuple[OcrTextToken, ...]]:
             continue
         tokens.append(token)
 
-    lines: list[str] = []
+    token_lines: list[list[OcrTextToken]] = []
     current_key: tuple[int, int, int, int] | None = None
-    current_words: list[str] = []
+    current_tokens: list[OcrTextToken] = []
     for token in tokens:
         key = (token.page_num, token.block_num, token.paragraph_num, token.line_num)
         if current_key is not None and key != current_key:
-            lines.append(" ".join(current_words))
-            current_words = []
+            token_lines.append(current_tokens)
+            current_tokens = []
         current_key = key
-        current_words.append(token.text)
-    if current_words:
-        lines.append(" ".join(current_words))
-    return "\n".join(lines), tuple(tokens)
+        current_tokens.append(token)
+    if current_tokens:
+        token_lines.append(current_tokens)
+
+    lines: list[str] = []
+    decimal_separator_reconstructed = False
+    for line_tokens in token_lines:
+        words: list[str] = []
+        previous_token: OcrTextToken | None = None
+        for token in line_tokens:
+            if previous_token is not None and _is_split_decimal_fragment(previous_token, token):
+                words[-1] = f"{words[-1]}.{token.text}"
+                decimal_separator_reconstructed = True
+            else:
+                words.append(token.text)
+            previous_token = token
+        lines.append(" ".join(words))
+    return "\n".join(lines), tuple(tokens), decimal_separator_reconstructed
+
+
+def _is_split_decimal_fragment(
+    previous: OcrTextToken, token: OcrTextToken
+) -> bool:
+    if not previous.text.rstrip()[-1:].isdigit():
+        return False
+    previous_integer = previous.text.rstrip().rsplit(" ", maxsplit=1)[-1]
+    if not re.fullmatch(r"[^\d]*\d{2,}", previous_integer):
+        return False
+    if not re.fullmatch(r"\d{2}", token.text):
+        return False
+    line_height = min(previous.height, token.height)
+    if line_height <= 0:
+        return False
+    gap = token.left - (previous.left + previous.width)
+    vertical_center_delta = abs(
+        (previous.top + previous.height / 2) - (token.top + token.height / 2)
+    )
+    return (
+        -line_height * 0.15 <= gap <= line_height * 0.75
+        and vertical_center_delta <= line_height * 0.4
+    )
 
 
 def _parse_confidence(value: str | None) -> float | None:

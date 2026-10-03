@@ -66,6 +66,12 @@ logs/
 # Docker
 .docker/
 
+# Private OCR diagnostics and local acceptance scratch files
+/tmp/ocr-baseline/
+/tmp/mypy-ocr-recovery/
+/tmp/inspect_ocr.py
+/tmp/parse_report.py
+
 # Node (frontend — Phase 10)
 node_modules/
 .next/

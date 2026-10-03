@@ -10,6 +10,7 @@ from app.api.errors import ERROR_RESPONSES
 from app.api.schemas.ocr import (
     BrowserOcrCandidateRequest,
     OcrJobResponse,
+    ParsedReceiptConfirmRequest,
     ParsedReceiptConfirmResponse,
     ParsedReceiptDraftResponse,
     ParsedReceiptDraftUpdateRequest,
@@ -20,6 +21,7 @@ from app.auth.dependencies import AuthorizedRoomActor, require_room_owner_or_cre
 from app.config import settings
 from app.database import get_db
 from app.ocr.contracts import OcrProviderResult, ParsedReceiptDraft
+from app.ocr.review import review_values
 from app.security.rate_limit import RateLimitRule, client_host, enforce_rate_limit
 from app.services.registry import get_audit_service, get_ocr_service
 from app.shared.errors import DomainError
@@ -86,6 +88,9 @@ async def upload_receipt_image(
         job_id=job.id,
         status=job.status,
         parsed_receipt_id=parsed.id if parsed else None,
+        provider=job.provider,
+        error_code=job.error_code,
+        error_message=job.error_message,
     )
 
 
@@ -146,30 +151,37 @@ async def update_parsed_receipt(
     current = await service.get_parsed(db, room_id, parsed_receipt_id)
     draft = ParsedReceiptDraft(
         merchant_name=payload.merchant_name
-        if payload.merchant_name is not None
+        if "merchant_name" in payload.model_fields_set
         else current.merchant_name,
         subtotal_paise=payload.subtotal_paise
-        if payload.subtotal_paise is not None
+        if "subtotal_paise" in payload.model_fields_set
         else current.subtotal_paise,
-        tax_paise=payload.tax_paise if payload.tax_paise is not None else current.tax_paise,
+        tax_paise=payload.tax_paise
+        if "tax_paise" in payload.model_fields_set
+        else current.tax_paise,
         discount_paise=payload.discount_paise
-        if payload.discount_paise is not None
+        if "discount_paise" in payload.model_fields_set
         else current.discount_paise,
         total_paise=payload.total_paise
-        if payload.total_paise is not None
+        if "total_paise" in payload.model_fields_set
         else current.total_paise,
         items=payload.items if payload.items is not None else current.items,
         adjustments=payload.adjustments
         if payload.adjustments is not None
         else current.adjustments,
-        warnings=payload.warnings if payload.warnings is not None else current.warnings,
         confidence=current.confidence,
-        needs_review=payload.needs_review
-        if payload.needs_review is not None
-        else current.needs_review,
+        warnings=current.warnings,
+        needs_review=current.needs_review,
         parser_version=current.parser_version,
     )
-    parsed = await service.update_parsed(db, room_id, parsed_receipt_id, draft, actor.actor_id)
+    parsed = await service.update_parsed(
+        db,
+        room_id,
+        parsed_receipt_id,
+        draft,
+        actor.actor_id,
+        review_fingerprint=payload.review_fingerprint,
+    )
     return parsed_receipt_response_from_model(parsed)
 
 
@@ -182,14 +194,21 @@ async def confirm_parsed_receipt(
     room_id: UUID,
     parsed_receipt_id: UUID,
     request: Request,
+    payload: ParsedReceiptConfirmRequest | None = None,
     actor: AuthorizedRoomActor = Depends(require_room_owner_or_creator),
     db: AsyncSession = Depends(get_db),
     service: ReceiptOcrService = Depends(get_ocr_service),
     audit: AuditService = Depends(get_audit_service),
 ) -> ParsedReceiptConfirmResponse:
     parsed, item_ids, adjustment_ids, already_confirmed, events = await service.confirm_parsed(
-        db, room_id, parsed_receipt_id, actor.actor_id
+        db,
+        room_id,
+        parsed_receipt_id,
+        actor.actor_id,
+        accept_unreconciled_total=payload.accept_unreconciled_total if payload else False,
+        review_fingerprint=payload.review_fingerprint if payload else None,
     )
+    calculated_total, difference, _fingerprint = review_values(parsed)
     await audit.record(
         db,
         action="ocr.confirmed",
@@ -200,6 +219,16 @@ async def confirm_parsed_receipt(
         metadata={
             "parsed_receipt_id": str(parsed_receipt_id),
             "already_confirmed": already_confirmed,
+            "accepted_unreconciled_total": bool(
+                not already_confirmed
+                and payload is not None
+                and payload.accept_unreconciled_total
+                and difference != 0
+            ),
+            "calculated_total_paise": calculated_total,
+            "expected_total_paise": parsed.total_paise,
+            "difference_paise": difference,
+            "actor_id": str(actor.actor_id),
         },
         request=request,
     )

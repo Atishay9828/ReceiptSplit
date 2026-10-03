@@ -1,0 +1,24 @@
+{
+  "merchant_name": "RIVERSIDE BISTRO",
+  "subtotal_paise": 13550,
+  "tax_paise": 1359,
+  "discount_paise": null,
+  "total_paise": 17348,
+  "items": [
+    {"name": "French Onion Soup", "quantity": 1, "unit_price_paise": 850, "total_paise": 850, "confidence": 1.0},
+    {"name": "Burrata Salad", "quantity": 1, "unit_price_paise": 1400, "total_paise": 1400, "confidence": 1.0},
+    {"name": "Seared Scallops", "quantity": 2, "unit_price_paise": 1800, "total_paise": 3600, "confidence": 1.0},
+    {"name": "Herb Risotto", "quantity": 1, "unit_price_paise": 1850, "total_paise": 1850, "confidence": 1.0},
+    {"name": "Grilled Salmon", "quantity": 1, "unit_price_paise": 2400, "total_paise": 2400, "confidence": 1.0},
+    {"name": "Sautéed Green Beans", "quantity": 1, "unit_price_paise": 650, "total_paise": 650, "confidence": 1.0},
+    {"name": "Lemonade", "quantity": 2, "unit_price_paise": 350, "total_paise": 700, "confidence": 1.0},
+    {"name": "Pinot Noir", "quantity": 1, "unit_price_paise": 1200, "total_paise": 1200, "confidence": 1.0},
+    {"name": "Chocolate Torte", "quantity": 1, "unit_price_paise": 900, "total_paise": 900, "confidence": 1.0}
+  ],
+  "adjustments": [
+    {"type": "tax", "amount_paise": 1359},
+    {"type": "service_charge", "amount_paise": 2439}
+  ],
+  "warnings": ["quantity_total_inferred", "tax_detected", "service_charge_detected"],
+  "needs_review": true
+}
