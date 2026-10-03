@@ -1,6 +1,13 @@
 name: Deploy Render API
 
 on:
+  push:
+    branches:
+      - feat/split-engine
+    paths:
+      - "backend/**"
+      - "render.yaml"
+      - ".github/workflows/deploy-render.yml"
   workflow_dispatch:
 
 permissions:

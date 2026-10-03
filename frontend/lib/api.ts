@@ -18,6 +18,7 @@ import type {
   OcrJobResponse,
   OpenPaymentResponse,
   ParsedReceiptConfirmResponse,
+  ParsedReceiptConfirmRequest,
   ParsedReceiptDraftResponse,
   ParsedReceiptUpdateRequest,
   PayerDetailsInput,
@@ -57,6 +58,8 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number>;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 };
 
 export class ReceiptSplitApi {
@@ -68,7 +71,7 @@ export class ReceiptSplitApi {
       url.searchParams.set(key, String(value));
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await this.fetchWithTimeout(url.toString(), {
       method: options.method ?? "GET",
       headers: {
         "Content-Type": "application/json",
@@ -76,7 +79,7 @@ export class ReceiptSplitApi {
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       cache: "no-store"
-    });
+    }, options.timeoutMs, options.signal);
 
     if (!response.ok) {
       throw await parseApiError(response);
@@ -87,6 +90,26 @@ export class ReceiptSplitApi {
     }
 
     return (await response.json()) as T;
+  }
+
+  private async fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit,
+    timeoutMs?: number,
+    externalSignal?: AbortSignal
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const abort = () => controller.abort(externalSignal?.reason);
+    externalSignal?.addEventListener("abort", abort, { once: true });
+    const timeout = timeoutMs
+      ? setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), timeoutMs)
+      : undefined;
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      externalSignal?.removeEventListener("abort", abort);
+    }
   }
 
   async createRoom(payload: RoomCreateRequest, token?: string): Promise<RoomCreateResponse> {
@@ -328,7 +351,8 @@ export class ReceiptSplitApi {
     roomId: string,
     token: string,
     file: File,
-    candidate?: BrowserOcrCandidate
+    candidate?: BrowserOcrCandidate,
+    signal?: AbortSignal
   ): Promise<ReceiptUploadResponse> {
     const form = new FormData();
     form.append("file", file);
@@ -336,12 +360,12 @@ export class ReceiptSplitApi {
       form.append("ocr_candidate", JSON.stringify(candidate));
     }
 
-    const response = await fetch(`${this.baseUrl}/api/rooms/${roomId}/receipts/upload`, {
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/api/rooms/${roomId}/receipts/upload`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,
       cache: "no-store"
-    });
+    }, 90_000, signal);
 
     if (!response.ok) {
       throw await parseApiError(response);
@@ -350,21 +374,21 @@ export class ReceiptSplitApi {
     return (await response.json()) as ReceiptUploadResponse;
   }
 
-  getOcrJob(roomId: string, token: string, jobId: string): Promise<OcrJobResponse> {
-    return this.request<OcrJobResponse>(`/api/rooms/${roomId}/ocr-jobs/${jobId}`, { token });
+  getOcrJob(roomId: string, token: string, jobId: string, signal?: AbortSignal): Promise<OcrJobResponse> {
+    return this.request<OcrJobResponse>(`/api/rooms/${roomId}/ocr-jobs/${jobId}`, { token, signal, timeoutMs: 30_000 });
   }
 
-  getParsedReceipt(roomId: string, token: string, parsedReceiptId: string): Promise<ParsedReceiptDraftResponse> {
+  getParsedReceipt(roomId: string, token: string, parsedReceiptId: string, signal?: AbortSignal): Promise<ParsedReceiptDraftResponse> {
     return this.request<ParsedReceiptDraftResponse>(
       `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
-      { token }
+      { token, signal, timeoutMs: 30_000 }
     );
   }
 
-  getParsedReceiptDebug(roomId: string, token: string, parsedReceiptId: string): Promise<ParsedReceiptDraftResponse> {
+  getParsedReceiptDebug(roomId: string, token: string, parsedReceiptId: string, signal?: AbortSignal): Promise<ParsedReceiptDraftResponse> {
     return this.request<ParsedReceiptDraftResponse>(
       `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
-      { token, query: { include_raw_text: "true" } }
+      { token, query: { include_raw_text: "true" }, signal, timeoutMs: 30_000 }
     );
   }
 
@@ -372,22 +396,25 @@ export class ReceiptSplitApi {
     roomId: string,
     token: string,
     parsedReceiptId: string,
-    payload: ParsedReceiptUpdateRequest
+    payload: ParsedReceiptUpdateRequest,
+    signal?: AbortSignal
   ): Promise<ParsedReceiptDraftResponse> {
     return this.request<ParsedReceiptDraftResponse>(
       `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}`,
-      { method: "PATCH", token, body: payload }
+      { method: "PATCH", token, body: payload, signal, timeoutMs: 30_000 }
     );
   }
 
   confirmParsedReceipt(
     roomId: string,
     token: string,
-    parsedReceiptId: string
+    parsedReceiptId: string,
+    payload: ParsedReceiptConfirmRequest,
+    signal?: AbortSignal
   ): Promise<ParsedReceiptConfirmResponse> {
     return this.request<ParsedReceiptConfirmResponse>(
       `/api/rooms/${roomId}/parsed-receipts/${parsedReceiptId}/confirm`,
-      { method: "POST", token }
+      { method: "POST", token, body: payload, signal, timeoutMs: 30_000 }
     );
   }
 }

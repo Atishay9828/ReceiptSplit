@@ -10,8 +10,6 @@ const mockGetOcrJob = vi.fn();
 const mockGetParsedReceipt = vi.fn();
 const mockUpdateParsedReceipt = vi.fn();
 const mockConfirmParsedReceipt = vi.fn();
-const mockBrowserOcrEnabled = vi.fn(() => false);
-const mockRunBrowserReceiptOcr = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -22,11 +20,6 @@ vi.mock("@/lib/api", () => ({
     updateParsedReceipt: (...args: unknown[]) => mockUpdateParsedReceipt(...args),
     confirmParsedReceipt: (...args: unknown[]) => mockConfirmParsedReceipt(...args)
   }
-}));
-
-vi.mock("@/lib/ocr/browser", () => ({
-  isBrowserReceiptOcrEnabled: () => mockBrowserOcrEnabled(),
-  runBrowserReceiptOcr: (...args: unknown[]) => mockRunBrowserReceiptOcr(...args)
 }));
 
 const ROOM_ID = "room-1";
@@ -46,7 +39,12 @@ const MOCK_DRAFT = {
     { name: "Butter Chicken", quantity: 1, unit_price_paise: 15000, total_paise: 15000, confidence: 0.9 },
     { name: "Naan", quantity: 2, unit_price_paise: 5000, total_paise: 10000, confidence: 0.85 }
   ],
-  adjustments: [],
+  adjustments: [
+    { type: "tax" as const, label: "Tax", amount_paise: 2500, allocation_method: "proportional" }
+  ],
+  calculated_total_paise: 27500,
+  difference_paise: 0,
+  review_fingerprint: "a".repeat(64),
   warnings: ["Low confidence on item 2"],
   confidence: 0.87,
   needs_review: true,
@@ -60,7 +58,6 @@ describe("ReceiptUpload", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockBrowserOcrEnabled.mockReturnValue(false);
     // Provide crypto.randomUUID for jsdom
     if (!globalThis.crypto?.randomUUID) {
       Object.defineProperty(globalThis, "crypto", {
@@ -141,34 +138,14 @@ describe("ReceiptUpload", () => {
     expect(screen.getByDisplayValue("Naan")).toBeTruthy();
 
     // Warning badge
-    expect(screen.getByText(/Needs review/)).toBeTruthy();
-    expect(screen.getByText(/Low confidence on item 2/)).toBeTruthy();
+    expect(screen.getByText(/Review the items, taxes, and charges/)).toBeTruthy();
+    expect(screen.getByText(/A receipt detail needs checking/)).toBeTruthy();
 
     // Merchant
     expect(screen.getByDisplayValue("Test Restaurant")).toBeTruthy();
   });
 
-  it("can send a browser OCR candidate while keeping the draft review gate", async () => {
-    const browserCandidate = {
-      provider: "paddleocr-js" as const,
-      model: "PP-OCRv5",
-      language: "en",
-      raw_text: "Test Restaurant\nTea 120.00",
-      lines: [
-        {
-          text: "Test Restaurant",
-          poly: [
-            { x: 10, y: 10 },
-            { x: 120, y: 10 },
-            { x: 120, y: 30 },
-            { x: 10, y: 30 }
-          ],
-          score: 0.98
-        }
-      ]
-    };
-    mockBrowserOcrEnabled.mockReturnValue(true);
-    mockRunBrowserReceiptOcr.mockResolvedValue(browserCandidate);
+  it("uploads images for authenticated server OCR without PaddleOCR", async () => {
     mockUploadReceipt.mockResolvedValue({
       receipt_id: "receipt-1",
       image_id: "img-1",
@@ -188,16 +165,46 @@ describe("ReceiptUpload", () => {
       expect(screen.getByTestId("ocr-draft-review")).toBeTruthy();
     });
 
-    expect(mockRunBrowserReceiptOcr).toHaveBeenCalledWith(
-      pngFile,
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
-    );
     expect(mockUploadReceipt).toHaveBeenCalledWith(
       ROOM_ID,
       TOKEN,
       pngFile,
-      browserCandidate
+      undefined,
+      expect.any(AbortSignal)
     );
+  });
+
+  it("requires fresh acknowledgment when reviewed values change a discrepancy", async () => {
+    const mismatched = {
+      ...MOCK_DRAFT,
+      total_paise: 28000,
+      difference_paise: -500,
+      needs_review: true,
+      warnings: ["items_sum_mismatch"]
+    };
+    mockUploadReceipt.mockResolvedValue({
+      receipt_id: "receipt-1", image_id: "img-1", job_id: "job-1", status: "succeeded", parsed_receipt_id: "parsed-1"
+    });
+    mockGetParsedReceipt.mockResolvedValue(mismatched);
+
+    render(<ReceiptUpload roomId={ROOM_ID} token={TOKEN} onConfirmed={onConfirmed} />);
+    const input = document.getElementById("receipt-file-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["receipt"], "receipt.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Scan receipt/ }));
+    await waitFor(() => expect(screen.getByTestId("ocr-draft-review")).toBeTruthy());
+
+    const confirm = screen.getByRole("button", { name: /Confirm into room/ });
+    expect(confirm).toBeDisabled();
+    const acknowledgment = screen.getByRole("checkbox", {
+      name: "Use the reviewed bill total despite this difference."
+    });
+    expect(acknowledgment).not.toBeChecked();
+    fireEvent.click(acknowledgment);
+    expect(confirm).not.toBeDisabled();
+
+    fireEvent.change(screen.getByDisplayValue("150.00"), { target: { value: "160.00" } });
+    expect(acknowledgment).not.toBeChecked();
+    expect(confirm).toBeDisabled();
   });
 
   it("allows adding and deleting draft lines", async () => {
@@ -276,6 +283,37 @@ describe("ReceiptUpload", () => {
 
     // Verify onConfirmed was called to refresh room
     expect(onConfirmed).toHaveBeenCalledTimes(1);
+    expect(mockConfirmParsedReceipt).toHaveBeenCalledWith(
+      ROOM_ID,
+      TOKEN,
+      "parsed-1",
+      { accept_unreconciled_total: false, review_fingerprint: "a".repeat(64) },
+      expect.any(AbortSignal)
+    );
+  });
+
+  it("keeps success when the parent refresh fails", async () => {
+    onConfirmed.mockRejectedValueOnce(new Error("offline"));
+    mockUploadReceipt.mockResolvedValue({
+      receipt_id: "receipt-1", image_id: "img-1", job_id: "job-1", status: "succeeded", parsed_receipt_id: "parsed-1"
+    });
+    mockGetParsedReceipt.mockResolvedValue(MOCK_DRAFT);
+    mockUpdateParsedReceipt.mockResolvedValue(MOCK_DRAFT);
+    mockConfirmParsedReceipt.mockResolvedValue({
+      parsed_receipt_id: "parsed-1", status: "confirmed", already_confirmed: false,
+      created_item_ids: ["item-1"], created_adjustment_ids: [], events: []
+    });
+
+    render(<ReceiptUpload roomId={ROOM_ID} token={TOKEN} onConfirmed={onConfirmed} />);
+    const input = document.getElementById("receipt-file-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["receipt"], "receipt.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Scan receipt/ }));
+    await waitFor(() => expect(screen.getByTestId("ocr-draft-review")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm into room/ }));
+
+    await waitFor(() => expect(screen.getByText("Receipt added; refresh needed.")).toBeTruthy());
+    expect(screen.getByText(/1 item added to room from receipt/)).toBeTruthy();
+    expect(mockConfirmParsedReceipt).toHaveBeenCalledTimes(1);
   });
 
   it("shows error when upload fails", async () => {
@@ -318,5 +356,37 @@ describe("ReceiptUpload", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Reset/ }));
     expect(screen.getByText(/Tap to select a receipt image/)).toBeTruthy();
+  });
+
+  it("reset releases the saving state when it aborts a draft update", async () => {
+    mockUploadReceipt.mockResolvedValue({
+      receipt_id: "receipt-1", image_id: "img-1", job_id: "job-1", status: "succeeded", parsed_receipt_id: "parsed-1"
+    });
+    mockGetParsedReceipt.mockResolvedValue(MOCK_DRAFT);
+    mockUpdateParsedReceipt.mockImplementation(
+      (_roomId: string, _token: string, _id: string, _payload: unknown, signal: AbortSignal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+        })
+    );
+
+    render(<ReceiptUpload roomId={ROOM_ID} token={TOKEN} onConfirmed={onConfirmed} />);
+    const input = document.getElementById("receipt-file-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["receipt"], "receipt.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Scan receipt/ }));
+    await waitFor(() => expect(screen.getByTestId("ocr-draft-review")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(screen.getByText(/Tap to select a receipt image/)).toBeTruthy();
+    const resetInput = document.getElementById("receipt-file-input") as HTMLInputElement;
+    expect(resetInput.value).toBe("");
+    fireEvent.change(resetInput, { target: { files: [new File(["receipt again"], "receipt-again.png", { type: "image/png" })] } });
+    expect(screen.getByRole("button", { name: /Scan receipt/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /Scan receipt/ }));
+    await waitFor(() => expect(screen.getByTestId("ocr-draft-review")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
   });
 });

@@ -278,6 +278,9 @@ export type ReceiptUploadResponse = {
   job_id: string;
   status: string;
   parsed_receipt_id: string | null;
+  provider: string | null;
+  error_code: string | null;
+  error_message: string | null;
 };
 
 export type BrowserOcrCandidateLine = {
@@ -319,6 +322,9 @@ export type ParsedReceiptDraftResponse = {
   tax_paise: number | null;
   discount_paise: number | null;
   total_paise: number | null;
+  calculated_total_paise: number;
+  difference_paise: number | null;
+  review_fingerprint: string;
   items: ParsedReceiptLine[];
   adjustments: ParsedReceiptAdjustment[];
   warnings: string[];
@@ -337,8 +343,12 @@ export type ParsedReceiptUpdateRequest = {
   total_paise?: number | null;
   items?: ParsedReceiptLine[];
   adjustments?: ParsedReceiptAdjustment[];
-  warnings?: string[];
-  needs_review?: boolean;
+  review_fingerprint?: string;
+};
+
+export type ParsedReceiptConfirmRequest = {
+  accept_unreconciled_total?: boolean;
+  review_fingerprint?: string;
 };
 
 export type ParsedReceiptConfirmResponse = {

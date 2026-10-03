@@ -8,6 +8,9 @@ const sensitiveRouteHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_RECEIPTSPLIT_BROWSER_OCR: "false"
+  },
   turbopack: {
     resolveAlias: {
       "@techstark/opencv-js": "./lib/ocr/opencv-shim.ts",
