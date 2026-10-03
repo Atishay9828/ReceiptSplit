@@ -2,11 +2,11 @@
 
 ## Current release status
 
-**The local release gate passed, and backend commit `0045e0c117a67b55023ceff868755d4f84a431dd` is live on Render.** Blueprint deployment `dep-db0hqclg1s2s73e5c9hg` completed successfully. `/health` reports that exact commit, `tesseract`, and OCR readiness `true`; unauthenticated `GET /api/groups` returns 403. The tested frontend handoff is local at commit `127c18ec7cd49cfbd244b7737d40f2e612ced08e` and has not yet been published. The live authenticated OCR acceptance remains.
+**The local release gate passed, and the tested backend/frontend release is deployed.** Render deploy `dep-db0hrqs9v7es73bh24v0` and Vercel deployment `dpl_16iRkeEo499GqqcSJTUtPkWVHkmo` are both live/ready at commit `0081831a20c117c580f6a2b49505a12cd354905d`. The GitHub exact-commit deployment check succeeded. `/health` reports that SHA, `tesseract`, and OCR readiness `true`; unauthenticated `GET /api/groups` returns 403. The production homepage responds 200. Live authenticated receipt upload and split-lock acceptance remain pending because no authorized browser session was available for the flow.
 
-Production preflight on 2026-10-03 confirmed Render service `srv-d9f40kbbc2fs7392qba0` (`receiptsplit-api`) tracks `feat/split-engine` in the `free` plan and Singapore region. The runtime is now **Docker**, using `backend/Dockerfile` with context `backend/`, and auto-deploy is **off**. Blueprint deployment `dep-db0hqclg1s2s73e5c9hg` for commit `0045e0c117a67b55023ceff868755d4f84a431dd` is `live`; the health response includes the exact commit, `tesseract`, and `ocr_ready: true`. Unauthenticated `GET /api/groups` returns 403. The existing Vercel project `receiptsplit-web` tracks `feat/split-engine`; deployment `dpl_6H2tGKs3hC3uUKqsc6iU6ERdC8Ng` for commit `0045e0c117a67b55023ceff868755d4f84a431dd` is `READY`, but does not contain the receipt-review frontend handoff.
+Production verification on 2026-10-03 confirmed Render service `srv-d9f40kbbc2fs7392qba0` (`receiptsplit-api`) tracks `feat/split-engine` in the `free` plan and Singapore region. Runtime is **Docker**, using `backend/Dockerfile` with context `backend/`, and auto-deploy is **off**. The Blueprint sync deployment `dep-db0hqclg1s2s73e5c9hg` first made backend commit `0045e0c117a67b55023ceff868755d4f84a431dd` live. The exact-commit workflow then deployed commit `0081831a20c117c580f6a2b49505a12cd354905d` as Render deploy `dep-db0hrqs9v7es73bh24v0`; GitHub run `37133061959` succeeded. The final health response includes commit `0081831a20c117c580f6a2b49505a12cd354905d`, provider `tesseract`, and `ocr_ready: true`; unauthenticated `GET /api/groups` returned 403. Vercel production deployment `dpl_16iRkeEo499GqqcSJTUtPkWVHkmo` is `READY` at the same SHA and is aliased to `receiptsplit-web.vercel.app`; fetching the public homepage returned HTTP 200.
 
-Render's authenticated MCP access permits service inspection but does not expose a runtime update operation. The service is managed by Blueprint `exs-d9f3svfavr4c73c403h0`; its existing `render.yaml` was synced to apply Docker with auto-deploy off. No production environment variables or database contents were changed during the sync.
+The service is managed by Blueprint `exs-d9f3svfavr4c73c403h0`; its existing `render.yaml` was synced to apply Docker with auto-deploy off. No production environment variables or database contents were changed during the sync. The browser automation did not expose an authenticated application session for live receipt creation, so no test bill or production data was created.
 
 The production Supabase database was not used for local testing. The earlier API delay coincided with Supabase being resumed and is not evidence of an OCR or database defect.
 
@@ -79,15 +79,16 @@ The local Google sign-in screen is not configured, so the second test participan
 | Real browser desktop flow through saved draft, confirmation, second participant, split lock, and reload | Passed |
 | Real browser 390×844 mobile locked-room check | Passed; both ₹393.75 shares and the locked controls remained visible |
 | Render Docker Blueprint paths | Validated: `rootDir: backend`, `dockerfilePath: ./Dockerfile`, `dockerContext: .` |
-| Live Docker deployment `0045e0c` and health/readiness check | Passed; deploy `dep-db0hqclg1s2s73e5c9hg` is live |
+| Live Docker deployment `0081831` and health/readiness check | Passed; deploy `dep-db0hrqs9v7es73bh24v0` is live |
 | Live protected route check | Passed; unauthenticated `GET /api/groups` returned 403 |
-| Live authenticated OCR | Not performed |
+| Vercel production deployment and public homepage | Passed; `dpl_16iRkeEo499GqqcSJTUtPkWVHkmo` is READY and the alias returned HTTP 200 |
+| Live authenticated OCR and split lock | Pending; no authorized application session was available |
 
 ## Deployment checklist
 
 1. Local release gate is complete: frontend production build passed, and constrained-image Tesseract processing peaked at 93.96 MiB on the 0.1-CPU/512-MiB test container.
 2. Render service identity, Docker runtime, free plan, Singapore region, auto-deploy off, exact backend commit, Tesseract readiness, and route protection are verified.
-3. Publish the verified frontend handoff and report changes to the existing `feat/split-engine` production branch. Keep Render auto-deploy disabled; the exact-commit workflow is the deployment trigger.
-4. Verify that Render reports the requested frontend handoff commit as `live` using the Render integration, `/health` reports that exact commit with Tesseract ready, and protected API paths still reject unauthenticated requests. The GitHub workflow checks the running commit, readiness, and protected-route response without requiring a separate Render API-key secret.
-5. Deploy the compatible frontend. With AJ's authorized live session, run one synthetic live receipt through OCR, review, confirmation, preview, lock, reload, and second-participant view. Leave that step pending if sign-in requires AJ's interaction.
+3. Published the tested frontend handoff and report to the existing `feat/split-engine` production branch. Render auto-deploy remains disabled; the exact-commit workflow is the deployment trigger.
+4. Verified exact commit `0081831a20c117c580f6a2b49505a12cd354905d` is live on Render and READY on Vercel, with Tesseract readiness and protected-route behavior passing.
+5. With AJ's authorized live session, run one synthetic live receipt through OCR, review, confirmation, preview, lock, reload, and second-participant view. This step remains pending until an authorized application session is available.
 6. If live acceptance fails, restore the recorded backend runtime/configuration/commit and compatible frontend; do not reset production data.
