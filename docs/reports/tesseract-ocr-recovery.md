@@ -2,11 +2,11 @@
 
 ## Current release status
 
-**Local release gate passed. Backend source commit `0045e0c117a67b55023ceff868755d4f84a431dd` is published on `feat/split-engine`; no Render deployment has started.** The immutable API image and the real browser flow pass locally with Tesseract and the local PostgreSQL database. Live Docker runtime activation and authenticated live-site OCR verification remain.
+**The local release gate passed, and backend commit `0045e0c117a67b55023ceff868755d4f84a431dd` is live on Render.** Blueprint deployment `dep-db0hqclg1s2s73e5c9hg` completed successfully. `/health` reports that exact commit, `tesseract`, and OCR readiness `true`; unauthenticated `GET /api/groups` returns 403. The tested frontend handoff is local at commit `127c18ec7cd49cfbd244b7737d40f2e612ced08e` and has not yet been published. The live authenticated OCR acceptance remains.
 
-Production preflight on 2026-10-03 confirmed Render service `srv-d9f40kbbc2fs7392qba0` (`receiptsplit-api`) runs Python on the `free` plan in Singapore and tracks `feat/split-engine`. The service's current API/UI state reports auto-deploy **On Commit**, contrary to the intended off setting; an attempt to turn it off is still showing a save spinner and has not been confirmed. The latest Render deployment marked `live` remains commit `7f6ff5e7d1ef98a01ce292666af58a8e902aa82b`; the public health endpoint returns only `{"status":"ok"}`. The existing Vercel project `receiptsplit-web` tracks `feat/split-engine`; deployment `dpl_6H2tGKs3hC3uUKqsc6iU6ERdC8Ng` for commit `0045e0c117a67b55023ceff868755d4f84a431dd` is `READY`. That commit changes backend code and guidance files, not the new receipt-review frontend; those frontend changes remain local for the second rollout step.
+Production preflight on 2026-10-03 confirmed Render service `srv-d9f40kbbc2fs7392qba0` (`receiptsplit-api`) tracks `feat/split-engine` in the `free` plan and Singapore region. The runtime is now **Docker**, using `backend/Dockerfile` with context `backend/`, and auto-deploy is **off**. Blueprint deployment `dep-db0hqclg1s2s73e5c9hg` for commit `0045e0c117a67b55023ceff868755d4f84a431dd` is `live`; the health response includes the exact commit, `tesseract`, and `ocr_ready: true`. Unauthenticated `GET /api/groups` returns 403. The existing Vercel project `receiptsplit-web` tracks `feat/split-engine`; deployment `dpl_6H2tGKs3hC3uUKqsc6iU6ERdC8Ng` for commit `0045e0c117a67b55023ceff868755d4f84a431dd` is `READY`, but does not contain the receipt-review frontend handoff.
 
-Render's authenticated MCP access permits service inspection but does not expose a runtime update operation. The authenticated Dashboard exposed the linked Blueprint, but its current Settings save remains pending; the service runtime has not changed. No production environment variables or database contents have been changed.
+Render's authenticated MCP access permits service inspection but does not expose a runtime update operation. The service is managed by Blueprint `exs-d9f3svfavr4c73c403h0`; its existing `render.yaml` was synced to apply Docker with auto-deploy off. No production environment variables or database contents were changed during the sync.
 
 The production Supabase database was not used for local testing. The earlier API delay coincided with Supabase being resumed and is not evidence of an OCR or database defect.
 
@@ -79,13 +79,15 @@ The local Google sign-in screen is not configured, so the second test participan
 | Real browser desktop flow through saved draft, confirmation, second participant, split lock, and reload | Passed |
 | Real browser 390×844 mobile locked-room check | Passed; both ₹393.75 shares and the locked controls remained visible |
 | Render Docker Blueprint paths | Validated: `rootDir: backend`, `dockerfilePath: ./Dockerfile`, `dockerContext: .` |
-| Live deployment and live authenticated OCR | Not performed |
+| Live Docker deployment `0045e0c` and health/readiness check | Passed; deploy `dep-db0hqclg1s2s73e5c9hg` is live |
+| Live protected route check | Passed; unauthenticated `GET /api/groups` returned 403 |
+| Live authenticated OCR | Not performed |
 
 ## Deployment checklist
 
 1. Local release gate is complete: frontend production build passed, and constrained-image Tesseract processing peaked at 93.96 MiB on the 0.1-CPU/512-MiB test container.
-2. Check the current Render service identity, live commit, runtime, plan, and deployment configuration before applying the tested Docker runtime.
-3. Publish the verified changes to the existing `feat/split-engine` production branch. Keep Render auto-deploy disabled; the exact-commit workflow is the deployment trigger.
-4. Verify that Render reports the requested commit as `live` using the Render integration, `/health` reports that exact commit with Tesseract ready, and protected API paths still reject unauthenticated requests. The GitHub workflow checks the running commit, readiness, and protected-route response without requiring a separate Render API-key secret.
+2. Render service identity, Docker runtime, free plan, Singapore region, auto-deploy off, exact backend commit, Tesseract readiness, and route protection are verified.
+3. Publish the verified frontend handoff and report changes to the existing `feat/split-engine` production branch. Keep Render auto-deploy disabled; the exact-commit workflow is the deployment trigger.
+4. Verify that Render reports the requested frontend handoff commit as `live` using the Render integration, `/health` reports that exact commit with Tesseract ready, and protected API paths still reject unauthenticated requests. The GitHub workflow checks the running commit, readiness, and protected-route response without requiring a separate Render API-key secret.
 5. Deploy the compatible frontend. With AJ's authorized live session, run one synthetic live receipt through OCR, review, confirmation, preview, lock, reload, and second-participant view. Leave that step pending if sign-in requires AJ's interaction.
 6. If live acceptance fails, restore the recorded backend runtime/configuration/commit and compatible frontend; do not reset production data.
